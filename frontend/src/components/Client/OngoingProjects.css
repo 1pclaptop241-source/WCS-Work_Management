@@ -1,0 +1,215 @@
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 24px;
+  padding: 10px 0;
+}
+
+.project-card {
+  background: #ffffff;
+  border: 1px solid #eef2f6;
+  border-radius: 20px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid #edf2f7;
+}
+
+/* Color Accent Bar */
+.project-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(180deg, #6366f1, #2E86AB);
+  /* Indigo to Blue */
+  opacity: 1;
+}
+
+.project-card.is-closed::before {
+  background: #94a3b8;
+  /* Gray for closed */
+}
+
+.project-card:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: translateY(-8px);
+  border-color: #6366f1;
+}
+
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.project-header h3 {
+  color: #0f172a;
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.project-body {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.project-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.info-item:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.info-item .label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-item .value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+/* Specific item accents */
+.info-item:nth-child(1) {
+  border-top: 3px solid #6366f1;
+}
+
+/* Indigo for Deadline */
+.info-item:nth-child(2) {
+  border-top: 3px solid #f59e0b;
+}
+
+/* Amber for Budget */
+
+.project-footer {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-view-progress {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #2E86AB 0%, #246a8a 100%) !important;
+  color: white !important;
+  font-weight: 700;
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 4px 10px rgba(46, 134, 171, 0.2);
+  transition: all 0.3s ease;
+  width: auto;
+  /* Prevent full width */
+}
+
+.btn-view-progress:hover {
+  background: linear-gradient(135deg, #246a8a 0%, #1a506b 100%) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px rgba(46, 134, 171, 0.3);
+}
+
+.project-footer .btn {
+  width: auto !important;
+  min-width: 100px;
+  padding: 8px 20px;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .projects-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-footer {
+    justify-content: space-between;
+  }
+
+  .project-footer .btn {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Progress Section */
+.completion-container {
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 12px;
+  margin-top: 4px;
+}
+
+.completion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.completion-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.completion-value {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #059669;
+  /* Emerald Green */
+  background: #ecfdf5;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.progress-bar-bg {
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #059669, #10b981);
+  /* Emerald to Green gradient */
+  transition: width 1s cubic-bezier(0.1, 0.5, 0.5, 1);
+  box-shadow: 0 0 10px rgba(5, 150, 105, 0.3);
+}

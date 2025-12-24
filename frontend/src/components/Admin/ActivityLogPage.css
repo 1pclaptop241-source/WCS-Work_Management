@@ -1,0 +1,28 @@
+.activity-log-page .page-title {
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    border-top: 1px solid #eee;
+}
+
+@media (max-width: 768px) {
+    .hide-mobile {
+        display: none;
+    }
+
+    .pagination {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .activity-log-page .page-title {
+        font-size: 1.25rem;
+    }
+}
