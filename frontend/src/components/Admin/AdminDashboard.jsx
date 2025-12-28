@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { FaChartBar } from 'react-icons/fa';
 import { projectsAPI, usersAPI, resetAPI, workBreakdownAPI } from '../../services/api';
 import { worksAPI, API_BASE_URL } from '../../services/api';
 import ProgressRoadmap from '../common/ProgressRoadmap';
@@ -23,7 +24,8 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('accepted'); // 'pipeline', 'accepted', 'unaccepted', 'performance'
   const [showStats, setShowStats] = useState(true);
 
-  const [searchTerm, setSearchTerm] = useState('');
+  // searchTerm removed
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -328,18 +330,33 @@ const AdminDashboard = () => {
 
   return (
     <div className="container">
-      <div className="dashboard-header" style={{ marginBottom: '15px' }}>
+      <div className="dashboard-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <h1 style={{ fontSize: '1.5rem', margin: 0 }}>Admin Dashboard</h1>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => setShowStats(!showStats)}
-            style={{ padding: '2px 8px', fontSize: '11px', borderRadius: '4px' }}
-          >
-            {showStats ? 'Hide Stats' : 'Show Stats'}
-          </button>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="header-actions">
+          <button
+            className={`btn btn-sm`}
+            onClick={() => setShowStats(!showStats)}
+            title={showStats ? 'Hide Stats' : 'Show Stats'}
+            style={{
+              backgroundColor: showStats ? '#2E86AB' : '#e2e8f0',
+              color: showStats ? 'white' : '#64748b',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%', // Circle icon button
+              padding: 0,
+              border: 'none',
+              fontSize: '16px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <FaChartBar />
+          </button>
+
           <button className="btn btn-primary btn-sm" onClick={() => setShowCreateModal(true)}>
             + Project
           </button>
@@ -367,15 +384,8 @@ const AdminDashboard = () => {
         />
       )}
 
-      {/* Tabs & Search Unified */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '15px',
-        borderBottom: '1px solid #eee',
-        paddingBottom: '2px'
-      }}>
+      {/* Tabs Unified */}
+      <div className="dashboard-controls">
         <div className="tabs" style={{ marginBottom: 0, borderBottom: 'none' }}>
           <button
             className={`tab ${activeTab === 'pipeline' ? 'active' : ''}`}
@@ -406,22 +416,6 @@ const AdminDashboard = () => {
             Insights
           </button>
         </div>
-
-        <div className="search-bar" style={{ marginBottom: 0 }}>
-          <input
-            type="text"
-            placeholder="Search..."
-            className="form-input"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '200px',
-              padding: '6px 12px',
-              fontSize: '13px',
-              height: '32px'
-            }}
-          />
-        </div>
       </div>
 
       {/* Pipeline View Tab */}
@@ -445,22 +439,14 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {unacceptedProjects.filter(p =>
-                  !searchTerm ||
-                  p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-                ).length === 0 ? (
+                {unacceptedProjects.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="text-center">
                       No unaccepted projects found
                     </td>
                   </tr>
                 ) : (
-                  unacceptedProjects.filter(p =>
-                    !searchTerm ||
-                    p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-                  ).map((project) => (
+                  unacceptedProjects.map((project) => (
                     <tr key={project._id}>
                       <td>{project.title}</td>
                       <td>{project.client?.name || 'N/A'}</td>
@@ -479,7 +465,8 @@ const AdminDashboard = () => {
                       </td>
                     </tr>
                   ))
-                )}
+                )
+                }
               </tbody>
             </table>
           </div>
@@ -489,11 +476,7 @@ const AdminDashboard = () => {
       {activeTab === 'accepted' && (
         <div className="accepted-projects-view">
           {(() => {
-            const filtered = acceptedProjects.filter(p =>
-              !searchTerm ||
-              p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            const filtered = acceptedProjects;
 
             const activeOnes = filtered.filter(p => !p.closed).sort((a, b) => {
               const isAwaitingAction = (p) => p.status === 'submitted' || p.status === 'under_review';

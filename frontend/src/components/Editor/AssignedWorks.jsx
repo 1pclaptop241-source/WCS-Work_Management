@@ -246,7 +246,7 @@ const AssignedWorks = ({ onUpdate }) => {
   const [selectedWorkForNotes, setSelectedWorkForNotes] = useState(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedWorkForHistory, setSelectedWorkForHistory] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+
 
   const handleWorkSelect = (workBreakdown) => {
     navigate(`/editor/upload-work/${workBreakdown._id}`);
@@ -397,9 +397,7 @@ const AssignedWorks = ({ onUpdate }) => {
     if (work.isPaid) return false;
 
     const matchesStatus = filterStatus === 'all' ? true : (filterStatus === 'pending' ? !work.approved : work.approved);
-    const matchesSearch = work.project?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      work.workType?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return matchesStatus;
   })
     // Sort by priority (high > medium > low) then deadline
     .sort((a, b) => {
@@ -450,21 +448,7 @@ const AssignedWorks = ({ onUpdate }) => {
 
       {/* Search and Filters */}
       <div className="dashboard-controls" style={{ marginBottom: '20px', display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div className="search-box" style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
-          <input
-            type="text"
-            placeholder="Search projects or work types..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px 15px',
-              borderRadius: '8px',
-              border: '1px solid #ddd',
-              fontSize: '14px'
-            }}
-          />
-        </div>
+
 
         {filterStatus !== 'all' && (
           <div className="filter-info" style={{ margin: 0 }}>
