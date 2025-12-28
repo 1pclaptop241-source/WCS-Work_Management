@@ -5,6 +5,7 @@ const Settlement = require('../models/Settlement');
 const calculatePenalty = require('../utils/calculatePenalty');
 const User = require('../models/User');
 const { createNotification } = require('../utils/notificationService');
+const { uploadToCloudinary } = require('../config/cloudinary');
 
 // @desc    Get payments for an editor
 // @route   GET /api/payments/editor/:editorId
@@ -329,7 +330,12 @@ exports.markPaymentPaid = async (req, res) => {
 
     // Handle payment screenshot upload
     if (req.file) {
-      payment.paymentScreenshot = `/uploads/${req.file.filename}`;
+      try {
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots');
+        payment.paymentScreenshot = uploadResult.secure_url;
+      } catch (uploadError) {
+        return res.status(500).json({ message: 'Error uploading screenshot: ' + uploadError.message });
+      }
     }
 
     payment.paymentType = payment.paymentType || 'editor_payout';
@@ -485,7 +491,12 @@ exports.markClientPaymentPaid = async (req, res) => {
 
     // Handle payment screenshot upload
     if (req.file) {
-      payment.paymentScreenshot = `/uploads/${req.file.filename}`;
+      try {
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots');
+        payment.paymentScreenshot = uploadResult.secure_url;
+      } catch (uploadError) {
+        return res.status(500).json({ message: 'Error uploading screenshot: ' + uploadError.message });
+      }
     } else {
       return res.status(400).json({ message: 'Payment screenshot is required' });
     }
@@ -554,7 +565,12 @@ exports.markBulkPaymentsPaid = async (req, res) => {
     }
 
     if (req.file) {
-      updateData.paymentScreenshot = `/uploads/${req.file.filename}`;
+      try {
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots');
+        updateData.paymentScreenshot = uploadResult.secure_url;
+      } catch (uploadError) {
+        return res.status(500).json({ message: 'Error uploading screenshot: ' + uploadError.message });
+      }
     }
 
     // Create Bonus Payment if applicable
@@ -636,7 +652,12 @@ exports.markBulkClientPaymentsPaid = async (req, res) => {
     };
 
     if (req.file) {
-      updateData.paymentScreenshot = `/uploads/${req.file.filename}`;
+      try {
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots');
+        updateData.paymentScreenshot = uploadResult.secure_url;
+      } catch (uploadError) {
+        return res.status(500).json({ message: 'Error uploading screenshot: ' + uploadError.message });
+      }
     } else {
       return res.status(400).json({ message: 'Screenshot is required' });
     }

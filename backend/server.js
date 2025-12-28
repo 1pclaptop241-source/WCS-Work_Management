@@ -18,8 +18,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Serve report files
 app.use('/reports', express.static(path.join(__dirname, 'reports')));
 

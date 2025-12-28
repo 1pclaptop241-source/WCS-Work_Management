@@ -7,6 +7,7 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { createNotification } = require('../utils/notificationService');
 const logActivity = require('../utils/activityLogger');
+const { uploadToCloudinary } = require('../config/cloudinary');
 
 // @desc    Get all projects (role-based filtering)
 // @route   GET /api/projects
@@ -268,7 +269,12 @@ exports.createProject = async (req, res) => {
 
     // Handle script file upload
     if (req.file) {
-      newProjectPayload.scriptFile = `/uploads/${req.file.filename}`;
+      try {
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-projects/scripts');
+        newProjectPayload.scriptFile = uploadResult.secure_url;
+      } catch (uploadError) {
+        return res.status(500).json({ message: 'Error uploading script file: ' + uploadError.message });
+      }
     }
 
     // Clients cannot set assignedEditor or client to someone else
@@ -411,7 +417,12 @@ exports.updateProject = async (req, res) => {
 
     // Handle script file update (for both client and admin)
     if (req.file) {
-      project.scriptFile = `/uploads/${req.file.filename}`;
+      try {
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-projects/scripts');
+        project.scriptFile = uploadResult.secure_url;
+      } catch (uploadError) {
+        return res.status(500).json({ message: 'Error uploading script file: ' + uploadError.message });
+      }
     }
 
     await project.save();

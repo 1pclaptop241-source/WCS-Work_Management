@@ -3,10 +3,10 @@ const Project = require('../models/Project');
 const WorkBreakdown = require('../models/WorkBreakdown');
 const Payment = require('../models/Payment');
 const calculatePenalty = require('../utils/calculatePenalty');
-const path = require('path');
-const fs = require('fs');
+
 const User = require('../models/User');
 const { createNotification } = require('../utils/notificationService');
+const { uploadToCloudinary } = require('../config/cloudinary');
 
 // @desc    Upload work submission
 // @route   POST /api/works
@@ -51,9 +51,14 @@ exports.uploadWork = async (req, res) => {
     let fileUrl, fileName, submissionType;
 
     if (req.file) {
-      fileUrl = `/uploads/${req.file.filename}`;
-      fileName = req.file.originalname;
-      submissionType = 'file';
+      try {
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-works/submissions');
+        fileUrl = uploadResult.secure_url;
+        fileName = req.file.originalname;
+        submissionType = 'file';
+      } catch (uploadError) {
+        return res.status(500).json({ message: 'Error uploading work file: ' + uploadError.message });
+      }
     } else {
       fileUrl = linkUrl;
       fileName = req.body.fileName || 'External Link';
@@ -182,10 +187,23 @@ exports.addCorrections = async (req, res) => {
 
     if (req.files) {
       if (req.files['voiceFile']) {
-        voiceFilePath = `/uploads/${req.files['voiceFile'][0].filename}`;
+        try {
+          const result = await uploadToCloudinary(req.files['voiceFile'][0].buffer, 'wcs-works/corrections/voice');
+          voiceFilePath = result.secure_url;
+        } catch (err) {
+          return res.status(500).json({ message: 'Error uploading voice file: ' + err.message });
+        }
       }
       if (req.files['mediaFiles']) {
-        mediaFilePaths = req.files['mediaFiles'].map(f => `/uploads/${f.filename}`);
+        try {
+          const uploadPromises = req.files['mediaFiles'].map(file =>
+            uploadToCloudinary(file.buffer, 'wcs-works/corrections/media')
+          );
+          const results = await Promise.all(uploadPromises);
+          mediaFilePaths = results.map(r => r.secure_url);
+        } catch (err) {
+          return res.status(500).json({ message: 'Error uploading media files: ' + err.message });
+        }
       }
     }
 
