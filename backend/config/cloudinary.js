@@ -27,7 +27,7 @@ const uploadToCloudinary = (buffer, folder = 'wcs-work-management') => {
             }
         );
 
-        streamifier.createReadStream(buffer).pipe(uploadStream);
+        uploadStream.end(buffer);
     });
 };
 
