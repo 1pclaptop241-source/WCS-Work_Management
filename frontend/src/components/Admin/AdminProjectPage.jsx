@@ -116,9 +116,10 @@ const AdminProjectPage = () => {
     const handleSaveEdit = async (e) => {
         e.preventDefault();
         try {
+            // Fix: Convert local datetime to ISO string
             const payload = {
                 ...editFormData,
-                deadline: editFormData.deadline ? new Date(editFormData.deadline).toISOString() : ''
+                deadline: new Date(editFormData.deadline).toISOString()
             };
             await workBreakdownAPI.update(editingWork._id, payload);
             setEditingWork(null);

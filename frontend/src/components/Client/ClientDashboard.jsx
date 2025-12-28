@@ -352,7 +352,9 @@ const ClientDashboard = () => {
                   const submitData = new FormData();
                   submitData.append('title', formData.title);
                   submitData.append('description', formData.description);
-                  submitData.append('deadline', new Date(formData.deadline).toISOString());
+                  // Fix: Convert local datetime to ISO string to preserve absolute time
+                  const isoDeadline = new Date(formData.deadline).toISOString();
+                  submitData.append('deadline', isoDeadline);
                   submitData.append('projectDetails', formData.projectDetails || '');
                   submitData.append('currency', formData.currency);
                   submitData.append('amount', formData.amount);

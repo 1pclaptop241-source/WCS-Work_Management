@@ -136,9 +136,10 @@ const AcceptProjectPage = () => {
             await projectsAPI.accept(projectId,
                 workBreakdown.map(w => ({
                     ...w,
-                    deadline: w.deadline ? new Date(w.deadline).toISOString() : '',
                     amount: parseFloat(w.amount),
                     percentage: parseFloat(w.percentage),
+                    // Conversion: ensure deadline is transmitted as ISO string to prevent timezone offset issues
+                    deadline: w.deadline ? new Date(w.deadline).toISOString() : w.deadline
                 })),
                 parseFloat(totalAmount)
             );

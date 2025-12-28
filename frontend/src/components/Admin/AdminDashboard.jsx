@@ -107,10 +107,7 @@ const AdminDashboard = () => {
     try {
       setIsCreatingProject(true);
       setError('');
-      await projectsAPI.create({
-        ...formData,
-        deadline: new Date(formData.deadline).toISOString()
-      });
+      await projectsAPI.create(formData);
       setShowCreateModal(false);
       setFormData({
         title: '',
