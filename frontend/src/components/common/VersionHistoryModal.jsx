@@ -103,7 +103,7 @@ const VersionHistoryModal = ({ workBreakdown, onClose }) => {
                                                     <FaExternalLinkAlt /> Open Link
                                                 </a>
                                             ) : (
-                                                <a href={sub.fileUrl.match(/^https?:\/\//) ? sub.fileUrl : `https://${sub.fileUrl}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                <a href={sub.fileUrl.match(/^https?:\/\//) ? sub.fileUrl : (sub.fileUrl.startsWith('/') || sub.fileUrl.startsWith('uploads') ? `${API_BASE_URL}${sub.fileUrl}` : `https://${sub.fileUrl}`)} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                     <FaDownload /> Download File
                                                 </a>
                                             )}

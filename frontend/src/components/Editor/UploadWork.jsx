@@ -116,7 +116,7 @@ const UploadWork = ({ project, workBreakdown, onClose }) => {
                 border: '1px solid #90caf9'
               }}>
                 <a
-                  href={project.scriptFile.match(/^https?:\/\//) ? project.scriptFile : `https://${project.scriptFile}`}
+                  href={project.scriptFile.match(/^https?:\/\//) ? project.scriptFile : (project.scriptFile.startsWith('/') || project.scriptFile.startsWith('uploads') ? `${API_BASE_URL}${project.scriptFile}` : `https://${project.scriptFile}`)}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -271,7 +271,7 @@ const UploadWork = ({ project, workBreakdown, onClose }) => {
                         🔗 {sub.fileName}
                       </a>
                     ) : (
-                      <a href={sub.fileUrl.match(/^https?:\/\//) ? sub.fileUrl : `https://${sub.fileUrl}`} target="_blank" rel="noopener noreferrer" className="submission-link">
+                      <a href={sub.fileUrl.match(/^https?:\/\//) ? sub.fileUrl : (sub.fileUrl.startsWith('/') || sub.fileUrl.startsWith('uploads') ? `${API_BASE_URL}${sub.fileUrl}` : `https://${sub.fileUrl}`)} target="_blank" rel="noopener noreferrer" className="submission-link">
                         📁 {sub.fileName}
                       </a>
                     )}
@@ -300,7 +300,7 @@ const UploadWork = ({ project, workBreakdown, onClose }) => {
                             {corr.voiceFile && (
                               <div style={{ marginTop: '8px', marginBottom: '8px' }}>
                                 <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px', fontWeight: '500' }}>🎤 Voice Note:</div>
-                                <audio controls src={corr.voiceFile} style={{ display: 'block', width: '100%', maxWidth: '400px' }} />
+                                <audio controls src={corr.voiceFile.match(/^https?:\/\//) ? corr.voiceFile : (corr.voiceFile.startsWith('/') || corr.voiceFile.startsWith('uploads') ? `${API_BASE_URL}${corr.voiceFile}` : `https://${corr.voiceFile}`)} style={{ display: 'block', width: '100%', maxWidth: '400px' }} />
                               </div>
                             )}
                             {corr.mediaFiles && corr.mediaFiles.length > 0 && (
@@ -308,7 +308,7 @@ const UploadWork = ({ project, workBreakdown, onClose }) => {
                                 <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px', fontWeight: '500' }}>📎 Attachments:</div>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                   {corr.mediaFiles.map((m, idx) => (
-                                    <a key={idx} href={m} target="_blank" rel="noopener noreferrer" style={{ fontSize: '13px', color: '#06A77D', textDecoration: 'none', padding: '6px 12px', background: '#e8f5f1', borderRadius: '6px', border: '1px solid #06A77D', fontWeight: '500' }}>
+                                    <a key={idx} href={m.match(/^https?:\/\//) ? m : (m.startsWith('/') || m.startsWith('uploads') ? `${API_BASE_URL}${m}` : `https://${m}`)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '13px', color: '#06A77D', textDecoration: 'none', padding: '6px 12px', background: '#e8f5f1', borderRadius: '6px', border: '1px solid #06A77D', fontWeight: '500' }}>
                                       📄 File {idx + 1}
                                     </a>
                                   ))}

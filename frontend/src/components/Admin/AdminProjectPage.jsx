@@ -365,7 +365,7 @@ const AdminProjectPage = () => {
                         )}
                         {project.scriptFile && (
                             <p><strong>Script:</strong> <a
-                                href={project.scriptFile.match(/^https?:\/\//) ? project.scriptFile : `https://${project.scriptFile}`}
+                                href={project.scriptFile.match(/^https?:\/\//) ? project.scriptFile : (project.scriptFile.startsWith('/') || project.scriptFile.startsWith('uploads') ? `${API_BASE_URL}${project.scriptFile}` : `https://${project.scriptFile}`)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >

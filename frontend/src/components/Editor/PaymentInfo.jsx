@@ -250,7 +250,7 @@ const PaymentInfo = () => {
                       ) : payment.paid ? (
                         payment.paymentScreenshot ? (
                           <a
-                            href={payment.paymentScreenshot}
+                            href={payment.paymentScreenshot.match(/^https?:\/\//) ? payment.paymentScreenshot : (payment.paymentScreenshot.startsWith('/') || payment.paymentScreenshot.startsWith('uploads') ? `${API_BASE_URL}${payment.paymentScreenshot}` : `https://${payment.paymentScreenshot}`)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="badge badge-primary clickable-badge"
