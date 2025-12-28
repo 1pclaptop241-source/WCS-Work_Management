@@ -52,7 +52,7 @@ const ClientDashboard = () => {
       deadline: deadlineStr,
       projectDetails: project.projectDetails || '',
       currency: project.currency || 'INR',
-      amount: project.clientAmount || project.amount || '',
+      amount: project.amount || project.clientAmount || '',
       rawFootageLinks: project.rawFootageLinks || [],
       scriptFile: null // File input can't be pre-filled securely, leaving empty implies no change unless new file selected
     });
@@ -458,7 +458,8 @@ const ClientDashboard = () => {
               <div className="form-group">
                 <label className="form-label">Budget / Estimate</label>
                 <span className="form-helper">Specify your expected budget for this project.</span>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}
+                  title={editingProject && editingProject.accepted ? "Budget cannot be changed after project acceptance" : ""}>
                   <input
                     type="number"
                     className="form-input"
@@ -468,14 +469,14 @@ const ClientDashboard = () => {
                     required
                     min="0"
                     step="0.01"
-                    style={{ flex: 2 }}
+                    style={{ flex: 2, cursor: editingProject && editingProject.accepted ? 'not-allowed' : 'text' }}
                     disabled={editingProject && editingProject.accepted}
                   />
                   <select
                     className="form-select"
                     value={formData.currency}
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, cursor: editingProject && editingProject.accepted ? 'not-allowed' : 'pointer' }}
                     disabled={editingProject && editingProject.accepted}
                   >
                     <option value="INR">INR (₹)</option>
