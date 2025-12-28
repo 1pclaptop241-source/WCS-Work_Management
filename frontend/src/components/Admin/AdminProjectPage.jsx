@@ -364,7 +364,7 @@ const AdminProjectPage = () => {
                             </div>
                         )}
                         {project.scriptFile && (
-                            <p><strong>Script:</strong> <a href={`${API_BASE_URL}${project.scriptFile}`} target="_blank" rel="noopener noreferrer">Download Script</a></p>
+                            <p><strong>Script:</strong> <a href={project.scriptFile} target="_blank" rel="noopener noreferrer">Download Script</a></p>
                         )}
                         {project.projectDetails && (
                             <div>
@@ -552,7 +552,7 @@ const AdminProjectPage = () => {
                                                         <a
                                                             href={work.submissionType === 'link'
                                                                 ? (work.fileUrl.match(/^https?:\/\//) || work.fileUrl.match(/^\/\//) ? work.fileUrl : `https://${work.fileUrl}`)
-                                                                : `${API_BASE_URL}${work.fileUrl}`}
+                                                                : work.fileUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="btn btn-primary btn-sm"

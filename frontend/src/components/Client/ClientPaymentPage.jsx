@@ -235,7 +235,7 @@ const ClientPaymentPage = () => {
                               payment.paymentScreenshot ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
                                   <a
-                                    href={`${API_BASE_URL}${payment.paymentScreenshot}`}
+                                    href={payment.paymentScreenshot}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="badge badge-primary"

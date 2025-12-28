@@ -578,7 +578,7 @@ const AdminPaymentPage = () => {
                           <td>
                             {payment.paymentScreenshot ? (
                               <a
-                                href={`${API_BASE_URL}${payment.paymentScreenshot}`}
+                                href={payment.paymentScreenshot}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={`badge badge-${netAmount >= 0 ? 'success' : 'danger'}`}

@@ -49,7 +49,7 @@ const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, mar
                                         <div style={{ width: '100%' }}>
                                             <audio
                                                 controls
-                                                src={`${API_BASE_URL}${msg.voiceFile}`}
+                                                src={msg.voiceFile}
                                                 className="voice-note-player"
                                             />
                                         </div>
@@ -57,7 +57,7 @@ const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, mar
                                     {msg.mediaFiles && msg.mediaFiles.map((file, i) => (
                                         <a
                                             key={i}
-                                            href={`${API_BASE_URL}${file}`}
+                                            href={file}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="attachment-link"
