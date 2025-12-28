@@ -364,7 +364,13 @@ const AdminProjectPage = () => {
                             </div>
                         )}
                         {project.scriptFile && (
-                            <p><strong>Script:</strong> <a href={project.scriptFile} target="_blank" rel="noopener noreferrer">Download Script</a></p>
+                            <p><strong>Script:</strong> <a
+                                href={project.scriptFile.match(/^https?:\/\//) ? project.scriptFile : `https://${project.scriptFile}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Download Script
+                            </a></p>
                         )}
                         {project.projectDetails && (
                             <div>
@@ -725,12 +731,12 @@ const AdminProjectPage = () => {
                                                                     <div>
                                                                         {c.text && <p className="correction-text">{c.text}</p>}
                                                                         {c.voiceFile && (
-                                                                            <audio controls src={`${API_BASE_URL}${c.voiceFile}`} className="correction-audio" />
+                                                                            <audio controls src={c.voiceFile} className="correction-audio" />
                                                                         )}
                                                                         {c.mediaFiles && c.mediaFiles.length > 0 && (
                                                                             <div className="correction-media">
                                                                                 {c.mediaFiles.map((m, idx) => (
-                                                                                    <a key={idx} href={`${API_BASE_URL}${m}`} target="_blank" rel="noopener noreferrer">
+                                                                                    <a key={idx} href={m} target="_blank" rel="noopener noreferrer">
                                                                                         📎 Attachment {idx + 1}
                                                                                     </a>
                                                                                 ))}

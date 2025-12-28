@@ -255,7 +255,13 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                 </div>
               )}
               {project.scriptFile && (
-                <p><strong>Script:</strong> <a href={`${API_BASE_URL}${project.scriptFile}`} target="_blank" rel="noopener noreferrer">Download Script</a></p>
+                <p><strong>Script:</strong> <a
+                  href={project.scriptFile.match(/^https?:\/\//) ? project.scriptFile : `https://${project.scriptFile}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Download Script
+                </a></p>
               )}
               {project.projectDetails && (
                 <div>

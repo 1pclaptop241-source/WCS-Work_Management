@@ -208,7 +208,7 @@ const UploadWorkPage = () => {
                             </div>
                             <div className="card-body">
                                 <a
-                                    href={`${API_BASE_URL}${workBreakdown.project.scriptFile}`}
+                                    href={workBreakdown.project.scriptFile.match(/^https?:\/\//) ? workBreakdown.project.scriptFile : `https://${workBreakdown.project.scriptFile}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="script-download-btn"
@@ -328,7 +328,7 @@ const UploadWorkPage = () => {
                                                     🔗 {sub.fileName}
                                                 </a>
                                             ) : (
-                                                <a href={`${API_BASE_URL}${sub.fileUrl}`} target="_blank" rel="noopener noreferrer" className="submission-link">
+                                                <a href={sub.fileUrl.match(/^https?:\/\//) ? sub.fileUrl : `https://${sub.fileUrl}`} target="_blank" rel="noopener noreferrer" className="submission-link">
                                                     📁 {sub.fileName}
                                                 </a>
                                             )}
@@ -361,14 +361,14 @@ const UploadWorkPage = () => {
                                                             {corr.voiceFile && (
                                                                 <div className="correction-voice">
                                                                     <strong>🎤 Voice Note:</strong>
-                                                                    <audio controls src={`${API_BASE_URL}${corr.voiceFile}`} />
+                                                                    <audio controls src={corr.voiceFile} />
                                                                 </div>
                                                             )}
                                                             {corr.mediaFiles && corr.mediaFiles.length > 0 && (
                                                                 <div className="correction-media">
                                                                     <strong>📎 Attachments:</strong>
                                                                     {corr.mediaFiles.map((m, i) => (
-                                                                        <a key={i} href={`${API_BASE_URL}${m}`} target="_blank" rel="noopener noreferrer">
+                                                                        <a key={i} href={m} target="_blank" rel="noopener noreferrer">
                                                                             📄 File {i + 1}
                                                                         </a>
                                                                     ))}

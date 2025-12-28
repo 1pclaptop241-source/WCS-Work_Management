@@ -220,7 +220,13 @@ const AcceptProjectPage = () => {
 
                         {project.scriptFile && (
                             <p style={{ marginTop: '15px' }}>
-                                <strong>Script:</strong> <a href={`${API_BASE_URL}${project.scriptFile}`} target="_blank" rel="noopener noreferrer">Download Script</a>
+                                <strong>Script:</strong> <a
+                                    href={project.scriptFile.match(/^https?:\/\//) ? project.scriptFile : `https://${project.scriptFile}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Download Script
+                                </a>
                             </p>
                         )}
                     </div>

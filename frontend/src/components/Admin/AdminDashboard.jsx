@@ -1038,7 +1038,13 @@ const AdminDashboard = () => {
                     </div>
                   )}
                   {selectedProject.scriptFile && (
-                    <p><strong>Script:</strong> <a href={`${API_BASE_URL}${selectedProject.scriptFile}`} target="_blank" rel="noopener noreferrer">Download Script</a></p>
+                    <p><strong>Script:</strong> <a
+                      href={selectedProject.scriptFile.match(/^https?:\/\//) ? selectedProject.scriptFile : `https://${selectedProject.scriptFile}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Download Script
+                    </a></p>
                   )}
                   <p><strong>Project Details:</strong> {selectedProject.projectDetails || 'N/A'}</p>
                 </div>

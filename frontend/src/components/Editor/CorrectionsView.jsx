@@ -46,7 +46,7 @@ const CorrectionsView = ({ project, works, onClose }) => {
                     <div>
                       <strong>Submission:</strong>{" "}
                       <a
-                        href={work.submissionType === 'link' ? work.fileUrl : `${API_BASE_URL}${work.fileUrl}`}
+                        href={work.submissionType === 'link' ? work.fileUrl : (work.fileUrl.match(/^https?:\/\//) ? work.fileUrl : `https://${work.fileUrl}`)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="submission-link-inline"
