@@ -116,7 +116,11 @@ const AdminProjectPage = () => {
     const handleSaveEdit = async (e) => {
         e.preventDefault();
         try {
-            await workBreakdownAPI.update(editingWork._id, editFormData);
+            const payload = {
+                ...editFormData,
+                deadline: editFormData.deadline ? new Date(editFormData.deadline).toISOString() : ''
+            };
+            await workBreakdownAPI.update(editingWork._id, payload);
             setEditingWork(null);
             loadWorkBreakdown(); // Reload to see changes
         } catch (err) {

@@ -136,6 +136,7 @@ const AcceptProjectPage = () => {
             await projectsAPI.accept(projectId,
                 workBreakdown.map(w => ({
                     ...w,
+                    deadline: w.deadline ? new Date(w.deadline).toISOString() : '',
                     amount: parseFloat(w.amount),
                     percentage: parseFloat(w.percentage),
                 })),
