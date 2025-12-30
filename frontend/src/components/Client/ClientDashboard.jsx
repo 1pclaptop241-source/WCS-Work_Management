@@ -30,7 +30,11 @@ const ClientDashboard = () => {
     rawFootageLinks: [],
     scriptFile: null
   });
+  /*
+  // ...
+  */
   const [editingProject, setEditingProject] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
 
   // ...
@@ -348,7 +352,10 @@ const ClientDashboard = () => {
               className="modal-body"
               onSubmit={async (e) => {
                 e.preventDefault();
+                if (isSubmitting) return;
+
                 try {
+                  setIsSubmitting(true);
                   const submitData = new FormData();
                   submitData.append('title', formData.title);
                   submitData.append('description', formData.description);
@@ -382,6 +389,8 @@ const ClientDashboard = () => {
                   await loadProjects();
                 } catch (err) {
                   setError(err.response?.data?.message || 'Failed to save project');
+                } finally {
+                  setIsSubmitting(false);
                 }
               }}
             >
@@ -510,8 +519,10 @@ const ClientDashboard = () => {
                 <textarea className="form-textarea" placeholder="Any final notes for the editor..." value={formData.projectDetails} onChange={(e) => setFormData({ ...formData, projectDetails: e.target.value })} />
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleModalClose}>Cancel</button>
-                <button type="submit" className="btn btn-primary">{editingProject ? 'Update' : 'Create'}</button>
+                <button type="button" className="btn btn-secondary" onClick={handleModalClose} disabled={isSubmitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Processing...' : (editingProject ? 'Update' : 'Create')}
+                </button>
               </div>
             </form>
           </div>
