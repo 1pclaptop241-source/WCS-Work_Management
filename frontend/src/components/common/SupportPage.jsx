@@ -36,19 +36,19 @@ const SupportPage = ({ onClose, userRole }) => {
                             <div className="contact-item">
                                 <span className="contact-label">General Support:</span>
                                 <a href="" className="contact-link">
-                                    Loading...
+                                    wisecutstudios@gmail.com
                                 </a>
                             </div>
                             <div className="contact-item">
                                 <span className="contact-label">Technical Issues:</span>
                                 <a href="" className="contact-link">
-                                    Loading...
+                                    wisecutstudios@gmail.com
                                 </a>
                             </div>
                             <div className="contact-item">
                                 <span className="contact-label">Billing & Payments:</span>
                                 <a href="" className="contact-link">
-                                    Loading...
+                                    wisecutstudios@gmail.com
                                 </a>
                             </div>
                         </div>

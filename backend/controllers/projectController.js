@@ -270,7 +270,8 @@ exports.createProject = async (req, res) => {
     // Handle script file upload
     if (req.file) {
       try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-projects/scripts');
+        const resourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'auto';
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-projects/scripts', resourceType);
         newProjectPayload.scriptFile = uploadResult.secure_url;
       } catch (uploadError) {
         return res.status(500).json({ message: 'Error uploading script file: ' + uploadError.message });
@@ -418,7 +419,8 @@ exports.updateProject = async (req, res) => {
     // Handle script file update (for both client and admin)
     if (req.file) {
       try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-projects/scripts');
+        const resourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'auto';
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-projects/scripts', resourceType);
         project.scriptFile = uploadResult.secure_url;
       } catch (uploadError) {
         return res.status(500).json({ message: 'Error uploading script file: ' + uploadError.message });

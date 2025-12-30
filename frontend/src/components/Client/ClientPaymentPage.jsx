@@ -88,10 +88,7 @@ const ClientPaymentPage = () => {
 
   const handlePay = async () => {
     try {
-      if (!totalPaymentScreenshot) {
-        await showAlert('Please select a screenshot first', 'Validation Error');
-        return;
-      }
+
       if (selectedPaymentIds.length === 0) {
         await showAlert('Please select at least one payment.', 'Validation Error');
         return;
@@ -123,10 +120,7 @@ const ClientPaymentPage = () => {
 
   const handleUpdateProof = async () => {
     try {
-      if (!newProofFile) {
-        await showAlert('Please select a new screenshot', 'Validation Error');
-        return;
-      }
+
       setIsUpdatingProof(true);
       await paymentsAPI.markClientPaid(selectedPaymentForEdit._id, newProofFile);
       await loadPayments();
@@ -232,8 +226,8 @@ const ClientPaymentPage = () => {
                                 ✓ Payment Successful
                               </span>
                             ) : payment.paid ? (
-                              payment.paymentScreenshot ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                                {payment.paymentScreenshot ? (
                                   <a
                                     href={payment.paymentScreenshot}
                                     target="_blank"
@@ -248,25 +242,25 @@ const ClientPaymentPage = () => {
                                   >
                                     ⏱ Verifying
                                   </a>
-                                  <button
-                                    className="btn btn-xs btn-outline-secondary"
-                                    style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', border: '1px solid #ccc' }}
-                                    onClick={() => {
-                                      setSelectedPaymentForEdit(payment);
-                                      setShowEditProofModal(true);
-                                    }}
-                                  >
-                                    ✎ Edit Proof
-                                  </button>
-                                </div>
-                              ) : (
-                                <span className="badge badge-primary" style={{
-                                  display: 'inline-block', padding: '8px 16px', borderRadius: '20px',
-                                  backgroundColor: '#cfe2ff', color: '#084298', fontWeight: 'bold', fontSize: '13px', border: '1px solid #b6d4fe'
-                                }}>
-                                  ⏱ Verifying
-                                </span>
-                              )
+                                ) : (
+                                  <span className="badge badge-primary" style={{
+                                    display: 'inline-block', padding: '8px 16px', borderRadius: '20px',
+                                    backgroundColor: '#cfe2ff', color: '#084298', fontWeight: 'bold', fontSize: '13px', border: '1px solid #b6d4fe'
+                                  }}>
+                                    ⏱ Verifying
+                                  </span>
+                                )}
+                                <button
+                                  className="btn btn-xs btn-outline-secondary"
+                                  style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', border: '1px solid #ccc' }}
+                                  onClick={() => {
+                                    setSelectedPaymentForEdit(payment);
+                                    setShowEditProofModal(true);
+                                  }}
+                                >
+                                  {payment.paymentScreenshot ? '✎ Edit Proof' : '+ Add Proof'}
+                                </button>
+                              </div>
                             ) : (
                               <span className="badge badge-warning" style={{
                                 display: 'inline-block', padding: '8px 16px', borderRadius: '20px',
@@ -333,7 +327,7 @@ const ClientPaymentPage = () => {
               <p>You are about to pay for <strong>{paymentsToPay.length}</strong> selected items.</p>
               <p style={{ fontSize: '1.2em' }}>Total Amount: <strong>{formatCurrency(amountToPay, payments[0]?.project?.currency || 'INR')}</strong></p>
               <div className="form-group">
-                <label>Upload Screenshot</label>
+                <label>Upload Screenshot (Optional)</label>
                 <input
                   type="file"
                   className="form-input"
@@ -360,7 +354,7 @@ const ClientPaymentPage = () => {
             <div className="modal-body">
               <p>You are updating the proof for project: <strong>{selectedPaymentForEdit?.project?.title}</strong></p>
               <div className="form-group">
-                <label>Upload New Screenshot</label>
+                <label>Upload New Screenshot (Optional)</label>
                 <input
                   type="file"
                   className="form-input"

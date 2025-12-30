@@ -52,7 +52,14 @@ exports.uploadWork = async (req, res) => {
 
     if (req.file) {
       try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-works/submissions');
+        // Check for raw file types (PDF, Zip, Rar, Docs)
+        const isRaw = req.file.mimetype === 'application/pdf' ||
+          req.file.mimetype.includes('application/vnd') ||
+          req.file.mimetype.includes('zip') ||
+          req.file.mimetype.includes('rar');
+
+        const resourceType = isRaw ? 'raw' : 'auto';
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-works/submissions', resourceType);
         fileUrl = uploadResult.secure_url;
         fileName = req.file.originalname;
         submissionType = 'file';
@@ -196,9 +203,10 @@ exports.addCorrections = async (req, res) => {
       }
       if (req.files['mediaFiles']) {
         try {
-          const uploadPromises = req.files['mediaFiles'].map(file =>
-            uploadToCloudinary(file.buffer, 'wcs-works/corrections/media')
-          );
+          const uploadPromises = req.files['mediaFiles'].map(file => {
+            const resourceType = file.mimetype === 'application/pdf' ? 'raw' : 'auto';
+            return uploadToCloudinary(file.buffer, 'wcs-works/corrections/media', resourceType);
+          });
           const results = await Promise.all(uploadPromises);
           mediaFilePaths = results.map(r => r.secure_url);
         } catch (err) {

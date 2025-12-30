@@ -331,7 +331,8 @@ exports.markPaymentPaid = async (req, res) => {
     // Handle payment screenshot upload
     if (req.file) {
       try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots');
+        const resourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'auto';
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots', resourceType);
         payment.paymentScreenshot = uploadResult.secure_url;
       } catch (uploadError) {
         return res.status(500).json({ message: 'Error uploading screenshot: ' + uploadError.message });
@@ -492,13 +493,12 @@ exports.markClientPaymentPaid = async (req, res) => {
     // Handle payment screenshot upload
     if (req.file) {
       try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots');
+        const resourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'auto';
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots', resourceType);
         payment.paymentScreenshot = uploadResult.secure_url;
       } catch (uploadError) {
         return res.status(500).json({ message: 'Error uploading screenshot: ' + uploadError.message });
       }
-    } else {
-      return res.status(400).json({ message: 'Payment screenshot is required' });
     }
 
     payment.paid = true;
@@ -566,7 +566,8 @@ exports.markBulkPaymentsPaid = async (req, res) => {
 
     if (req.file) {
       try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots');
+        const resourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'auto';
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots', resourceType);
         updateData.paymentScreenshot = uploadResult.secure_url;
       } catch (uploadError) {
         return res.status(500).json({ message: 'Error uploading screenshot: ' + uploadError.message });
@@ -653,13 +654,12 @@ exports.markBulkClientPaymentsPaid = async (req, res) => {
 
     if (req.file) {
       try {
-        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots');
+        const resourceType = req.file.mimetype === 'application/pdf' ? 'raw' : 'auto';
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-payments/screenshots', resourceType);
         updateData.paymentScreenshot = uploadResult.secure_url;
       } catch (uploadError) {
         return res.status(500).json({ message: 'Error uploading screenshot: ' + uploadError.message });
       }
-    } else {
-      return res.status(400).json({ message: 'Screenshot is required' });
     }
 
     // Ensure client owns these payments

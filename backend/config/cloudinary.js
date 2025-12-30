@@ -14,12 +14,12 @@ cloudinary.config({
  * @param {String} folder - Optional folder name
  * @returns {Promise} - Resolves with result object, rejects with error
  */
-const uploadToCloudinary = (buffer, folder = 'wcs-work-management') => {
+const uploadToCloudinary = (buffer, folder = 'wcs-work-management', resourceType = 'auto') => {
     return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
             {
                 folder: folder,
-                resource_type: 'auto', // Detects image/video/raw
+                resource_type: resourceType, // 'auto', 'image', 'video', or 'raw'
             },
             (error, result) => {
                 if (error) return reject(error);
