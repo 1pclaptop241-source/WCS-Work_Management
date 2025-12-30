@@ -150,7 +150,7 @@ const SupportPage = ({ onClose, userRole }) => {
                     </div>
 
                     {/* Working Hours */}
-                    <div className="support-section">
+                    {/* <div className="support-section">
                         <div className="support-icon-header">
                             <span className="support-emoji">🕐</span>
                             <h3>Support Hours</h3>
@@ -163,7 +163,7 @@ const SupportPage = ({ onClose, userRole }) => {
                                 <em>We aim to respond to all inquiries within 24 business hours.</em>
                             </p>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </div>
