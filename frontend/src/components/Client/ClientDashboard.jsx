@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { projectsAPI, worksAPI, resetAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { useDialog } from '../../context/DialogContext';
 import { formatDateTime } from '../../utils/formatDate';
 import OngoingProjects from './OngoingProjects';
@@ -10,6 +11,7 @@ import CountUp from 'react-countup';
 import './ClientDashboard.css';
 
 const ClientDashboard = () => {
+  const { user } = useAuth();
   const { showAlert } = useDialog();
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -177,16 +179,13 @@ const ClientDashboard = () => {
     <div className="container">
       {activeView !== 'work' && (
         <div className="dashboard-header">
-          <h1>Client Dashboard</h1>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div className="project-count">
-              <CountUp
-                end={projects.filter(p => p.accepted && !p.closed).length}
-                duration={1.5}
-              />{' '}
-              Ongoing Project{projects.filter(p => p.accepted && !p.closed).length !== 1 ? 's' : ''}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ fontSize: '15px', color: '#666', fontWeight: '500' }}>
+              <h3>Welcome, {user.name}!</h3>
             </div>
-
+          </div>
+          <br />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
               className="btn btn-primary btn-sm"
               onClick={() => setShowCreateModal(true)}
@@ -197,11 +196,24 @@ const ClientDashboard = () => {
                 padding: '8px 16px',
                 fontWeight: '600',
                 borderRadius: '8px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                height: 'fit-content',
+                whiteSpace: 'nowrap'
               }}
             >
               <span>+</span> Create Project
             </button>
+
+            <div className="project-count" style={{ whiteSpace: 'nowrap', backgroundColor: '#e6f7f2', color: '#06A77D', border: '1px solid #06A77D', fontSize: '12px', padding: '4px 10px', borderRadius: '20px' }}>
+              <span style={{ fontSize: '10px', marginRight: '6px' }}>●</span>
+              <strong style={{ marginRight: '4px' }}>
+                <CountUp
+                  end={projects.filter(p => p.accepted && !p.closed).length}
+                  duration={1.5}
+                />
+              </strong>
+              Active
+            </div>
           </div>
         </div>
       )}

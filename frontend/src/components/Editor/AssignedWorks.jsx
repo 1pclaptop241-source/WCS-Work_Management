@@ -423,13 +423,7 @@ const AssignedWorks = ({ onUpdate }) => {
     <div className="assigned-works">
       {/* Stats Overview */}
       <div className="stats-overview">
-        <div className="stat-card" onClick={() => setFilterStatus('all')} style={{ cursor: 'pointer', borderColor: filterStatus === 'all' ? '#06A77D' : '#e0e0e0' }}>
-          <div className="stat-icon" style={{ backgroundColor: '#e3f2fd', color: '#0d47a1' }}><FaClipboardList /></div>
-          <div className="stat-content">
-            <div className="stat-value">{stats.total}</div>
-            <div className="stat-label">Total Tasks</div>
-          </div>
-        </div>
+
         <div className="stat-card" onClick={() => setFilterStatus('pending')} style={{ cursor: 'pointer', borderColor: filterStatus === 'pending' ? '#06A77D' : '#e0e0e0' }}>
           <div className="stat-icon" style={{ backgroundColor: '#fff3cd', color: '#856404' }}><FaHourglassHalf /></div>
           <div className="stat-content">
@@ -450,12 +444,7 @@ const AssignedWorks = ({ onUpdate }) => {
       <div className="dashboard-controls" style={{ marginBottom: '20px', display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
 
 
-        {filterStatus !== 'all' && (
-          <div className="filter-info" style={{ margin: 0 }}>
-            <span>Showing: <strong>{filterStatus.toUpperCase()}</strong></span>
-            <button className="btn-clear-filter" onClick={() => setFilterStatus('all')} style={{ marginLeft: '10px' }}>Clear</button>
-          </div>
-        )}
+
       </div>
 
       {/* Works Grid */}

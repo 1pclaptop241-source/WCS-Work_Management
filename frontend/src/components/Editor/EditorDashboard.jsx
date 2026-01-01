@@ -65,10 +65,10 @@ const EditorDashboard = () => {
   return (
     <div className="container">
       <div className="dashboard-header">
-        <h1>Editor Dashboard</h1>
+
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <div className="welcome-message">
-            Welcome, {user.name}!
+            <h3>Welcome, {user.name}!</h3>
           </div>
 
         </div>

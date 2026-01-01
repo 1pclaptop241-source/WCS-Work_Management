@@ -437,11 +437,13 @@
 
 @media (max-width: 480px) {
   .stats-overview {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
 
   .stat-card {
-    padding: 16px;
+    padding: 12px;
+    gap: 10px;
   }
 
   .stat-icon {
