@@ -206,47 +206,64 @@
 
 .work-info-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
 
 .info-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 10px;
-  border: 1px solid #e9ecef;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  text-align: center;
+}
+
+.info-item:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.info-item:nth-child(1) {
+  border-top: 3px solid #6366f1;
+}
+
+.info-item:nth-child(2) {
+  border-top: 3px solid #f59e0b;
 }
 
 .info-icon {
-  font-size: 20px;
-  flex-shrink: 0;
+  font-size: 24px;
+  margin-bottom: 2px;
 }
 
 .info-details {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
 }
 
 .info-label {
-  font-size: 11px;
-  color: #666;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.1em;
 }
 
 .info-value {
-  font-size: 15px;
-  font-weight: 700;
-  color: #1a1a1a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.2;
 }
 
 /* Deadline Section */
@@ -423,7 +440,7 @@
   }
 
   .work-info-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .stat-value {

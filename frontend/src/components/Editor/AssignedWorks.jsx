@@ -580,7 +580,7 @@ const AssignedWorks = ({ onUpdate }) => {
                         <span className="info-icon" style={{ color: '#dc3545' }}><FaCalendarAlt /></span>
                         <div className="info-details">
                           <span className="info-label">Deadline</span>
-                          <span className="info-value" style={{ fontSize: '13px' }}>{formatDateTime(work.deadline)}</span>
+                          <span className="info-value">{formatDateTime(work.deadline)}</span>
                         </div>
                       </div>
                     </div>

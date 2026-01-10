@@ -58,7 +58,7 @@ const ClientDashboard = () => {
       deadline: deadlineStr,
       projectDetails: project.projectDetails || '',
       currency: project.currency || 'INR',
-      amount: project.amount || project.clientAmount || '',
+      amount: project.clientAmount || project.amount || '',
       rawFootageLinks: project.rawFootageLinks || [],
       scriptFile: null // File input can't be pre-filled securely, leaving empty implies no change unless new file selected
     });

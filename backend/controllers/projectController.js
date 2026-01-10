@@ -397,7 +397,11 @@ exports.updateProject = async (req, res) => {
       // Handle currency and amount - ONLY if not accepted
       if (!project.accepted) {
         if (req.body.currency) project.currency = req.body.currency;
-        if (req.body.amount) project.amount = Math.round(parseFloat(req.body.amount) * 100) / 100;
+        if (req.body.amount) {
+          const val = Math.round(parseFloat(req.body.amount) * 100) / 100;
+          project.amount = val;
+          project.clientAmount = val;
+        }
       }
     } else if (req.user.role === 'admin') {
       // Admin can update everything, but let's be explicit and safe

@@ -185,7 +185,7 @@ const OngoingProjects = ({ projects, onProjectSelect, onEdit }) => {
                     </div>
                   )}
                   {(() => {
-                    const displayAmount = project.amount || project.clientAmount;
+                    const displayAmount = project.clientAmount || project.amount;
                     return displayAmount ? (
                       <div className="info-item">
                         <span className="label">💰 Budget</span>
