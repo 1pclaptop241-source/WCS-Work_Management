@@ -6,9 +6,15 @@ import './NotificationDropdown.css'; // We'll need some styles
 const NotificationDropdown = () => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const unreadCountRef = useRef(0); // Ref to track unreadCount for interval closure
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
+
+    // Sync ref with state
+    useEffect(() => {
+        unreadCountRef.current = unreadCount;
+    }, [unreadCount]);
 
     const fetchNotifications = async (isPoll = false) => {
         try {
@@ -17,7 +23,8 @@ const NotificationDropdown = () => {
             const newUnreadCount = newNotifications.filter(n => !n.read).length;
 
             // Play sound if new unread notification detected and it's not the initial load
-            if (isPoll && newUnreadCount > unreadCount) {
+            // Use ref to compare against latest state, avoiding stale closure
+            if (isPoll && newUnreadCount > unreadCountRef.current) {
                 const audio = new Audio('/sounds/notification.mp3');
                 audio.currentTime = 0;
                 audio.play().catch(e => console.warn('Notification sound blocked (user interaction required):', e));
