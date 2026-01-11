@@ -191,6 +191,7 @@ export const usersAPI = {
   getEditors: () => api.get('/users/editors'),
   getEditorStats: () => api.get('/users/editors/stats'),
   getClients: () => api.get('/users/clients'),
+  toggleBlock: (id) => api.put(`/users/${id}/block`),
 };
 
 // Reset API

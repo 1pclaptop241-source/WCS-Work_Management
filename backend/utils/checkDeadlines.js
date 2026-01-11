@@ -18,46 +18,71 @@ const checkDeadlines = async () => {
         });
 
         for (const project of projects) {
-            const deadline = new Date(project.deadline);
-            const startTime = new Date(project.acceptedAt || project.createdAt);
-            const totalDuration = deadline - startTime;
-            const timeRemaining = deadline - now;
+            try {
+                const deadline = new Date(project.deadline);
+                const startTime = new Date(project.acceptedAt || project.createdAt);
+                const totalDuration = deadline - startTime;
+                const timeRemaining = deadline - now;
 
-            if (totalDuration <= 0) continue;
+                if (totalDuration <= 0) continue;
 
-            const percentageLeft = (timeRemaining / totalDuration) * 100;
-            const warnings = project.warnings || { warn_50: false, warn_25: false, warn_5: false, warn_crossed: false };
-            let updated = false;
+                const percentageLeft = (timeRemaining / totalDuration) * 100;
+                // Ensure warnings object exists and has default values
+                if (!project.warnings) {
+                    project.warnings = { warn_50: false, warn_25: false, warn_5: false, warn_crossed: false };
+                }
+                const warnings = project.warnings;
 
-            if (timeRemaining < 0 && !warnings.warn_crossed) {
-                for (const admin of admins) {
-                    await createNotification(admin._id, 'deadline_crossed', 'Project Deadline Crossed', `Project "${project.title}" has crossed its deadline.`, project._id);
-                }
-                warnings.warn_crossed = true;
-                updated = true;
-            } else if (percentageLeft <= 5 && !warnings.warn_5) {
-                for (const admin of admins) {
-                    await createNotification(admin._id, 'deadline_warning', 'Project Deadline Critical', `Less than 5% time remaining for project "${project.title}".`, project._id);
-                }
-                warnings.warn_5 = true;
-                updated = true;
-            } else if (percentageLeft <= 25 && !warnings.warn_25) {
-                for (const admin of admins) {
-                    await createNotification(admin._id, 'deadline_warning', 'Project Deadline Warning', `Less than 25% time remaining for project "${project.title}".`, project._id);
-                }
-                warnings.warn_25 = true;
-                updated = true;
-            } else if (percentageLeft <= 50 && !warnings.warn_50) {
-                for (const admin of admins) {
-                    await createNotification(admin._id, 'deadline_warning', 'Project Deadline Warning', `Less than 50% time remaining for project "${project.title}".`, project._id);
-                }
-                warnings.warn_50 = true;
-                updated = true;
-            }
+                let notificationToQueue = null;
 
-            if (updated) {
-                project.warnings = warnings;
-                await project.save();
+                if (timeRemaining < 0 && !warnings.warn_crossed) {
+                    notificationToQueue = {
+                        type: 'deadline_crossed',
+                        title: 'Project Deadline Crossed',
+                        message: `Project "${project.title}" has crossed its deadline.`
+                    };
+                    warnings.warn_crossed = true;
+                } else if (percentageLeft <= 5 && !warnings.warn_5) {
+                    notificationToQueue = {
+                        type: 'deadline_warning',
+                        title: 'Project Deadline Critical',
+                        message: `Less than 5% time remaining for project "${project.title}".`
+                    };
+                    warnings.warn_5 = true;
+                } else if (percentageLeft <= 25 && !warnings.warn_25) {
+                    notificationToQueue = {
+                        type: 'deadline_warning',
+                        title: 'Project Deadline Warning',
+                        message: `Less than 25% time remaining for project "${project.title}".`
+                    };
+                    warnings.warn_25 = true;
+                } else if (percentageLeft <= 50 && !warnings.warn_50) {
+                    notificationToQueue = {
+                        type: 'deadline_warning',
+                        title: 'Project Deadline Warning',
+                        message: `Less than 50% time remaining for project "${project.title}".`
+                    };
+                    warnings.warn_50 = true;
+                }
+
+                if (notificationToQueue) {
+                    // CRITICAL: Save FIRST to prevent spamming if save fails
+                    project.markModified('warnings'); // Ensure mongoose tracks the change
+                    await project.save();
+
+                    // Only send notification if save succeeded
+                    for (const admin of admins) {
+                        // Use try-catch for notification to prevent blocking subsequent logic (though unlikely here)
+                        try {
+                            await createNotification(admin._id, notificationToQueue.type, notificationToQueue.title, notificationToQueue.message, project._id);
+                        } catch (notifErr) {
+                            console.error(`Failed to send notification to admin ${admin._id}:`, notifErr);
+                        }
+                    }
+                }
+            } catch (projErr) {
+                console.error(`Error processing deadline for project ${project._id}:`, projErr);
+                // Continue to next project
             }
         }
 
@@ -69,43 +94,79 @@ const checkDeadlines = async () => {
         }).populate('project', 'title acceptedAt createdAt');
 
         for (const work of works) {
-            if (!work.assignedEditor) continue;
+            try {
+                if (!work.assignedEditor) continue;
 
-            const deadline = new Date(work.deadline);
-            const startTime = new Date(work.project.acceptedAt || work.project.createdAt);
-            const totalDuration = deadline - startTime;
-            const timeRemaining = deadline - now;
+                const deadline = new Date(work.deadline);
+                const startTime = new Date(work.project.acceptedAt || work.project.createdAt);
+                const totalDuration = deadline - startTime;
+                const timeRemaining = deadline - now;
 
-            if (totalDuration <= 0) continue;
+                if (totalDuration <= 0) continue;
 
-            const percentageLeft = (timeRemaining / totalDuration) * 100;
-            const warnings = work.warnings || { warn_50: false, warn_25: false, warn_5: false, warn_crossed: false };
-            let updated = false;
+                const percentageLeft = (timeRemaining / totalDuration) * 100;
 
-            if (timeRemaining < 0 && !warnings.warn_crossed) {
-                await createNotification(work.assignedEditor, 'deadline_crossed', 'Work Deadline Crossed', `Deadline crossed for pending work in project "${work.project.title}".`, work.project._id);
-                for (const admin of admins) {
-                    await createNotification(admin._id, 'deadline_crossed', 'Work Deadline Crossed', `Editor crossed deadline for work in project "${work.project.title}".`, work.project._id);
+                if (!work.warnings) {
+                    work.warnings = { warn_50: false, warn_25: false, warn_5: false, warn_crossed: false };
                 }
-                warnings.warn_crossed = true;
-                updated = true;
-            } else if (percentageLeft <= 5 && !warnings.warn_5) {
-                await createNotification(work.assignedEditor, 'deadline_warning', 'Work Deadline Critical', `Less than 5% time remaining for work in project "${work.project.title}".`, work.project._id);
-                warnings.warn_5 = true;
-                updated = true;
-            } else if (percentageLeft <= 25 && !warnings.warn_25) {
-                await createNotification(work.assignedEditor, 'deadline_warning', 'Work Deadline Warning', `Less than 25% time remaining for work in project "${work.project.title}".`, work.project._id);
-                warnings.warn_25 = true;
-                updated = true;
-            } else if (percentageLeft <= 50 && !warnings.warn_50) {
-                await createNotification(work.assignedEditor, 'deadline_warning', 'Work Deadline Warning', `Less than 50% time remaining for work in project "${work.project.title}".`, work.project._id);
-                warnings.warn_50 = true;
-                updated = true;
-            }
+                const warnings = work.warnings;
 
-            if (updated) {
-                work.warnings = warnings;
-                await work.save();
+                let notificationToQueue = null;
+
+                if (timeRemaining < 0 && !warnings.warn_crossed) {
+                    notificationToQueue = {
+                        type: 'deadline_crossed',
+                        title: 'Work Deadline Crossed',
+                        messageEditor: `Deadline crossed for pending work in project "${work.project.title}".`,
+                        messageAdmin: `Editor crossed deadline for work in project "${work.project.title}".`
+                    };
+                    warnings.warn_crossed = true;
+                } else if (percentageLeft <= 5 && !warnings.warn_5) {
+                    notificationToQueue = {
+                        type: 'deadline_warning',
+                        title: 'Work Deadline Critical',
+                        messageEditor: `Less than 5% time remaining for work in project "${work.project.title}".`
+                    };
+                    warnings.warn_5 = true;
+                } else if (percentageLeft <= 25 && !warnings.warn_25) {
+                    notificationToQueue = {
+                        type: 'deadline_warning',
+                        title: 'Work Deadline Warning',
+                        messageEditor: `Less than 25% time remaining for work in project "${work.project.title}".`
+                    };
+                    warnings.warn_25 = true;
+                } else if (percentageLeft <= 50 && !warnings.warn_50) {
+                    notificationToQueue = {
+                        type: 'deadline_warning',
+                        title: 'Work Deadline Warning',
+                        messageEditor: `Less than 50% time remaining for work in project "${work.project.title}".`
+                    };
+                    warnings.warn_50 = true;
+                }
+
+                if (notificationToQueue) {
+                    // CRITICAL: Save FIRST
+                    work.markModified('warnings');
+                    await work.save();
+
+                    // Send to Editor
+                    if (notificationToQueue.messageEditor) {
+                        try {
+                            await createNotification(work.assignedEditor, notificationToQueue.type, notificationToQueue.title, notificationToQueue.messageEditor, work.project._id);
+                        } catch (err) { console.error('Failed to notify editor:', err); }
+                    }
+
+                    // Send to Admins (if applicable, e.g., crossed)
+                    if (notificationToQueue.messageAdmin) {
+                        for (const admin of admins) {
+                            try {
+                                await createNotification(admin._id, notificationToQueue.type, notificationToQueue.title, notificationToQueue.messageAdmin, work.project._id);
+                            } catch (err) { console.error('Failed to notify admin:', err); }
+                        }
+                    }
+                }
+            } catch (workErr) {
+                console.error(`Error processing work deadline ${work._id}:`, workErr);
             }
         }
     } catch (error) {

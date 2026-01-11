@@ -45,6 +45,10 @@ const userSchema = new mongoose.Schema({
       auth: { type: String, required: true }
     }
   }],
+  isBlocked: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 userSchema.index({ email: 1 });

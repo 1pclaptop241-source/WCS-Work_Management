@@ -57,6 +57,11 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
+      // Check if user is blocked
+      if (user.isBlocked) {
+        return res.status(403).json({ message: 'Your account has been temporarily blocked. Please contact admin.' });
+      }
+
       // Mock req.user for logging since we haven't gone via middleware
       req.user = user;
       await logActivity(req, 'LOGIN', `User ${user.name} logged in`);

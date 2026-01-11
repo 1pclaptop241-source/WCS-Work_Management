@@ -79,6 +79,11 @@ exports.updateUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Protect Primary Admin
+    if (user.email === 'admin@wisecutstudios.com' && req.user.email !== 'admin@wisecutstudios.com') {
+      return res.status(403).json({ message: 'You are not authorized to edit the primary admin details.' });
+    }
+
     const { name, email, role, password } = req.body;
 
     user.name = name || user.name;
@@ -113,9 +118,10 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Prevent deleting admin accounts
-    if (user.role === 'admin') {
-      return res.status(403).json({ message: 'Cannot delete admin accounts' });
+    // Prevent deleting the primary admin account
+    // We only want to protect the main root admin, other admins can be deleted by another admin
+    if (user.email === 'admin@wisecutstudios.com') {
+      return res.status(403).json({ message: 'Cannot delete the primary admin account' });
     }
 
     // Check for associated data
@@ -197,6 +203,38 @@ exports.getEditorStats = async (req, res) => {
     }));
 
     res.json(stats);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Toggle user block status (admin only)
+// @route   PUT /api/users/:id/block
+// @access  Private/Admin
+exports.toggleBlockStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent blocking admin accounts (optional, but good practice)
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Cannot block admin accounts' });
+    }
+
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isBlocked: user.isBlocked,
+      message: `User ${user.isBlocked ? 'blocked' : 'unblocked'} successfully`
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
