@@ -24,6 +24,23 @@ const workSubmissionSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please provide a file name'],
   },
+  workFileUrl: {
+    type: String,
+    default: '',
+  },
+  workFileName: {
+    type: String,
+    default: '',
+  },
+  isWorkFileVisibleToClient: {
+    type: Boolean,
+    default: false,
+  },
+  workSubmissionType: {
+    type: String,
+    enum: ['file', 'link'],
+    default: 'file',
+  },
   submittedAt: {
     type: Date,
     default: Date.now,

@@ -78,11 +78,22 @@ export const projectsAPI = {
 
 // Works API
 export const worksAPI = {
-  upload: (projectId, workBreakdownId, file, linkUrl, editorMessage) => {
+  upload: (arg1, ...rest) => {
+    if (arg1 instanceof FormData) {
+      return api.post('/works', arg1, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+
+    const [projectId, workBreakdownId, file, linkUrl, editorMessage, workFile, workLinkUrl] = [arg1, ...rest];
     const formData = new FormData();
     if (file) formData.append('file', file);
     if (linkUrl) formData.append('linkUrl', linkUrl);
     if (editorMessage) formData.append('editorMessage', editorMessage);
+    if (workFile) formData.append('workFile', workFile);
+    if (workLinkUrl) formData.append('workLinkUrl', workLinkUrl);
     formData.append('projectId', projectId);
     formData.append('workBreakdownId', workBreakdownId);
     return api.post('/works', formData, {
@@ -91,6 +102,7 @@ export const worksAPI = {
       },
     });
   },
+  toggleWorkFileVisibility: (id) => api.put(`/works/${id}/toggle-visibility`),
   getByProject: (projectId) => api.get(`/works/project/${projectId}`),
   getByEditor: (editorId) => api.get(`/works/editor/${editorId}`),
   getAssignedBreakdowns: () => api.get('/works/assigned-breakdowns'),

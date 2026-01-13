@@ -1,0 +1,198 @@
+/* ProjectRoadmap.css */
+
+.project-roadmap {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.roadmap-header {
+  margin-bottom: 20px;
+}
+
+.roadmap-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roadmap-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+/* Stepper Container */
+.roadmap-stepper {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  padding: 0 10px;
+}
+
+/* Connecting Line */
+.roadmap-stepper::before {
+  content: '';
+  position: absolute;
+  top: 14px; /* Half of circle height */
+  left: 20px;
+  right: 20px;
+  height: 2px;
+  background-color: #e2e8f0;
+  z-index: 1;
+}
+
+/* Connecting Line Progress (Dynamic width based on progress) */
+.roadmap-progress-line {
+  position: absolute;
+  top: 14px;
+  left: 20px;
+  height: 2px;
+  background-color: #10b981; /* Green */
+  z-index: 1;
+  transition: width 0.3s ease;
+}
+
+/* Individual Step */
+.roadmap-step {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+/* Step Circle */
+.step-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.step-icon {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Step Status Styles */
+.roadmap-step.done .step-circle {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+.roadmap-step.done .step-icon {
+  color: white;
+}
+
+.roadmap-step.active .step-circle {
+  background-color: white;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+.roadmap-step.active .step-icon {
+  color: #3b82f6;
+}
+
+.roadmap-step.error .step-circle {
+  background-color: #fee2e2;
+  border-color: #dc2626;
+}
+.roadmap-step.error .step-icon {
+  color: #dc2626;
+}
+
+/* Step Label */
+.step-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+  text-align: center;
+  max-width: 80px;
+  line-height: 1.2;
+}
+
+.roadmap-step.active .step-label {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.roadmap-step.done .step-label {
+  color: #059669;
+}
+
+/* Date/Status Text */
+.step-status {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .roadmap-stepper {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-left: 20px;
+    gap: 20px;
+  }
+  
+  .roadmap-stepper::before {
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    right: auto;
+    width: 2px;
+    height: 100%;
+  }
+  
+  .roadmap-progress-line {
+    top: 0;
+    left: 3px;
+    width: 2px;
+    height: 0; /* Dynamic height for vertical */
+    transition: height 0.3s ease;
+  }
+  
+  .roadmap-step {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 0;
+    padding-left: 24px; /* Space for line */
+  }
+  
+  .step-circle {
+    position: absolute;
+    left: -11px; /* Align with line */
+    margin-bottom: 0;
+  }
+  
+  .step-label {
+    text-align: left;
+    max-width: none;
+    margin-left: 12px;
+    font-size: 0.85rem;
+  }
+  
+  .step-status {
+    margin-top: 0;
+    margin-left: auto;
+    background: #f8fafc;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+  }
+}

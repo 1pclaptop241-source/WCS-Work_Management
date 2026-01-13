@@ -179,6 +179,16 @@ const AdminProjectPage = () => {
         }
     };
 
+    const handleToggleVisibility = async (workId) => {
+        try {
+            await worksAPI.toggleWorkFileVisibility(workId);
+            await loadWorkSubmissions(); // Reload to update state
+        } catch (err) {
+            console.error('Failed to toggle visibility:', err);
+            showAlert('Failed to toggle visibility', 'Error');
+        }
+    };
+
     const focusFeedback = (bdId) => {
         const input = document.getElementById(`feedback-input-${bdId}`);
         if (input) {
@@ -621,6 +631,54 @@ const AdminProjectPage = () => {
                                                 >
                                                     💬 Give Feedback
                                                 </button>
+                                                {/* Work File Section */}
+                                                {hasUpload && work.workFileUrl && (
+                                                    <div style={{ marginTop: '10px', padding: '10px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#fafafa' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                                                            <strong>📦 Source / Work File:</strong>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <span style={{ fontSize: '11px', color: '#666' }}>Client Visibility:</span>
+                                                                <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '34px', height: '20px' }}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={work.isWorkFileVisibleToClient}
+                                                                        onChange={() => handleToggleVisibility(work._id)}
+                                                                        style={{ opacity: 0, width: 0, height: 0 }}
+                                                                    />
+                                                                    <span style={{
+                                                                        position: 'absolute',
+                                                                        cursor: 'pointer',
+                                                                        top: 0, left: 0, right: 0, bottom: 0,
+                                                                        backgroundColor: work.isWorkFileVisibleToClient ? '#2196F3' : '#ccc',
+                                                                        transition: '.4s',
+                                                                        borderRadius: '34px'
+                                                                    }}>
+                                                                        <span style={{
+                                                                            position: 'absolute',
+                                                                            content: '""',
+                                                                            height: '12px',
+                                                                            width: '12px',
+                                                                            left: work.isWorkFileVisibleToClient ? '26px' : '4px',
+                                                                            bottom: '4px',
+                                                                            backgroundColor: 'white',
+                                                                            transition: '.4s',
+                                                                            borderRadius: '50%',
+                                                                            transform: work.isWorkFileVisibleToClient ? 'translateX(-100%)' : 'translateX(0)'
+                                                                        }}></span>
+                                                                    </span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <a
+                                                            href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{ fontSize: '13px', color: '#0366d6', textDecoration: 'none' }}
+                                                        >
+                                                            {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '⬇️ Download Source File'} ({work.workFileName || 'File'})
+                                                        </a>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Work Items and Corrections Card Footer Actions */}

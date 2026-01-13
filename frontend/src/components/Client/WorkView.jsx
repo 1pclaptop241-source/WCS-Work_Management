@@ -404,6 +404,20 @@ const WorkView = ({ project, onBack, onUpdate }) => {
                           </button>
                         )}
 
+                        {hasUpload && work.workFileUrl && work.isWorkFileVisibleToClient && (
+                          <div style={{ marginTop: '5px' }}>
+                            <a
+                              href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-secondary btn-sm"
+                              style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
+                            >
+                              {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '📦 Download Source File'}
+                            </a>
+                          </div>
+                        )}
+
                         <button
                           className="btn btn-secondary"
                           onClick={() => focusFeedback(bd._id)}

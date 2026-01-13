@@ -54,7 +54,7 @@ exports.getWorkBreakdownByEditor = async (req, res) => {
     }
 
     const workBreakdown = await WorkBreakdown.find({ assignedEditor: editorId })
-      .populate('project', 'title client')
+      .populate('project', 'title client roadmap')
       .populate('assignedEditor', 'name email')
       .populate('feedback.from', 'name role')
       .sort({ deadline: 1 });

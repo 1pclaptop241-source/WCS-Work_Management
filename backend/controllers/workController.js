@@ -13,9 +13,11 @@ const { uploadToCloudinary } = require('../config/cloudinary');
 // @access  Private/Editor
 exports.uploadWork = async (req, res) => {
   try {
-    const { projectId, workBreakdownId, linkUrl } = req.body;
+    const { projectId, workBreakdownId, linkUrl, workLinkUrl } = req.body;
+    console.log('UploadWork Body:', req.body);
+    console.log('UploadWork Files:', req.files);
 
-    if (!req.file && !linkUrl) {
+    if ((!req.files || !req.files['file']) && !linkUrl) {
       return res.status(400).json({ message: 'Please upload a file or provide a link' });
     }
 
@@ -49,19 +51,21 @@ exports.uploadWork = async (req, res) => {
     }
 
     let fileUrl, fileName, submissionType;
+    let workFileUrl = '', workFileName = '', workSubmissionType = 'file';
 
-    if (req.file) {
+    if (req.files && req.files['file'] && req.files['file'][0]) {
       try {
+        const file = req.files['file'][0];
         // Check for raw file types (PDF, Zip, Rar, Docs)
-        const isRaw = req.file.mimetype === 'application/pdf' ||
-          req.file.mimetype.includes('application/vnd') ||
-          req.file.mimetype.includes('zip') ||
-          req.file.mimetype.includes('rar');
+        const isRaw = file.mimetype === 'application/pdf' ||
+          file.mimetype.includes('application/vnd') ||
+          file.mimetype.includes('zip') ||
+          file.mimetype.includes('rar');
 
         const resourceType = isRaw ? 'raw' : 'auto';
-        const uploadResult = await uploadToCloudinary(req.file.buffer, 'wcs-works/submissions', resourceType);
+        const uploadResult = await uploadToCloudinary(file.buffer, 'wcs-works/submissions', resourceType);
         fileUrl = uploadResult.secure_url;
-        fileName = req.file.originalname;
+        fileName = file.originalname;
         submissionType = 'file';
       } catch (uploadError) {
         return res.status(500).json({ message: 'Error uploading work file: ' + uploadError.message });
@@ -70,6 +74,33 @@ exports.uploadWork = async (req, res) => {
       fileUrl = linkUrl;
       fileName = req.body.fileName || 'External Link';
       submissionType = 'link';
+    }
+
+    if (req.files && req.files['workFile'] && req.files['workFile'][0]) {
+      try {
+        const file = req.files['workFile'][0];
+        const isRaw = file.mimetype === 'application/pdf' ||
+          file.mimetype.includes('application/vnd') ||
+          file.mimetype.includes('zip') ||
+          file.mimetype.includes('rar');
+
+        const resourceType = isRaw ? 'raw' : 'auto';
+        const uploadResult = await uploadToCloudinary(file.buffer, 'wcs-works/source-files', resourceType);
+        workFileUrl = uploadResult.secure_url;
+        workFileName = file.originalname;
+      } catch (uploadError) {
+        console.error('Error uploading source work file:', uploadError);
+        // Don't fail the whole request, just log it? Or maybe fail is safer.
+        // Let's fail for now to ensure data integrity
+        return res.status(500).json({ message: 'Error uploading source work file: ' + uploadError.message });
+      }
+    }
+
+    // Handles Work File Link or Fallback
+    if (!workFileUrl && workLinkUrl) {
+      workFileUrl = workLinkUrl;
+      workFileName = 'Work File Link';
+      workSubmissionType = 'link';
     }
 
     // Determine Version Number
@@ -83,6 +114,9 @@ exports.uploadWork = async (req, res) => {
       fileUrl,
       fileName,
       submissionType,
+      workFileUrl,
+      workFileName,
+      workSubmissionType,
       version: version,
       changelog: req.body.editorMessage || `Version ${version} submission`,
       status: 'pending',
@@ -439,6 +473,42 @@ exports.adminApprove = async (req, res) => {
           wb.approvals.client = true;
           await wb.save();
 
+          // >>> SHARE WORK FILE TO NEXT EDITOR LOGIC <<<
+          if (work.workFileUrl) {
+            try {
+              const allWorkBreakdowns = await WorkBreakdown.find({
+                project: work.project._id
+              }).sort({ deadline: 1 });
+
+              // Find current index
+              const currentIndex = allWorkBreakdowns.findIndex(w => w._id.toString() === wb._id.toString());
+
+              // If there is a next work item
+              if (currentIndex !== -1 && currentIndex < allWorkBreakdowns.length - 1) {
+                const nextWork = allWorkBreakdowns[currentIndex + 1];
+
+                const linkTitle = `Previous Work File (${wb.workType})`;
+
+                // Check if already shared to avoid duplicates
+                const alreadyShared = nextWork.links.some(l => l.url === work.workFileUrl);
+
+                if (!alreadyShared) {
+                  nextWork.links.push({
+                    title: linkTitle,
+                    url: work.workFileUrl
+                  });
+                  await nextWork.save();
+
+                  // Optional: Notify next editor?
+                  // console.log(`Shared work file from ${wb.workType} to ${nextWork.workType}`);
+                }
+              }
+            } catch (shareErr) {
+              console.error('Failed to share work file to next editor:', shareErr);
+              // Don't fail the approval process for this
+            }
+          }
+
           // Update or Create Payment record
           let payment = await Payment.findOne({
             project: work.project._id,
@@ -534,6 +604,38 @@ exports.clientApprove = async (req, res) => {
           wb.approvals.client = true;
           await wb.save();
 
+          // >>> SHARE WORK FILE TO NEXT EDITOR LOGIC <<<
+          if (work.workFileUrl) {
+            try {
+              const allWorkBreakdowns = await WorkBreakdown.find({
+                project: work.project._id
+              }).sort({ deadline: 1 });
+
+              // Find current index
+              const currentIndex = allWorkBreakdowns.findIndex(w => w._id.toString() === wb._id.toString());
+
+              // If there is a next work item
+              if (currentIndex !== -1 && currentIndex < allWorkBreakdowns.length - 1) {
+                const nextWork = allWorkBreakdowns[currentIndex + 1];
+
+                const linkTitle = `Previous Work File (${wb.workType})`;
+
+                // Check if already shared to avoid duplicates
+                const alreadyShared = nextWork.links.some(l => l.url === work.workFileUrl);
+
+                if (!alreadyShared) {
+                  nextWork.links.push({
+                    title: linkTitle,
+                    url: work.workFileUrl
+                  });
+                  await nextWork.save();
+                }
+              }
+            } catch (shareErr) {
+              console.error('Failed to share work file to next editor:', shareErr);
+            }
+          }
+
           // Update or Create Payment record
           let payment = await Payment.findOne({
             project: work.project._id,
@@ -603,7 +705,7 @@ exports.clientApprove = async (req, res) => {
 exports.getAssignedWorkBreakdowns = async (req, res) => {
   try {
     const workBreakdowns = await WorkBreakdown.find({ assignedEditor: req.user._id })
-      .populate('project', 'title client deadline status currency scriptFile') // Added currency for price display and scriptFile for editor access
+      .populate('project', 'title client deadline status currency scriptFile roadmap') // Added currency for price display and scriptFile for editor access
       .sort({ deadline: 1 });
 
     // Enhance each work breakdown with submission stats and payment status
@@ -711,3 +813,27 @@ exports.updateWorkDetails = async (req, res) => {
   }
 };
 
+// @desc    Toggle Work File Visibility for Client
+// @route   PUT /api/works/:id/toggle-visibility
+// @access  Private/Admin
+exports.toggleWorkFileVisibility = async (req, res) => {
+  try {
+    const work = await WorkSubmission.findById(req.params.id);
+
+    if (!work) {
+      return res.status(404).json({ message: 'Work submission not found' });
+    }
+
+    // Authorization: Admin only
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    work.isWorkFileVisibleToClient = !work.isWorkFileVisibleToClient;
+    await work.save();
+
+    res.json(work);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

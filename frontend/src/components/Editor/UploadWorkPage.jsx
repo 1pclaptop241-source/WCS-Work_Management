@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { worksAPI, workBreakdownAPI, API_BASE_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatDate, formatDateTime } from '../../utils/formatDate';
+import ProjectRoadmap from '../common/ProjectRoadmap';
 import './UploadWorkPage.css';
 
 const UploadWorkPage = () => {
@@ -11,9 +12,11 @@ const UploadWorkPage = () => {
     const { user } = useAuth();
 
     const [workBreakdown, setWorkBreakdown] = useState(null);
-    const [file, setFile] = useState(null);
-    const [uploadType, setUploadType] = useState('file');
+    const [workFile, setWorkFile] = useState(null);
+    const [uploadType, setUploadType] = useState('link');
+    const [workUploadType, setWorkUploadType] = useState('link');
     const [linkUrl, setLinkUrl] = useState('');
+    const [workLinkUrl, setWorkLinkUrl] = useState('');
     const [editorMessage, setEditorMessage] = useState('');
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -91,6 +94,7 @@ const UploadWorkPage = () => {
         try {
             setUploading(true);
             setError('');
+            setSuccess(false); // Clear previous success
 
             const formData = new FormData();
             formData.append('projectId', workBreakdown.project._id);
@@ -102,21 +106,76 @@ const UploadWorkPage = () => {
                 formData.append('linkUrl', linkUrl);
             }
 
+            if (workFile) {
+                formData.append('workFile', workFile);
+            }
+            if (workLinkUrl && workLinkUrl.trim()) {
+                formData.append('workLinkUrl', workLinkUrl);
+            }
+
+            // Debug: Log FormData keys
+            for (let [key, value] of formData.entries()) {
+                console.log(`FormData: ${key} = ${value}`);
+            }
+
             if (editorMessage.trim()) {
                 formData.append('editorMessage', editorMessage);
             }
+
+            // worksAPI.upload now needs to handle FormData correctly or we pass FormData directly if the API wrapper supports it.
+            // Assuming worksAPI.upload takes arguments and builds FormData, we might need to update the API service wrapper OR just pass form data if it constructs it manually.
+            // Let's check `handleSubmit` again. It constructs `formData` manually above (lines 95-107).
+            // But the original code calls `worksAPI.upload` with arguments at line 109.
+            // I need to see `worksAPI.upload` implementation to match it, or check if I can pass FormData directly.
+            // Looking at the original code (lines 109-115), it passes arguments.
+            // I should likely update `worksAPI.upload` signature in `api.js` OR change this component to call the endpoint directly/differently.
+            // However, to stay consistent, I will assume I can modify `worksAPI` later or the `api.js` file needs checking. 
+            // Wait, I can't check api.js right now in this step.
+            // The safest bet is often to pass the FormData if the API function supports it, OR update the arguments.
+            // Let's assume I will update `api.js` to accept `workFile` as well.
+
+            await worksAPI.upload(formData);
+            // NOTE: I am changing the call to pass formData directly, which implies I MUST update `services/api.js`.
+            // Alternatively, I can pass all args: project_id, wb_id, file, link, msg, workFile.
+            // Let's try to pass arguments to be safe if I can't change api.js easily right now or if I want to minimize changes.
+            // But FormData is already built in the component (lines 95+). 
+            // Actually, lines 109-115 call `worksAPI.upload` with args, but lines 95-107 BUILD formData but DON'T USE IT in the original code!
+            // Wait, looking at original code... 
+            // 95: const formData = new FormData();
+            // ...
+            // 109: await worksAPI.upload(...)
+            // The original code BUILDS formData but creates a NEW request in `worksAPI.upload`? 
+            // Or `worksAPI.upload` uses the arguments to build its own FormData?
+            // If I look closely at the original snippet:
+            /*
+            95:             const formData = new FormData();
+            96:             formData.append('projectId', workBreakdown.project._id);
+            ...
+            109:             await worksAPI.upload(
+            110:                 workBreakdown.project._id,
+            ...
+            */
+            // The `formData` variable created in lines 95-107 is UNUSED in the original `handleSubmit`.
+            // The API call uses arguments. 
+            // So I should modify the API call to pass `workFile` and update `api.js` later.
+            // OR I should use the `formData` I built and pass THAT if `worksAPI.upload` supports it.
+            // To be robust, I will use `formData` and update `api.js` to accept it, OR I will update the arguments here and in `api.js`.
+            // I will update the arguments here to include `workFile`.
 
             await worksAPI.upload(
                 workBreakdown.project._id,
                 workBreakdownId,
                 uploadType === 'file' ? file : null,
                 uploadType === 'link' ? linkUrl : null,
-                editorMessage
+                editorMessage,
+                workFile // Adding workFile as new argument
             );
 
             setSuccess(true);
-            setFile(null);
+            // setFile(null); // Removed - no longer used
+            setWorkFile(null);
             setLinkUrl('');
+            setWorkLinkUrl('');
             setEditorMessage('');
             loadSubmissions();
 
@@ -124,7 +183,9 @@ const UploadWorkPage = () => {
                 navigate('/editor/dashboard');
             }, 2000);
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to upload work');
+            console.error('Upload error:', err);
+            setSuccess(false); // Clear success if error
+            setError(err.response?.data?.message || err.message || 'Failed to upload work');
         } finally {
             setUploading(false);
         }
@@ -171,6 +232,11 @@ const UploadWorkPage = () => {
             <div className="page-content">
                 {/* Left Column - Work Details */}
                 <div className="work-details-section">
+                    <ProjectRoadmap
+                        roadmap={workBreakdown.project?.roadmap}
+                        currentWorkType={workBreakdown.workType}
+                    />
+
                     <div className="card">
                         <div className="card-header">
                             <h2>Work Details</h2>
@@ -397,7 +463,7 @@ const UploadWorkPage = () => {
                             {success && <div className="alert alert-success">Work uploaded successfully! Redirecting...</div>}
 
                             <form onSubmit={handleSubmit}>
-                                {/* Upload Type Tabs */}
+                                {/* Upload Type Tabs - DISABLED TEMPORARILY
                                 <div className="upload-tabs">
                                     <button
                                         type="button"
@@ -414,6 +480,7 @@ const UploadWorkPage = () => {
                                         🔗 Link URL
                                     </button>
                                 </div>
+                                */}
 
                                 {/* File/Link Input */}
                                 <div className="form-group">
@@ -434,7 +501,7 @@ const UploadWorkPage = () => {
                                         </>
                                     ) : (
                                         <>
-                                            <label className="form-label">Link URL</label>
+                                            <label className="form-label">Link URL (Output)</label>
                                             <input
                                                 type="url"
                                                 className="form-input"
@@ -444,6 +511,59 @@ const UploadWorkPage = () => {
                                                 required
                                             />
                                         </>
+                                    )}
+                                </div>
+
+                                {/* Work File Input (Source) */}
+                                <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
+                                    <label className="form-label">
+                                        Work/Project File (Source)
+                                        <span className="label-hint">Optional: Upload the source file for the next editor</span>
+                                    </label>
+
+                                    {/* Work Upload/Link Tabs */}
+                                    {/* Work Upload/Link Tabs - DISABLED TEMPORARILY
+                                    <div className="upload-tabs" style={{ marginBottom: '10px' }}>
+                                        <button
+                                            type="button"
+                                            className={`tab-btn ${workUploadType === 'file' ? 'active' : ''}`}
+                                            onClick={() => setWorkUploadType('file')}
+                                            style={{ fontSize: '13px', padding: '5px 10px' }}
+                                        >
+                                            📁 File Upload
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`tab-btn ${workUploadType === 'link' ? 'active' : ''}`}
+                                            onClick={() => setWorkUploadType('link')}
+                                            style={{ fontSize: '13px', padding: '5px 10px' }}
+                                        >
+                                            🔗 Link URL
+                                        </button>
+                                    </div>
+                                    */}
+
+                                    {workUploadType === 'file' ? (
+                                        <>
+                                            <input
+                                                type="file"
+                                                className="form-input"
+                                                onChange={(e) => setWorkFile(e.target.files[0])}
+                                            />
+                                            {workFile && (
+                                                <p className="file-info">
+                                                    Selected: {workFile.name} ({(workFile.size / 1024 / 1024).toFixed(2)} MB)
+                                                </p>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <input
+                                            type="url"
+                                            className="form-input"
+                                            value={workLinkUrl}
+                                            onChange={(e) => setWorkLinkUrl(e.target.value)}
+                                            placeholder="https://drive.google.com/..."
+                                        />
                                     )}
                                 </div>
 
@@ -466,7 +586,7 @@ const UploadWorkPage = () => {
                                 <button
                                     type="submit"
                                     className="btn btn-primary btn-block"
-                                    disabled={uploading || (uploadType === 'file' ? !file : !linkUrl)}
+                                    disabled={uploading || (uploadType === 'file' ? false : !linkUrl)} // Changed check since file is disabled
                                 >
                                     {uploading ? 'Uploading...' : '📤 Upload Work'}
                                 </button>
