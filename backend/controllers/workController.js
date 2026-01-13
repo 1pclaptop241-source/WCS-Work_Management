@@ -465,104 +465,113 @@ exports.adminApprove = async (req, res) => {
 
     work.adminApproved = true;
 
-    // Check if both approved
-    if (work.clientApproved) {
-      work.status = 'approved';
-      if (work.workBreakdown) {
-        const wb = await WorkBreakdown.findById(work.workBreakdown);
-        if (wb) {
-          const now = new Date();
-          // Use approval time for penalty calculation
-          const penaltyResult = calculatePenalty(wb.deadline, wb.amount, now);
+    // Fetch WorkBreakdown early to use for sharing and updates
+    let wb = null;
+    if (work.workBreakdown) {
+      const WorkBreakdown = require('../models/WorkBreakdown');
+      wb = await WorkBreakdown.findById(work.workBreakdown);
+    }
 
-          // Update breakdown
-          wb.status = 'completed';
-          wb.approved = true;
-          wb.approvedAt = now;
-          wb.approvals.admin = true;
-          wb.approvals.client = true;
-          await wb.save();
+    // >>> SHARE WORK FILE TO NEXT EDITOR LOGIC (Trigger on Admin Approval) <<<
+    if (wb && (work.workFileUrl || work.fileUrl)) {
+      try {
+        const urlToShare = work.workFileUrl || work.fileUrl; // Prefer source, fallback to output
+        const allWorkBreakdowns = await WorkBreakdown.find({
+          project: work.project._id
+        }).sort({ deadline: 1 });
 
-          // >>> SHARE WORK FILE TO NEXT EDITOR LOGIC <<<
-          if (work.workFileUrl) {
-            try {
-              const allWorkBreakdowns = await WorkBreakdown.find({
-                project: work.project._id
-              }).sort({ deadline: 1 });
+        // Find current index
+        const currentIndex = allWorkBreakdowns.findIndex(w => w._id.toString() === wb._id.toString());
 
-              // Find current index
-              const currentIndex = allWorkBreakdowns.findIndex(w => w._id.toString() === wb._id.toString());
+        // If there is a next work item
+        if (currentIndex !== -1 && currentIndex < allWorkBreakdowns.length - 1) {
+          const nextWork = allWorkBreakdowns[currentIndex + 1];
 
-              // If there is a next work item
-              if (currentIndex !== -1 && currentIndex < allWorkBreakdowns.length - 1) {
-                const nextWork = allWorkBreakdowns[currentIndex + 1];
+          const linkTitle = `Previous Work File (${wb.workType})`;
 
-                const linkTitle = `Previous Work File (${wb.workType})`;
+          // Check if already shared to avoid duplicates
+          const alreadyShared = nextWork.links.some(l => l.url === urlToShare);
 
-                // Check if already shared to avoid duplicates
-                const alreadyShared = nextWork.links.some(l => l.url === work.workFileUrl);
+          if (!alreadyShared) {
+            nextWork.links.push({
+              title: linkTitle,
+              url: urlToShare
+            });
+            await nextWork.save();
 
-                if (!alreadyShared) {
-                  nextWork.links.push({
-                    title: linkTitle,
-                    url: work.workFileUrl
-                  });
-                  await nextWork.save();
-
-                  // Optional: Notify next editor?
-                  // console.log(`Shared work file from ${wb.workType} to ${nextWork.workType}`);
-                }
-              }
-            } catch (shareErr) {
-              console.error('Failed to share work file to next editor:', shareErr);
-              // Don't fail the approval process for this
+            // Notify next editor
+            if (nextWork.assignedEditor) {
+              await createNotification(
+                nextWork.assignedEditor,
+                'assignment_details_updated',
+                'New Resource Available',
+                `The previous step "${wb.workType}" has been approved by Admin. A link to its files has been added to your assignment.`,
+                work.project._id
+              );
             }
           }
+        }
+      } catch (shareErr) {
+        console.error('Failed to share work file to next editor:', shareErr);
+      }
+    }
 
-          // Update or Create Payment record
-          let payment = await Payment.findOne({
+    // Check if both approved (Completion Logic)
+    if (work.clientApproved) {
+      work.status = 'approved';
+      if (wb) {
+        const now = new Date();
+        // Use approval time for penalty calculation
+        const penaltyResult = calculatePenalty(wb.deadline, wb.amount, now);
+
+        // Update breakdown
+        wb.status = 'completed';
+        wb.approved = true;
+        wb.approvedAt = now;
+        wb.approvals.admin = true;
+        wb.approvals.client = true;
+        await wb.save();
+
+        // Update or Create Payment record
+        let payment = await Payment.findOne({
+          project: work.project._id,
+          workBreakdown: wb._id
+        });
+
+        const paymentData = {
+          editor: wb.assignedEditor,
+          client: work.project.client,
+          paymentType: 'editor_payout',
+          originalAmount: wb.amount,
+          finalAmount: penaltyResult.finalAmount,
+          deadline: wb.deadline,
+          deadlineCrossed: penaltyResult.daysLate > 0,
+          daysLate: penaltyResult.daysLate,
+          penaltyAmount: penaltyResult.penaltyAmount,
+          status: 'calculated',
+          calculatedAt: now
+        };
+
+        if (payment) {
+          Object.assign(payment, paymentData);
+          await payment.save();
+        } else {
+          await Payment.create({
+            ...paymentData,
             project: work.project._id,
-            workBreakdown: wb._id
+            workBreakdown: wb._id,
+            workType: wb.workType
           });
-
-          const paymentData = {
-            editor: wb.assignedEditor,
-            client: work.project.client,
-            paymentType: 'editor_payout',
-            originalAmount: wb.amount,
-            finalAmount: penaltyResult.finalAmount,
-            deadline: wb.deadline,
-            deadlineCrossed: penaltyResult.daysLate > 0,
-            daysLate: penaltyResult.daysLate,
-            penaltyAmount: penaltyResult.penaltyAmount,
-            status: 'calculated',
-            calculatedAt: now
-          };
-
-          if (payment) {
-            Object.assign(payment, paymentData);
-            await payment.save();
-          } else {
-            await Payment.create({
-              ...paymentData,
-              project: work.project._id,
-              workBreakdown: wb._id,
-              workType: wb.workType
-            });
-          }
         }
       }
     } else {
       // Just Update admin approval on breakdown
-      if (work.workBreakdown) {
-        const WorkBreakdown = require('../models/WorkBreakdown');
-        await WorkBreakdown.findByIdAndUpdate(work.workBreakdown, {
-          'approvals.admin': true
-        });
+      if (wb) {
+        wb.approvals.admin = true;
+        await wb.save();
       }
     }
 
-    // ... (notification code remains similar but moved inside the block if needed, or kept separate)
     if (work.status === 'approved') {
       // Notify Editor
       await createNotification(
@@ -572,6 +581,10 @@ exports.adminApprove = async (req, res) => {
         `Your work for project "${work.project.title}" has been approved by both Admin and Client.`,
         work.project._id
       );
+    } else {
+      // Notify Editor of functional Admin approval?
+      // Maybe optional, but good for feedback. 
+      // Keeping it simple to existing logic for now.
     }
 
     await work.save();
