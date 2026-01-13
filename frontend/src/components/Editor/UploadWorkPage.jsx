@@ -181,8 +181,9 @@ const UploadWorkPage = () => {
                 {/* Left Column - Work Details */}
                 <div className="work-details-section">
                     <ProjectRoadmap
-                        roadmap={workBreakdown.project?.roadmap}
+                        projectId={workBreakdown.project?._id}
                         currentWorkType={workBreakdown.workType}
+                        projectTitle={workBreakdown.project?.title}
                     />
 
                     <div className="card">

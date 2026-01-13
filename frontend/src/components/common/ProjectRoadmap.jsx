@@ -1,101 +1,105 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './ProjectRoadmap.css';
 import { FaCheck, FaClock, FaCircle, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
+import { workBreakdownAPI } from '../../services/api';
 import { formatDateTime } from '../../utils/formatDate';
 
-// Define the logical order of stages
-const STAGE_ORDER = [
-    'roughcut',
-    'broll',
-    'colorCorrection',
-    'motionGraphics',
-    'memes',
-    'musicSfx'
-];
+const ProjectRoadmap = ({ projectId, currentWorkType, projectTitle }) => {
+    const [stages, setStages] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-const STAGE_LABELS = {
-    roughcut: 'Rough Cut',
-    broll: 'B-Roll',
-    colorCorrection: 'Color Correction',
-    motionGraphics: 'Motion Graphics',
-    memes: 'Memes',
-    musicSfx: 'Music & SFX'
-};
-
-const ProjectRoadmap = ({ roadmap, currentWorkType }) => {
-    if (!roadmap) return null;
-
-    // Determine current active step based on roadmap status
-    // We want to visually show progress.
-
-    // Helper to determine step status
-    const getStepStatus = (stageKey) => {
-        const stageData = roadmap[stageKey];
-        if (!stageData) return 'pending';
-
-        // If specific status is set
-        if (stageData.status === 'done') return 'done';
-        if (stageData.status === 'in_progress') return 'active';
-
-        // Special check for current work type of the editor
-        // If the component is being viewed in context of a specific work type, highlight it
-        if (currentWorkType && currentWorkType.toLowerCase().replace(/[^a-z]/g, '') === stageKey.toLowerCase()) {
-            // Logic to map work types to keys might need refinement if they don't match exactly
-            // Assuming 'Rough Cut' -> 'roughcut' via simple normalization
+    useEffect(() => {
+        if (projectId) {
+            loadRoadmap();
         }
+    }, [projectId]);
+
+    const loadRoadmap = async () => {
+        try {
+            setLoading(true);
+            const response = await workBreakdownAPI.getByProject(projectId);
+            // The API returns the work breakdown items. We should respect their order.
+            // If the API doesn't guarantee order, we might need to sort by deadline or insertion order.
+            // For now assuming API returns logical order or insertion order.
+            setStages(response.data || []);
+        } catch (err) {
+            console.error("Failed to load project roadmap:", err);
+            setError("Could not load roadmap");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) return <div className="roadmap-loading"><FaSpinner className="spin" /> Loading Roadmap...</div>;
+    if (error) return null; // Or show error elegantly
+    if (!stages || stages.length === 0) return null;
+
+    // Helper to determine step status based on WorkBreakdown object
+    const getStepStatus = (stage) => {
+        if (stage.approved) return 'done';
+
+        // If it's not approved, check if there are submissions or if it matches current work context
+        // We might want to mark it 'active' if it's the current context
+        const isCurrentContext = currentWorkType &&
+            currentWorkType.toLowerCase().replace(/[^a-z]/g, '') === stage.workType.toLowerCase().replace(/[^a-z]/g, '');
+
+        if (isCurrentContext) return 'active';
+
+        // You could also check stage.status from backend if available (e.g. 'in_progress' vs 'pending')
+        if (stage.status === 'in_progress' || stage.status === 'under_review') return 'active';
 
         return 'pending';
     };
 
-    // Find the index of the furthest 'done' or 'in_progress' step to calculate progress bar width
-    let maxActiveIndex = -1;
-    STAGE_ORDER.forEach((key, index) => {
-        if (roadmap[key]?.status === 'done' || roadmap[key]?.status === 'in_progress') {
-            maxActiveIndex = index;
+    // Calculate progress: find the index of the last 'done' step
+    // Actually, progress line should extend through all 'done' steps and land on 'active'
+    let lastDoneIndex = -1;
+    stages.forEach((stage, index) => {
+        const s = getStepStatus(stage);
+        if (s === 'done') {
+            lastDoneIndex = index;
         }
     });
 
-    // Calculate progress percentage for the line
-    const progressPercentage = maxActiveIndex === -1 ? 0 : (maxActiveIndex / (STAGE_ORDER.length - 1)) * 100;
+    // Add 1 to include the partial progress to the next step if active? 
+    // Or just simple percentage based on completed steps.
+    // Let's stick to the visual style: percentage of total steps.
+    // referencing the last DONE index means the line goes up to that point. 
+    // If we want it to go to the current active one, use that.
+
+    let activeIndex = lastDoneIndex;
+    // Find first active after done
+    const firstActiveIndex = stages.findIndex((s, i) => i > lastDoneIndex && getStepStatus(s) === 'active');
+    if (firstActiveIndex !== -1) activeIndex = firstActiveIndex;
+
+    const progressPercentage = stages.length <= 1 ? 0 : (activeIndex / (stages.length - 1)) * 100;
 
     return (
         <div className="project-roadmap">
             <div className="roadmap-header">
-                <h3>🚀 Project Roadmap</h3>
-                <p className="roadmap-subtitle">Track the progress of this project through its creative stages.</p>
+                <h3 style={{ margin: 0 }}>🚀 Roadmap: {projectTitle || 'Project'}</h3>
             </div>
 
             <div className="roadmap-stepper">
-                {/* Progress Line Background is in CSS ::before */}
-
-                {/* Active Progress Line (Inline style for width) */}
+                {/* Active Progress Line */}
                 <div
                     className="roadmap-progress-line"
-                    style={{ width: `${progressPercentage}%` }}
-                // For vertical (mobile), we'd need height, handled via media query + JS ideally, 
-                // but CSS-only responsive constraints might limit dynamic vertical line without JS resize observer.
-                // For MVP, we use the simple width=100% approach in CSS for vertical or just hide the progress line in mobile if complex.
-                // See CSS for mobile override.
+                    style={{ width: `${Math.max(0, Math.min(100, progressPercentage))}%` }}
                 />
 
-                {STAGE_ORDER.map((stageKey, index) => {
-                    const status = getStepStatus(stageKey);
-                    const stageData = roadmap[stageKey];
-                    const isCurrentWorkContext = currentWorkType &&
-                        currentWorkType.toLowerCase().replace(/[^a-z]/g, '') === stageKey.toLowerCase();
-
-                    // If it matches the current work page context and isn't marked differently, ensure it looks active
-                    const displayStatus = isCurrentWorkContext && status === 'pending' ? 'active' : status;
+                {stages.map((stage, index) => {
+                    const status = getStepStatus(stage);
 
                     return (
                         <div
-                            key={stageKey}
-                            className={`roadmap-step ${displayStatus}`}
+                            key={stage._id || index}
+                            className={`roadmap-step ${status}`}
                         >
-                            <div className="step-circle" title={stageData?.status}>
-                                {displayStatus === 'done' ? (
+                            <div className="step-circle">
+                                {status === 'done' ? (
                                     <FaCheck className="step-icon" />
-                                ) : displayStatus === 'active' ? (
+                                ) : status === 'active' ? (
                                     <FaSpinner className="step-icon spin" />
                                 ) : (
                                     <FaCircle className="step-icon" style={{ fontSize: '8px' }} />
@@ -103,15 +107,15 @@ const ProjectRoadmap = ({ roadmap, currentWorkType }) => {
                             </div>
 
                             <div className="step-label">
-                                {STAGE_LABELS[stageKey] || stageKey}
+                                {stage.workType || 'Untitled Stage'}
                             </div>
 
-                            {stageData?.updatedAt && (
-                                <div className="step-status">
-                                    {displayStatus === 'done' ? 'Completed' : displayStatus === 'active' ? 'In Progress' : ''}
-                                    {/* formatDateTime(stageData.updatedAt) - optional to show date */}
-                                </div>
-                            )}
+                            {/* Optional: Show deadline or status text */}
+                            {/* 
+                            <div className="step-status">
+                                {status === 'done' ? 'Completed' : status === 'active' ? 'In Progress' : ''}
+                            </div> 
+                            */}
                         </div>
                     );
                 })}

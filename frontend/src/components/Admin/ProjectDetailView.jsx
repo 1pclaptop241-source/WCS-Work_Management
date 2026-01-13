@@ -454,45 +454,58 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                       : null;
 
                     const hasUpload = !!work;
-
                     const hasPendingCorrections = getAllCorrectionsForBreakdown(bd._id).some(c => !c.done);
                     const isApproved = bd.approved;
 
-                    // Derive explicit status for badge
-                    let statusForBadge = 'pending';
-                    if (isApproved) statusForBadge = 'approved';
-                    else if (hasPendingCorrections) statusForBadge = 'needs_revision';
-                    else if (hasUpload) statusForBadge = 'under_review';
-                    else statusForBadge = 'assigned'; // or 'pending'
+                    // Determine styling classes
+                    let itemStatusClass = 'status-pending';
+                    if (isApproved) itemStatusClass = 'status-approved';
+                    else if (hasPendingCorrections) itemStatusClass = 'status-needs-revision';
+                    else if (hasUpload) itemStatusClass = 'status-under-review';
 
                     return (
-                      <div key={bd._id} className="work-item" style={{ borderLeft: isApproved ? '4px solid green' : '4px solid #ddd', marginBottom: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '5px' }}>
-                        <div className="work-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <strong style={{ fontSize: '16px', color: '#2E86AB' }}>{bd.workType}</strong>
-                              {work?.version && (
-                                <span className="badge" style={{ backgroundColor: '#e2e8f0', color: '#475569', fontSize: '0.7em', border: '1px solid #cbd5e1' }}>
-                                  v{work.version}
-                                </span>
-                              )}
-                            </div>
-                            {user.role === 'admin' && <div className="price-tag" style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>{project.currency} {bd.amount}</div>}
-                            {hasUpload ? (
-                              <p className="work-date" style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                                Latest Submission: {work.fileName} ({formatDate(work.submittedAt)})
-                              </p>
-                            ) : (
-                              <p className="work-date italic" style={{ fontSize: '12px', color: '#999', marginTop: '5px', fontStyle: 'italic' }}>Waiting for editor...</p>
+                      <div key={bd._id} className={`work-item ${itemStatusClass}`}>
+                        <div className="work-item-header">
+                          <div className="header-left">
+                            <span className="work-type-title">{bd.workType}</span>
+                            {work?.version && (
+                              <span className="version-badge">v{work.version}</span>
                             )}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <StatusBadge status={statusForBadge} />
-                            <WorkTypeMenu workBreakdown={bd} onViewDetails={handleViewWorkTypeDetails} />
+                          <div className="header-right">
+                            {user.role === 'admin' && (
+                              <span className="price-tag">{project.currency} {bd.amount}</span>
+                            )}
+                            <div className="work-actions-top">
+                              <WorkTypeMenu workBreakdown={bd} onViewDetails={handleViewWorkTypeDetails} />
+                            </div>
                           </div>
                         </div>
 
-                        <div className="work-actions" style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                        <div className="work-item-info">
+                          <div className="info-row">
+                            <span className="info-label">Assigned to:</span>
+                            <span className="info-value">{bd.assignedEditor?.name || 'Unassigned'}</span>
+                          </div>
+                          <div className="info-row">
+                            <span className="info-label">Status:</span>
+                            <StatusBadge status={isApproved ? 'approved' : (hasPendingCorrections ? 'needs_revision' : (hasUpload ? 'under_review' : 'pending'))} />
+                          </div>
+                          {hasUpload ? (
+                            <div className="info-row">
+                              <span className="info-label">Latest:</span>
+                              <span className="info-value">
+                                {work.fileName} <span className="text-muted">({formatDate(work.submittedAt)})</span>
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="info-row">
+                              <span className="info-value text-muted italic">Waiting for upload...</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="work-item-actions">
                           {hasUpload ? (
                             <>
                               {work.fileUrl && (
@@ -502,15 +515,15 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                                     : `${API_BASE_URL}${work.fileUrl}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="btn btn-primary btn-sm"
+                                  className="btn btn-outline-primary btn-sm"
                                 >
-                                  {work.submissionType === 'link' ? 'View Link' : 'Download File'}
+                                  {work.submissionType === 'link' ? '🔗 View Link' : '⬇️ Download File'}
                                 </a>
                               )}
 
                               {(user.role === 'client' || user.role === 'admin') && (
                                 <button
-                                  className="btn btn-success btn-sm"
+                                  className="btn btn-outline-danger btn-sm"
                                   onClick={() => {
                                     setSelectedSubmission(work);
                                     setCorrectionText('');
@@ -519,7 +532,7 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                                     setShowCorrectionsModal(true);
                                   }}
                                 >
-                                  Request Corrections
+                                  📝 Request Changes
                                 </button>
                               )}
 
@@ -552,148 +565,107 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                                   disabled={isApprovingWork === bd._id || hasPendingCorrections}
                                   title={hasPendingCorrections ? "Complete all corrections first" : "Approve this work"}
                                 >
-                                  {isApprovingWork === bd._id ? 'Approving...' : 'Approve Work'}
+                                  {isApprovingWork === bd._id ? 'Approving...' : '✓ Approve Work'}
                                 </button>
                               )}
-                              {isApproved && <span style={{ color: 'green', fontWeight: 'bold', padding: '5px' }}>Approved</span>}
+
+                              {isApproved && (
+                                <div className="approved-indicator">
+                                  <span>✓ Approved</span>
+                                </div>
+                              )}
                             </>
                           ) : (
-                            <button className="btn btn-primary btn-sm" disabled>
+                            <button className="btn btn-secondary btn-sm" disabled>
                               Awaiting Upload
                             </button>
                           )}
 
                           {(user.role === 'admin' || user.role === 'client') && (
                             <button
-                              className="btn btn-secondary btn-sm"
+                              className="btn btn-link btn-sm"
                               onClick={() => focusFeedback(bd._id)}
                             >
-                              💬 Give Feedback
+                              💬 Discussion
                             </button>
                           )}
                         </div>
 
-                        {/* Work File Section */}
-                        {console.log('Work Item Debug:', { workId: work?._id, hasUpload, workFileUrl: work?.workFileUrl, work })}
-                        {hasUpload && (
-                          work.workFileUrl ? (
-                            <div style={{ marginTop: '10px', padding: '10px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#fafafa' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                                <strong>📦 Source / Work File:</strong>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontSize: '11px', color: '#666' }}>Client Visibility:</span>
-                                  <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '34px', height: '20px' }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={work.isWorkFileVisibleToClient}
-                                      onChange={() => handleToggleVisibility(work._id)}
-                                      style={{ opacity: 0, width: 0, height: 0 }}
-                                    />
-                                    <span style={{
-                                      position: 'absolute',
-                                      cursor: 'pointer',
-                                      top: 0, left: 0, right: 0, bottom: 0,
-                                      backgroundColor: work.isWorkFileVisibleToClient ? '#2196F3' : '#ccc',
-                                      transition: '.4s',
-                                      borderRadius: '34px'
-                                    }}>
-                                      <span style={{
-                                        position: 'absolute',
-                                        content: '""',
-                                        height: '12px',
-                                        width: '12px',
-                                        left: work.isWorkFileVisibleToClient ? '26px' : '4px',
-                                        bottom: '4px',
-                                        backgroundColor: 'white',
-                                        transition: '.4s',
-                                        borderRadius: '50%',
-                                        transform: work.isWorkFileVisibleToClient ? 'translateX(-100%)' : 'translateX(0)'
-                                      }}></span>
-                                    </span>
-                                  </label>
-                                </div>
+                        {hasUpload && work.workFileUrl && (
+                          <div className="work-source-file">
+                            <div className="source-header">
+                              <strong>📦 Source / Work File</strong>
+                              <div className="visibility-toggle">
+                                <span className="toggle-label">Client Access:</span>
+                                <label className="switch-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={work.isWorkFileVisibleToClient}
+                                    onChange={() => handleToggleVisibility(work._id)}
+                                  />
+                                  <span className="slider round"></span>
+                                </label>
                               </div>
-                              <a
-                                href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ fontSize: '13px', color: '#0366d6', textDecoration: 'none' }}
-                              >
-                                {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '⬇️ Download Source File'} ({work.workFileName || 'File'})
-                              </a>
                             </div>
-                          ) : (
-                            <div style={{ marginTop: '10px', padding: '10px', border: '1px dashed #ccc', borderRadius: '4px', backgroundColor: '#f9f9f9', color: '#666', fontSize: '13px', fontStyle: 'italic' }}>
-                              No source file or link uploaded for this work.
-                            </div>
-                          )
+                            <a
+                              href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="source-link"
+                            >
+                              {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '⬇️ Download Source File'}
+                              <span className="file-name">({work.workFileName || 'File'})</span>
+                            </a>
+                          </div>
                         )}
 
                         {/* Editor Message */}
                         {hasUpload && work.editorMessage && (
-                          <div style={{ marginTop: '10px', padding: '12px', background: '#e3f2fd', borderRadius: '4px', borderLeft: '4px solid #2196f3' }}>
-                            <strong style={{ color: '#1976d2', fontSize: '14px' }}>📝 Editor's Note:</strong>
-                            <p style={{ margin: '8px 0 0 0', whiteSpace: 'pre-wrap', color: '#333', fontSize: '14px', lineHeight: '1.5' }}>{work.editorMessage}</p>
+                          <div className="editor-note">
+                            <strong>📝 Editor's Note:</strong>
+                            <p>{work.editorMessage}</p>
                           </div>
                         )}
 
-                        {/* Work Feedback Section (Admin/Client General Chat for this work type) */}
-                        <div style={{ marginTop: '15px', padding: '15px', background: '#f1f5f9', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                          <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* Feedback Section */}
+                        <div className="feedback-section">
+                          <h4 className="feedback-title">
                             💬 Work Feedback & Discussion
                           </h4>
-
-                          {/* Feedback List */}
-                          <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: bd.feedback?.length > 0 ? '15px' : '0', paddingRight: '5px' }}>
+                          <div className="feedback-messages">
                             {bd.feedback && bd.feedback.length > 0 ? (
                               bd.feedback.map((f, i) => (
-                                <div key={i} style={{
-                                  marginBottom: '8px',
-                                  padding: '8px 12px',
-                                  background: f.from?._id === user._id ? '#e0f2fe' : 'white',
-                                  borderRadius: '12px',
-                                  border: '1px solid #e2e8f0',
-                                  alignSelf: f.from?._id === user._id ? 'flex-end' : 'flex-start',
-                                  maxWidth: '90%'
-                                }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '2px' }}>
-                                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#0369a1' }}>{f.from?.name || 'User'} ({f.from?.role})</span>
-                                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>{formatDateTime(f.timestamp)}</span>
+                                <div key={i} className={`feedback-message ${f.from?._id === user._id ? 'sent' : 'received'}`}>
+                                  <div className="message-header">
+                                    <span className="sender-name">{f.from?.name || 'User'} ({f.from?.role})</span>
+                                    <span className="message-time">{formatDateTime(f.timestamp)}</span>
                                   </div>
-                                  <p style={{ margin: 0, fontSize: '13px', color: '#334155', whiteSpace: 'pre-wrap' }}>{f.content}</p>
+                                  <p className="message-content">{f.content}</p>
                                 </div>
                               ))
                             ) : (
-                              <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', textAlign: 'center' }}>No feedback yet. Add your first comment below.</p>
+                              <p className="no-feedback">No feedback yet.</p>
                             )}
                           </div>
 
                           {/* Add Feedback Input */}
                           {(user.role === 'admin' || user.role === 'client') && (
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                            <div className="feedback-input-group">
                               <input
                                 id={`feedback-input-${bd._id}`}
                                 type="text"
-                                style={{
-                                  flex: 1,
-                                  padding: '8px 12px',
-                                  borderRadius: '20px',
-                                  border: '1px solid #cbd5e1',
-                                  fontSize: '13px',
-                                  outline: 'none'
-                                }}
+                                className="form-control"
                                 placeholder="Write your feedback..."
                                 value={feedbackText[bd._id] || ''}
                                 onChange={(e) => setFeedbackText(prev => ({ ...prev, [bd._id]: e.target.value }))}
                                 onKeyPress={(e) => e.key === 'Enter' && handleAddFeedback(bd._id)}
                               />
                               <button
-                                className="btn btn-primary btn-sm"
-                                style={{ borderRadius: '20px', padding: '0 15px' }}
+                                className="btn btn-primary btn-sm btn-icon"
                                 onClick={() => handleAddFeedback(bd._id)}
                                 disabled={isSubmittingFeedback === bd._id || !feedbackText[bd._id]?.trim()}
                               >
-                                {isSubmittingFeedback === bd._id ? '...' : 'Send'}
+                                ➤
                               </button>
                             </div>
                           )}
@@ -703,21 +675,19 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                         {(() => {
                           const allCorrections = getAllCorrectionsForBreakdown(bd._id);
                           return allCorrections.length > 0 && (
-                            <div style={{ marginTop: '10px', padding: '10px', background: '#fff3e0', borderRadius: '4px' }}>
-                              <div style={{ marginTop: '10px' }}>
-                                <strong>Technical Corrections:</strong>
-                                <FeedbackChat
-                                  corrections={allCorrections}
-                                  currentUser={user}
-                                  canMarkFixed={true}
-                                  markingId={markingFixId}
-                                  onMarkFixed={(correctionId) => {
-                                    // Find correction to get workId
-                                    const corr = allCorrections.find(c => c._id === correctionId);
-                                    if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
-                                  }}
-                                />
-                              </div>
+                            <div className="technical-corrections">
+                              <strong>Technical Corrections:</strong>
+                              <FeedbackChat
+                                corrections={allCorrections}
+                                currentUser={user}
+                                canMarkFixed={true}
+                                markingId={markingFixId}
+                                onMarkFixed={(correctionId) => {
+                                  // Find correction to get workId
+                                  const corr = allCorrections.find(c => c._id === correctionId);
+                                  if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
+                                }}
+                              />
                             </div>
                           );
                         })()}

@@ -286,7 +286,6 @@ exports.approveWorkType = async (req, res) => {
       await project.save();
     }
 
-    // Create or update payment record only when fully approved by both
     if (updatedWorkBreakdown.approved) {
       const project = updatedWorkBreakdown.project; // Already populated
       const now = new Date();
@@ -333,6 +332,63 @@ exports.approveWorkType = async (req, res) => {
         payment.status = 'calculated'; // Stop the deadline counting
         payment.calculatedAt = now;
         await payment.save();
+      }
+
+      // >>> SHARE WORK FILE TO NEXT EDITOR LOGIC <<<
+      try {
+        const WorkSubmission = require('../models/WorkSubmission');
+        // Find latest submission for this breakdown
+        const latestSubmission = await WorkSubmission.findOne({
+          workBreakdown: updatedWorkBreakdown._id,
+          project: project._id
+        }).sort({ submittedAt: -1 });
+
+        if (latestSubmission && (latestSubmission.workFileUrl || latestSubmission.fileUrl)) {
+          // Identify the shareable URL (prefer workFileUrl/Source, else fileUrl/Output)
+          // Actually logic usually prefers sharing valid source files unless output IS the source for next step
+          const urlToShare = latestSubmission.workFileUrl || latestSubmission.fileUrl;
+          const linkTitle = `Previous Work: ${updatedWorkBreakdown.workType}`;
+
+          if (urlToShare) {
+            // Find all work breakdowns
+            const allWorkBreakdowns = await WorkBreakdown.find({
+              project: project._id
+            }).sort({ deadline: 1 }); // Assuming deadline or creation order dictates flow
+
+            // Find current index
+            const currentIndex = allWorkBreakdowns.findIndex(w => w._id.toString() === updatedWorkBreakdown._id.toString());
+
+            // If there is a next work item
+            if (currentIndex !== -1 && currentIndex < allWorkBreakdowns.length - 1) {
+              const nextWork = allWorkBreakdowns[currentIndex + 1];
+
+              // Check if already shared to avoid duplicates
+              const alreadyShared = nextWork.links.some(l => l.url === urlToShare);
+
+              if (!alreadyShared) {
+                nextWork.links.push({
+                  title: linkTitle,
+                  url: urlToShare
+                });
+                await nextWork.save();
+
+                // Notify next editor about the resource update
+                if (nextWork.assignedEditor) {
+                  await createNotification(
+                    nextWork.assignedEditor,
+                    'assignment_details_updated',
+                    'New Resource Available',
+                    `The previous step "${updatedWorkBreakdown.workType}" has been approved. A link to its files has been added to your assignment.`,
+                    project._id
+                  );
+                }
+              }
+            }
+          }
+        }
+      } catch (shareErr) {
+        console.error('Failed to share work file to next editor:', shareErr);
+        // Don't fail the approval process for this
       }
 
       // Notification Logic

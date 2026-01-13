@@ -9,6 +9,7 @@ import WorkTypeMenu from '../common/WorkTypeMenu';
 import WorkTypeDetailsModal from '../common/WorkTypeDetailsModal';
 import FeedbackChat from '../common/FeedbackChat';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FaDownload, FaEdit, FaCheck, FaComments, FaFileAlt, FaVideo, FaCheckCircle, FaRegCircle } from 'react-icons/fa';
 import './WorkView.css';
 
 const WorkView = ({ project, onBack, onUpdate }) => {
@@ -319,198 +320,255 @@ const WorkView = ({ project, onBack, onUpdate }) => {
                     <motion.div
                       key={bd._id}
                       className="work-item"
-                      style={{ borderLeft: isApproved ? '4px solid green' : '4px solid #ddd' }}
+                      style={{
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        backgroundColor: '#fff',
+                        marginBottom: '20px',
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                      }}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      whileHover={{ scale: 1.01, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
                       layout
                     >
-                      <div className="work-header">
-                        <div>
-                          <strong>{bd.workType}</strong>
-                          {hasUpload ? (
-                            <p className="work-date">
-                              Latest Submission: {work.fileName} ({formatDate(work.submittedAt)})
+                      {/* Status Strip */}
+                      <div style={{ height: '4px', background: isApproved ? '#10b981' : hasPendingCorrections ? '#f59e0b' : '#3b82f6', width: '100%' }} />
+
+                      <div style={{ padding: '20px' }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                          <div>
+                            <h3 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', color: '#1e293b' }}>{bd.workType}</h3>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+                              {hasUpload ? (
+                                <>
+                                  Latest Submission: <span style={{ fontWeight: 500 }}>{formatDate(work.submittedAt)}</span>
+                                </>
+                              ) : 'Waiting for submission...'}
                             </p>
-                          ) : (
-                            <p className="work-date italic">Waiting for editor...</p>
-                          )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            {statusBadge}
+                            <WorkTypeMenu workBreakdown={bd} onViewDetails={handleViewWorkTypeDetails} />
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {statusBadge}
-                          <WorkTypeMenu workBreakdown={bd} onViewDetails={handleViewWorkTypeDetails} />
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '12px', marginBottom: '8px', fontSize: '12px' }}>
-                        <span>Admin Approval: {adminApproved ? <span className="badge badge-success">✓</span> : <span className="badge badge-secondary">Pending</span>}</span>
-                        <span>Client Approval: {clientApproved ? <span className="badge badge-success">✓</span> : <span className="badge badge-secondary">Pending</span>}</span>
-                      </div>
 
-                      <div className="work-actions">
-                        {hasUpload ? (
-                          <>
-                            <button className="btn btn-primary" onClick={() => handleDownload(work)}>
-                              {work.submissionType === 'link' ? 'View Link' : 'Download File'}
-                            </button>
-
-                            <button
-                              className="btn btn-success"
-                              onClick={() => {
-                                setSelectedWork(work);
-                                setCorrectionText('');
-                                setVoiceFile(null);
-                                setMediaFiles([]);
-                                setShowCorrectionsModal(true);
-                              }}
-                            >
-                              Request Changes
-                            </button>
-
-                            {!isApproved && (
-                              <button
-                                className="btn btn-success"
-                                onClick={async () => {
-                                  const isConfirmed = await confirm({
-                                    title: `Approve ${bd.workType}?`,
-                                    message: `This will mark ${bd.workType} as complete. Are you ready to finalize?`,
-                                    confirmText: 'Approve & Finalize'
-                                  });
-
-                                  if (isConfirmed) {
-                                    try {
-                                      setApprovingKey(bd._id);
-                                      await workBreakdownAPI.approve(bd._id);
-                                      await loadData();
-                                      if (onUpdate) onUpdate();
-                                    } catch (e) {
-                                      setError(e.response?.data?.message || 'Failed to approve');
-                                    } finally {
-                                      setApprovingKey(null);
-                                    }
-                                  }
-                                }}
-                                disabled={approvingKey === bd._id || hasPendingCorrections}
-                                title={hasPendingCorrections ? "Complete all corrections first" : "Approve this work"}
-                              >
-                                {approvingKey === bd._id ? 'Finalizing...' : 'Approve & Finalize'}
-                              </button>
-                            )}
-                            {isApproved && <span style={{ display: 'inline-block', fontWeight: 'bold', padding: '10px 20px', color: '#155724', fontSize: '15px' }}>Approved</span>}
-                          </>
-                        ) : (
-                          <button className="btn btn-primary" disabled>
-                            Awaiting Upload
-                          </button>
-                        )}
-
-                        {hasUpload && work.workFileUrl && work.isWorkFileVisibleToClient && (
-                          <div style={{ marginTop: '5px' }}>
-                            <a
-                              href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="btn btn-secondary btn-sm"
-                              style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
-                            >
-                              {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '📦 Download Source File'}
-                            </a>
+                        {/* Approval Status Steps (Only if uploaded) */}
+                        {hasUpload && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '20px',
+                            background: '#f8fafc',
+                            padding: '10px 15px',
+                            borderRadius: '8px',
+                            marginBottom: '20px',
+                            fontSize: '0.9rem'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: adminApproved ? '#059669' : '#64748b' }}>
+                              {adminApproved ? <FaCheckCircle /> : <FaRegCircle />}
+                              <span style={{ fontWeight: adminApproved ? 600 : 400 }}>Admin Review</span>
+                            </div>
+                            <div style={{ width: '1px', height: '15px', background: '#e2e8f0' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: clientApproved ? '#059669' : '#64748b' }}>
+                              {clientApproved ? <FaCheckCircle /> : <FaRegCircle />}
+                              <span style={{ fontWeight: clientApproved ? 600 : 400 }}>Client Review</span>
+                            </div>
                           </div>
                         )}
 
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => focusFeedback(bd._id)}
-                        >
-                          💬 Give Feedback
-                        </button>
-                      </div>
+                        <div className="work-actions">
+                          {hasUpload ? (
+                            <>
+                              <div style={{ display: 'flex', gap: '12px', width: '100%', marginBottom: '15px' }}>
+                                <button
+                                  className="btn btn-primary"
+                                  onClick={() => handleDownload(work)}
+                                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 600 }}
+                                >
+                                  <FaDownload />
+                                  {work.submissionType === 'link' ? 'View Link' : 'Download File'}
+                                </button>
 
-                      {/* Editor Message */}
-                      {hasUpload && work.editorMessage && (
-                        <div style={{ marginTop: '10px', padding: '12px', background: '#e3f2fd', borderRadius: '4px', borderLeft: '4px solid #2196f3' }}>
-                          <strong style={{ color: '#1976d2', fontSize: '14px' }}>📝 Editor's Note:</strong>
-                          <p style={{ margin: '8px 0 0 0', whiteSpace: 'pre-wrap', color: '#333', fontSize: '14px', lineHeight: '1.5' }}>{work.editorMessage}</p>
-                        </div>
-                      )}
-
-                      {/* Work Feedback Section */}
-                      <div style={{ marginTop: '15px', padding: '15px', background: '#f1f5f9', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          💬 Feedback & Discussion
-                        </h4>
-
-                        <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: bd.feedback?.length > 0 ? '15px' : '0', paddingRight: '5px' }}>
-                          {bd.feedback && bd.feedback.length > 0 ? (
-                            bd.feedback.map((f, i) => (
-                              <div key={i} style={{
-                                marginBottom: '8px',
-                                padding: '8px 12px',
-                                background: f.from?._id === user._id ? '#e0f2fe' : 'white',
-                                borderRadius: '12px',
-                                border: '1px solid #e2e8f0',
-                                alignSelf: f.from?._id === user._id ? 'flex-end' : 'flex-start',
-                                maxWidth: '90%'
-                              }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '2px' }}>
-                                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#0369a1' }}>{f.from?.name || 'User'}</span>
-                                  <span style={{ fontSize: '10px', color: '#94a3b8' }}>{formatDateTime(f.timestamp)}</span>
-                                </div>
-                                <p style={{ margin: 0, fontSize: '13px', color: '#334155', whiteSpace: 'pre-wrap' }}>{f.content}</p>
+                                <button
+                                  className="btn btn-success"
+                                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 600, backgroundColor: isApproved ? '#94a3b8' : '#059669', borderColor: isApproved ? '#94a3b8' : '#059669', cursor: isApproved ? 'default' : 'pointer' }}
+                                  disabled={isApproved}
+                                  onClick={() => {
+                                    if (isApproved) return;
+                                    setSelectedWork(work);
+                                    setCorrectionText('');
+                                    setVoiceFile(null);
+                                    setMediaFiles([]);
+                                    setShowCorrectionsModal(true);
+                                  }}
+                                >
+                                  <FaEdit />
+                                  Request Changes
+                                </button>
                               </div>
-                            ))
+
+                              {!isApproved && !clientApproved && (
+                                <button
+                                  className="btn btn-success"
+                                  style={{ width: '100%', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#10b981', borderColor: '#10b981' }}
+                                  onClick={async () => {
+                                    const isConfirmed = await confirm({
+                                      title: `Approve ${bd.workType}?`,
+                                      message: `This will mark ${bd.workType} as complete. Are you ready to finalize?`,
+                                      confirmText: 'Approve & Finalize'
+                                    });
+
+                                    if (isConfirmed) {
+                                      try {
+                                        setApprovingKey(bd._id);
+                                        await workBreakdownAPI.approve(bd._id);
+                                        await loadData();
+                                        if (onUpdate) onUpdate();
+                                      } catch (e) {
+                                        setError(e.response?.data?.message || 'Failed to approve');
+                                      } finally {
+                                        setApprovingKey(null);
+                                      }
+                                    }
+                                  }}
+                                  disabled={approvingKey === bd._id || hasPendingCorrections}
+                                  title={hasPendingCorrections ? "Complete all corrections first" : "Approve this work"}
+                                >
+                                  {approvingKey === bd._id ? <span className="spinner-small" /> : <FaCheck />}
+                                  {approvingKey === bd._id ? 'Finalizing...' : 'Approve Work'}
+                                </button>
+                              )}
+                            </>
                           ) : (
-                            <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>No general feedback yet.</p>
+                            <div style={{ padding: '30px', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#64748b' }}>
+                              <p style={{ margin: 0 }}>Editor is working on this task.</p>
+                            </div>
                           )}
-                        </div>
 
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <input
-                            id={`feedback-input-${bd._id}`}
-                            type="text"
-                            style={{
-                              flex: 1,
-                              padding: '8px 12px',
-                              borderRadius: '20px',
-                              border: '1px solid #cbd5e1',
-                              fontSize: '13px',
-                              outline: 'none'
-                            }}
-                            placeholder="Add a comment..."
-                            value={feedbackText[bd._id] || ''}
-                            onChange={(e) => setFeedbackText(prev => ({ ...prev, [bd._id]: e.target.value }))}
-                            onKeyPress={(e) => e.key === 'Enter' && handleAddFeedback(bd._id)}
-                          />
-                          <button
-                            className="btn btn-primary btn-sm"
-                            style={{ borderRadius: '20px', padding: '0 15px' }}
-                            onClick={() => handleAddFeedback(bd._id)}
-                            disabled={isSubmittingFeedback === bd._id || !feedbackText[bd._id]?.trim()}
-                          >
-                            {isSubmittingFeedback === bd._id ? '...' : 'Send'}
-                          </button>
-                        </div>
-                      </div>
+                          {hasUpload && work.workFileUrl && work.isWorkFileVisibleToClient && (
+                            <div style={{ margin: '10px 0' }}>
+                              <a
+                                href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#64748b', textDecoration: 'none', padding: '6px 10px', borderRadius: '4px', background: '#f1f5f9' }}
+                              >
+                                {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '📦 Download Source File'}
+                              </a>
+                            </div>
+                          )}
 
-                      {(() => {
-                        const allCorrections = getAllCorrections(bd._id);
-                        return allCorrections.length > 0 && (
-                          <div style={{ marginTop: '10px' }}>
-                            <strong>Technical Corrections:</strong>
-                            <FeedbackChat
-                              corrections={allCorrections}
-                              currentUser={user}
-                              canMarkFixed={true}
-                              markingId={markingFixId}
-                              onMarkFixed={(correctionId) => {
-                                // Find the correction to get its workId
-                                const corr = allCorrections.find(c => c._id === correctionId);
-                                if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
-                              }}
-                            />
+                          {/* Feedback Section */}
+                          <div style={{ marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '15px' }}>
+                            <div
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: focusFeedback ? '10px' : '0' }}
+                              onClick={() => focusFeedback(bd._id)}
+                            >
+                              <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FaComments className="text-gray-400" /> Discussion
+                              </h4>
+                              {(!bd.feedback || bd.feedback.length === 0) && (
+                                <span style={{ fontSize: '0.8rem', color: '#3b82f6' }}>Add comment</span>
+                              )}
+                            </div>
+
+                            {(bd.feedback && bd.feedback.length > 0) || true ? (
+                              <>
+                                <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '15px', paddingRight: '5px' }}>
+                                  {bd.feedback && bd.feedback.length > 0 ? (
+                                    bd.feedback.map((f, i) => (
+                                      <div key={i} style={{
+                                        marginBottom: '8px',
+                                        padding: '8px 12px',
+                                        background: f.from?._id === user._id ? '#eff6ff' : '#f8fafc',
+                                        borderRadius: '8px',
+                                        border: f.from?._id === user._id ? '1px solid #dbeafe' : '1px solid #e2e8f0',
+                                        alignSelf: f.from?._id === user._id ? 'flex-end' : 'flex-start',
+                                        maxWidth: '100%'
+                                      }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '2px' }}>
+                                          <span style={{ fontSize: '0.75rem', fontWeight: '600', color: f.from?._id === user._id ? '#1d4ed8' : '#334155' }}>
+                                            {f.from?.name || 'User'}
+                                            {f.from?._id === user._id && ' (You)'}
+                                          </span>
+                                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{formatDateTime(f.timestamp)}</span>
+                                        </div>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', whiteSpace: 'pre-wrap' }}>{f.content}</p>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    null
+                                  )}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                  <input
+                                    id={`feedback-input-${bd._id}`}
+                                    type="text"
+                                    style={{
+                                      flex: 1,
+                                      padding: '10px 14px',
+                                      borderRadius: '20px',
+                                      border: '1px solid #cbd5e1',
+                                      fontSize: '0.9rem',
+                                      outline: 'none',
+                                      transition: 'border-color 0.2s',
+                                      backgroundColor: '#f8fafc'
+                                    }}
+                                    placeholder="Write a comment..."
+                                    value={feedbackText[bd._id] || ''}
+                                    onChange={(e) => setFeedbackText(prev => ({ ...prev, [bd._id]: e.target.value }))}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleAddFeedback(bd._id)}
+                                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                                    onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                                  />
+                                  <button
+                                    className="btn btn-primary btn-sm"
+                                    style={{ borderRadius: '20px', padding: '0 20px', height: 'auto' }}
+                                    onClick={() => handleAddFeedback(bd._id)}
+                                    disabled={isSubmittingFeedback === bd._id || !feedbackText[bd._id]?.trim()}
+                                  >
+                                    {isSubmittingFeedback === bd._id ? '...' : 'Send'}
+                                  </button>
+                                </div>
+                              </>
+                            ) : null}
                           </div>
-                        );
-                      })()}
+                        </div>
+
+                        {/* Editor Message */}
+                        {hasUpload && work.editorMessage && (
+                          <div style={{ marginTop: '15px', padding: '12px 15px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #dbeafe', display: 'flex', gap: '10px' }}>
+                            <div style={{ fontSize: '1.2rem' }}>📝</div>
+                            <div>
+                              <strong style={{ display: 'block', fontSize: '0.85rem', color: '#1e40af', marginBottom: '4px' }}>Note from Editor:</strong>
+                              <p style={{ margin: 0, fontSize: '0.9rem', color: '#1e293b', lineHeight: '1.5' }}>{work.editorMessage}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {(() => {
+                          const allCorrections = getAllCorrections(bd._id);
+                          return allCorrections.length > 0 && (
+                            <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #e2e8f0' }}>
+                              <strong style={{ display: 'block', marginBottom: '10px', fontSize: '0.9rem', color: '#475569' }}>Technical Corrections & Requests:</strong>
+                              <FeedbackChat
+                                corrections={allCorrections}
+                                currentUser={user}
+                                canMarkFixed={true}
+                                markingId={markingFixId}
+                                onMarkFixed={(correctionId) => {
+                                  const corr = allCorrections.find(c => c._id === correctionId);
+                                  if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
+                                }}
+                              />
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </motion.div>
                   );
                 })}

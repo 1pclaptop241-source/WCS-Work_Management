@@ -562,7 +562,7 @@ const AdminProjectPage = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="work-actions">
+                                            <div className="work-actions" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                                                 {hasUpload ? (
                                                     <>
                                                         {work.fileUrl && (
@@ -628,78 +628,92 @@ const AdminProjectPage = () => {
 
                                                 <button
                                                     className="btn btn-secondary btn-sm"
+                                                    onClick={() => handleEditClick(bd)}
+                                                    title="Edit Assignment"
+                                                >
+                                                    <span style={{ marginRight: '5px' }}>✏️</span> Edit
+                                                </button>
+
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
                                                     onClick={() => focusFeedback(bd._id)}
                                                     style={{ marginLeft: 'auto' }}
                                                 >
                                                     💬 Give Feedback
                                                 </button>
-                                                {/* Work File Section */}
-                                                {console.log('AdminPage Work Debug:', { workId: work?._id, hasUpload, workFileUrl: work?.workFileUrl, work })}
-                                                {hasUpload && (
-                                                    work.workFileUrl ? (
-                                                        <div style={{ marginTop: '10px', padding: '10px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#fafafa' }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                                                                <strong>📦 Source / Work File:</strong>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                    <span style={{ fontSize: '11px', color: '#666' }}>Client Visibility:</span>
-                                                                    <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '34px', height: '20px' }}>
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={work.isWorkFileVisibleToClient}
-                                                                            onChange={() => handleToggleVisibility(work._id)}
-                                                                            style={{ opacity: 0, width: 0, height: 0 }}
-                                                                        />
-                                                                        <span style={{
-                                                                            position: 'absolute',
-                                                                            cursor: 'pointer',
-                                                                            top: 0, left: 0, right: 0, bottom: 0,
-                                                                            backgroundColor: work.isWorkFileVisibleToClient ? '#2196F3' : '#ccc',
-                                                                            transition: '.4s',
-                                                                            borderRadius: '34px'
-                                                                        }}>
-                                                                            <span style={{
-                                                                                position: 'absolute',
-                                                                                content: '""',
-                                                                                height: '12px',
-                                                                                width: '12px',
-                                                                                left: work.isWorkFileVisibleToClient ? '26px' : '4px',
-                                                                                bottom: '4px',
-                                                                                backgroundColor: 'white',
-                                                                                transition: '.4s',
-                                                                                borderRadius: '50%',
-                                                                                transform: work.isWorkFileVisibleToClient ? 'translateX(-100%)' : 'translateX(0)'
-                                                                            }}></span>
-                                                                        </span>
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                            <a
-                                                                href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                style={{ fontSize: '13px', color: '#0366d6', textDecoration: 'none' }}
-                                                            >
-                                                                {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '⬇️ Download Source File'} ({work.workFileName || 'File'})
-                                                            </a>
-                                                        </div>
-                                                    ) : (
-                                                        <div style={{ marginTop: '10px', padding: '10px', border: '1px dashed #ccc', borderRadius: '4px', backgroundColor: '#f9f9f9', color: '#666', fontSize: '13px', fontStyle: 'italic' }}>
-                                                            No source file or link uploaded for this work.
-                                                        </div>
-                                                    )
-                                                )}
                                             </div>
 
-                                            {/* Work Items and Corrections Card Footer Actions */}
-                                            <div className="work-item-footer" style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-                                                <button
-                                                    className="btn btn-secondary btn-sm"
-                                                    onClick={() => handleEditClick(bd)}
-                                                    title="Edit Assignment"
-                                                >
-                                                    ✏️ Edit Assignment
-                                                </button>
-                                            </div>
+                                            {/* Work File Section - Moved OUT of work-actions for full width */}
+                                            {console.log('AdminPage Work Debug:', { workId: work?._id, hasUpload, workFileUrl: work?.workFileUrl, work })}
+                                            {hasUpload && (
+                                                work.workFileUrl ? (
+                                                    <div style={{ marginTop: '15px', padding: '15px', border: '1px solid #e0e0e0', borderRadius: '8px', backgroundColor: '#fff' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                            <strong style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#333' }}>
+                                                                <span style={{ fontSize: '1.2em' }}>📦</span> Source / Work File
+                                                            </strong>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f5f5f5', padding: '4px 10px', borderRadius: '20px' }}>
+                                                                <span style={{ fontSize: '12px', color: '#666', fontWeight: '500' }}>Client Visibility:</span>
+                                                                <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', margin: 0 }}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={work.isWorkFileVisibleToClient}
+                                                                        onChange={() => handleToggleVisibility(work._id)}
+                                                                        style={{ opacity: 0, width: 0, height: 0 }}
+                                                                    />
+                                                                    <span style={{
+                                                                        position: 'absolute',
+                                                                        cursor: 'pointer',
+                                                                        top: 0, left: 0, right: 0, bottom: 0,
+                                                                        backgroundColor: work.isWorkFileVisibleToClient ? '#06A77D' : '#ccc',
+                                                                        transition: '.4s',
+                                                                        borderRadius: '34px'
+                                                                    }}>
+                                                                        <span style={{
+                                                                            position: 'absolute',
+                                                                            content: '""',
+                                                                            height: '14px',
+                                                                            width: '14px',
+                                                                            left: work.isWorkFileVisibleToClient ? '19px' : '3px',
+                                                                            bottom: '3px',
+                                                                            backgroundColor: 'white',
+                                                                            transition: '.4s',
+                                                                            borderRadius: '50%',
+                                                                        }}></span>
+                                                                    </span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <a
+                                                            href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '8px',
+                                                                fontSize: '14px',
+                                                                color: '#0288d1',
+                                                                textDecoration: 'none',
+                                                                fontWeight: '500',
+                                                                padding: '8px 12px',
+                                                                backgroundColor: '#e1f5fe',
+                                                                borderRadius: '6px',
+                                                                transition: 'background-color 0.2s'
+                                                            }}
+                                                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b3e5fc'}
+                                                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e1f5fe'}
+                                                        >
+                                                            {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '⬇️ Download Source File'}
+                                                            <span style={{ color: '#555', fontWeight: 'normal' }}>({work.workFileName || 'File'})</span>
+                                                        </a>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ marginTop: '15px', padding: '12px', border: '1px dashed #ccc', borderRadius: '6px', backgroundColor: '#fafafa', color: '#666', fontSize: '13px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <span>ℹ️</span> No source file or link uploaded for this work.
+                                                    </div>
+                                                )
+                                            )}
 
                                             {/* Editor Message */}
                                             {hasUpload && work.editorMessage && (
