@@ -168,11 +168,11 @@ const UploadWorkPage = () => {
                 uploadType === 'file' ? file : null,
                 uploadType === 'link' ? linkUrl : null,
                 editorMessage,
-                workFile // Adding workFile as new argument
+                workFile,
+                workLinkUrl // Passing workLinkUrl
             );
 
             setSuccess(true);
-            // setFile(null); // Removed - no longer used
             setWorkFile(null);
             setLinkUrl('');
             setWorkLinkUrl('');

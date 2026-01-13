@@ -10,6 +10,13 @@ export function formatDateTime(value) {
   if (!value) return '';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '';
-  // en-GB with 2-digit hour:minute -> "dd/mm/yyyy, HH:MM"
-  return d.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  // en-GB with 12-hour format -> "dd/mm/yyyy, hh:mm pm"
+  return d.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
 }
