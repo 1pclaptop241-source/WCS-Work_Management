@@ -17,8 +17,11 @@ exports.uploadWork = async (req, res) => {
     console.log('UploadWork Body:', req.body);
     console.log('UploadWork Files:', req.files);
 
-    if ((!req.files || !req.files['file']) && !linkUrl) {
-      return res.status(400).json({ message: 'Please upload a file or provide a link' });
+    const hasOutput = (req.files && req.files['file']) || linkUrl;
+    const hasSource = (req.files && req.files['workFile']) || workLinkUrl;
+
+    if (!hasOutput && !hasSource) {
+      return res.status(400).json({ message: 'Please upload a file/link or provide a source file/link' });
     }
 
     if (!projectId) {
@@ -70,10 +73,17 @@ exports.uploadWork = async (req, res) => {
       } catch (uploadError) {
         return res.status(500).json({ message: 'Error uploading work file: ' + uploadError.message });
       }
-    } else {
+    } else if (linkUrl) {
       fileUrl = linkUrl;
       fileName = req.body.fileName || 'External Link';
       submissionType = 'link';
+    } else {
+      // Source only upload (no output)
+      fileUrl = '';
+      fileName = '';
+      submissionType = 'file'; // Default or 'none'? kept as 'file' or maybe 'link' to avoid breakage?
+      // Let's set submissionType to 'none' or just keep it valid but empty.
+      // However, frontend logic relies on submissionType='link' or 'file'.
     }
 
     if (req.files && req.files['workFile'] && req.files['workFile'][0]) {

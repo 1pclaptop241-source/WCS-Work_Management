@@ -495,16 +495,18 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                         <div className="work-actions" style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                           {hasUpload ? (
                             <>
-                              <a
-                                href={work.submissionType === 'link'
-                                  ? (work.fileUrl.match(/^https?:\/\//) || work.fileUrl.match(/^\/\//) ? work.fileUrl : `https://${work.fileUrl}`)
-                                  : `${API_BASE_URL}${work.fileUrl}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-primary btn-sm"
-                              >
-                                {work.submissionType === 'link' ? 'View Link' : 'Download File'}
-                              </a>
+                              {work.fileUrl && (
+                                <a
+                                  href={work.submissionType === 'link'
+                                    ? (work.fileUrl.match(/^https?:\/\//) || work.fileUrl.match(/^\/\//) ? work.fileUrl : `https://${work.fileUrl}`)
+                                    : `${API_BASE_URL}${work.fileUrl}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn-primary btn-sm"
+                                >
+                                  {work.submissionType === 'link' ? 'View Link' : 'Download File'}
+                                </a>
+                              )}
 
                               {(user.role === 'client' || user.role === 'admin') && (
                                 <button

@@ -13,11 +13,10 @@ const UploadWorkPage = () => {
 
     const [workBreakdown, setWorkBreakdown] = useState(null);
     const [workFile, setWorkFile] = useState(null);
-    const [uploadType, setUploadType] = useState('link');
-    const [workUploadType, setWorkUploadType] = useState('link');
+    const [uploadType, setUploadType] = useState('output'); // 'output' or 'source'
     const [linkUrl, setLinkUrl] = useState('');
     const [workLinkUrl, setWorkLinkUrl] = useState('');
-    const [editorMessage, setEditorMessage] = useState('');
+    // const [editorMessage, setEditorMessage] = useState(''); // Removed message state
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
@@ -74,79 +73,30 @@ const UploadWorkPage = () => {
         }
     };
 
-    const handleFileChange = (e) => {
-        setFile(e.target.files[0]);
-        setError('');
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (uploadType === 'file' && !file) {
-            setError('Please select a file to upload');
+        if (uploadType === 'output' && !linkUrl.trim()) {
+            setError('Please provide a Final Output URL');
             return;
         }
-        if (uploadType === 'link' && !linkUrl.trim()) {
-            setError('Please provide a link URL');
+        if (uploadType === 'source' && !workLinkUrl.trim()) {
+            setError('Please provide a Source File URL');
             return;
         }
 
         try {
             setUploading(true);
             setError('');
-            setSuccess(false); // Clear previous success
+            setSuccess(false);
 
-            const formData = new FormData();
-            formData.append('projectId', workBreakdown.project._id);
-            formData.append('workBreakdownId', workBreakdownId);
+            // Determine what we are sending based on active tab
+            // If output tab: send linkUrl (and null source)
+            // If source tab: send workLinkUrl (and null output)
+            // Backend now supports partials.
 
-            if (uploadType === 'file') {
-                formData.append('file', file);
-            } else {
-                formData.append('linkUrl', linkUrl);
-            }
-
-            if (workFile) {
-                formData.append('workFile', workFile);
-            }
-            if (workLinkUrl && workLinkUrl.trim()) {
-                formData.append('workLinkUrl', workLinkUrl);
-            }
-
-            // Debug: Log FormData keys
-            for (let [key, value] of formData.entries()) {
-                console.log(`FormData: ${key} = ${value}`);
-            }
-
-            if (editorMessage.trim()) {
-                formData.append('editorMessage', editorMessage);
-            }
-
-            // worksAPI.upload now needs to handle FormData correctly or we pass FormData directly if the API wrapper supports it.
-            // Assuming worksAPI.upload takes arguments and builds FormData, we might need to update the API service wrapper OR just pass form data if it constructs it manually.
-            // Let's check `handleSubmit` again. It constructs `formData` manually above (lines 95-107).
-            // But the original code calls `worksAPI.upload` with arguments at line 109.
-            // I need to see `worksAPI.upload` implementation to match it, or check if I can pass FormData directly.
-            // Looking at the original code (lines 109-115), it passes arguments.
-            // I should likely update `worksAPI.upload` signature in `api.js` OR change this component to call the endpoint directly/differently.
-            // However, to stay consistent, I will assume I can modify `worksAPI` later or the `api.js` file needs checking. 
-            // Wait, I can't check api.js right now in this step.
-            // The safest bet is often to pass the FormData if the API function supports it, OR update the arguments.
-            // Let's assume I will update `api.js` to accept `workFile` as well.
-
-            await worksAPI.upload(formData);
-            // NOTE: I am changing the call to pass formData directly, which implies I MUST update `services/api.js`.
-            // Alternatively, I can pass all args: project_id, wb_id, file, link, msg, workFile.
-            // Let's try to pass arguments to be safe if I can't change api.js easily right now or if I want to minimize changes.
-            // But FormData is already built in the component (lines 95+). 
-            // Actually, lines 109-115 call `worksAPI.upload` with args, but lines 95-107 BUILD formData but DON'T USE IT in the original code!
-            // Wait, looking at original code... 
-            // 95: const formData = new FormData();
-            // ...
-            // 109: await worksAPI.upload(...)
-            // The original code BUILDS formData but creates a NEW request in `worksAPI.upload`? 
-            // Or `worksAPI.upload` uses the arguments to build its own FormData?
-            // If I look closely at the original snippet:
+            const submitLinkUrl = uploadType === 'output' ? linkUrl : '';
+            const submitWorkLinkUrl = uploadType === 'source' ? workLinkUrl : '';
             /*
             95:             const formData = new FormData();
             96:             formData.append('projectId', workBreakdown.project._id);
@@ -165,18 +115,16 @@ const UploadWorkPage = () => {
             await worksAPI.upload(
                 workBreakdown.project._id,
                 workBreakdownId,
-                uploadType === 'file' ? file : null,
-                uploadType === 'link' ? linkUrl : null,
-                editorMessage,
-                workFile,
-                workLinkUrl // Passing workLinkUrl
+                null, // No file
+                submitLinkUrl,
+                '', // No editor message
+                null, // No work file (upload)
+                submitWorkLinkUrl
             );
 
             setSuccess(true);
-            setWorkFile(null);
             setLinkUrl('');
             setWorkLinkUrl('');
-            setEditorMessage('');
             loadSubmissions();
 
             setTimeout(() => {
@@ -462,133 +410,90 @@ const UploadWorkPage = () => {
                             {error && <div className="alert alert-error">{error}</div>}
                             {success && <div className="alert alert-success">Work uploaded successfully! Redirecting...</div>}
 
+                            <div className="upload-tabs" style={{ display: 'flex', borderBottom: '1px solid #e0e0e0', marginBottom: '20px' }}>
+                                <button
+                                    type="button"
+                                    className={`tab-btn ${uploadType === 'output' ? 'active' : ''}`}
+                                    onClick={() => setUploadType('output')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        background: 'none',
+                                        border: 'none',
+                                        borderBottom: uploadType === 'output' ? '2px solid #2E86AB' : 'none',
+                                        color: uploadType === 'output' ? '#2E86AB' : '#666',
+                                        fontWeight: uploadType === 'output' ? '600' : '400',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    📤 Final Output
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`tab-btn ${uploadType === 'source' ? 'active' : ''}`}
+                                    onClick={() => setUploadType('source')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        background: 'none',
+                                        border: 'none',
+                                        borderBottom: uploadType === 'source' ? '2px solid #2E86AB' : 'none',
+                                        color: uploadType === 'source' ? '#2E86AB' : '#666',
+                                        fontWeight: uploadType === 'source' ? '600' : '400',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    📦 Source File
+                                </button>
+                            </div>
+
                             <form onSubmit={handleSubmit}>
-                                {/* Upload Type Tabs - DISABLED TEMPORARILY
-                                <div className="upload-tabs">
-                                    <button
-                                        type="button"
-                                        className={`tab-btn ${uploadType === 'file' ? 'active' : ''}`}
-                                        onClick={() => setUploadType('file')}
-                                    >
-                                        📁 File Upload
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`tab-btn ${uploadType === 'link' ? 'active' : ''}`}
-                                        onClick={() => setUploadType('link')}
-                                    >
-                                        🔗 Link URL
-                                    </button>
-                                </div>
-                                */}
-
-                                {/* File/Link Input */}
-                                <div className="form-group">
-                                    {uploadType === 'file' ? (
-                                        <>
-                                            <label className="form-label">Select File</label>
-                                            <input
-                                                type="file"
-                                                className="form-input"
-                                                onChange={handleFileChange}
-                                                required
-                                            />
-                                            {file && (
-                                                <p className="file-info">
-                                                    Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                                                </p>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <label className="form-label">Link URL (Output)</label>
-                                            <input
-                                                type="url"
-                                                className="form-input"
-                                                value={linkUrl}
-                                                onChange={(e) => setLinkUrl(e.target.value)}
-                                                placeholder="https://example.com/your-work"
-                                                required
-                                            />
-                                        </>
-                                    )}
-                                </div>
-
-                                {/* Work File Input (Source) */}
-                                <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
-                                    <label className="form-label">
-                                        Work/Project File (Source)
-                                        <span className="label-hint">Optional: Upload the source file for the next editor</span>
-                                    </label>
-
-                                    {/* Work Upload/Link Tabs */}
-                                    {/* Work Upload/Link Tabs - DISABLED TEMPORARILY
-                                    <div className="upload-tabs" style={{ marginBottom: '10px' }}>
-                                        <button
-                                            type="button"
-                                            className={`tab-btn ${workUploadType === 'file' ? 'active' : ''}`}
-                                            onClick={() => setWorkUploadType('file')}
-                                            style={{ fontSize: '13px', padding: '5px 10px' }}
-                                        >
-                                            📁 File Upload
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className={`tab-btn ${workUploadType === 'link' ? 'active' : ''}`}
-                                            onClick={() => setWorkUploadType('link')}
-                                            style={{ fontSize: '13px', padding: '5px 10px' }}
-                                        >
-                                            🔗 Link URL
-                                        </button>
+                                {/* Final Output Tab */}
+                                {uploadType === 'output' && (
+                                    <div className="form-group">
+                                        <label className="form-label">Link URL (Output)</label>
+                                        <input
+                                            type="url"
+                                            className="form-input"
+                                            value={linkUrl}
+                                            onChange={(e) => setLinkUrl(e.target.value)}
+                                            placeholder="https://example.com/your-work"
+                                            required={uploadType === 'output'}
+                                        />
+                                        <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                                            Provide the link to the final rendered output (e.g. Frame.io, Vimeo, Drive).
+                                        </p>
                                     </div>
-                                    */}
+                                )}
 
-                                    {workUploadType === 'file' ? (
-                                        <>
-                                            <input
-                                                type="file"
-                                                className="form-input"
-                                                onChange={(e) => setWorkFile(e.target.files[0])}
-                                            />
-                                            {workFile && (
-                                                <p className="file-info">
-                                                    Selected: {workFile.name} ({(workFile.size / 1024 / 1024).toFixed(2)} MB)
-                                                </p>
-                                            )}
-                                        </>
-                                    ) : (
+                                {/* Source File Tab */}
+                                {uploadType === 'source' && (
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            Work/Project File (Source)
+                                        </label>
                                         <input
                                             type="url"
                                             className="form-input"
                                             value={workLinkUrl}
                                             onChange={(e) => setWorkLinkUrl(e.target.value)}
                                             placeholder="https://drive.google.com/..."
+                                            required={uploadType === 'source'}
                                         />
-                                    )}
-                                </div>
-
-                                {/* Editor Message */}
-                                <div className="form-group">
-                                    <label className="form-label">
-                                        Message (Optional)
-                                        <span className="label-hint">Add a note for the client/admin</span>
-                                    </label>
-                                    <textarea
-                                        className="form-textarea"
-                                        value={editorMessage}
-                                        onChange={(e) => setEditorMessage(e.target.value)}
-                                        rows="4"
-                                        placeholder="E.g., 'Applied color grading as discussed. Please review the final scene.'"
-                                    />
-                                </div>
+                                        <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                                            Provide the link to the source project files for the next editor.
+                                        </p>
+                                    </div>
+                                )}
 
                                 {/* Submit Button */}
                                 <button
                                     type="submit"
                                     className="btn btn-primary btn-block"
-                                    disabled={uploading || (uploadType === 'file' ? false : !linkUrl)} // Changed check since file is disabled
+                                    style={{ marginTop: '20px' }}
+                                    disabled={uploading}
                                 >
-                                    {uploading ? 'Uploading...' : '📤 Upload Work'}
+                                    {uploading ? 'Uploading...' : (uploadType === 'output' ? '📤 Upload Final Output' : '📦 Upload Source File')}
                                 </button>
                             </form>
                         </div>

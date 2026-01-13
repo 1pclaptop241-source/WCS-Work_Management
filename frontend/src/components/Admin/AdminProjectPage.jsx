@@ -565,16 +565,18 @@ const AdminProjectPage = () => {
                                             <div className="work-actions">
                                                 {hasUpload ? (
                                                     <>
-                                                        <a
-                                                            href={work.submissionType === 'link'
-                                                                ? (work.fileUrl.match(/^https?:\/\//) || work.fileUrl.match(/^\/\//) ? work.fileUrl : `https://${work.fileUrl}`)
-                                                                : work.fileUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="btn btn-primary btn-sm"
-                                                        >
-                                                            {work.submissionType === 'link' ? 'View Link' : 'Download File'}
-                                                        </a>
+                                                        {work.fileUrl && (
+                                                            <a
+                                                                href={work.submissionType === 'link'
+                                                                    ? (work.fileUrl.match(/^https?:\/\//) || work.fileUrl.match(/^\/\//) ? work.fileUrl : `https://${work.fileUrl}`)
+                                                                    : work.fileUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="btn btn-primary btn-sm"
+                                                            >
+                                                                {work.submissionType === 'link' ? 'View Link' : 'Download File'}
+                                                            </a>
+                                                        )}
 
                                                         <button
                                                             className="btn btn-success btn-sm"

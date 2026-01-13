@@ -18,11 +18,11 @@ const workSubmissionSchema = new mongoose.Schema({
   },
   fileUrl: {
     type: String,
-    required: [true, 'Please provide a file URL'],
+    // required: [true, 'Please provide a file URL'], // Made optional for source-only uploads
   },
   fileName: {
     type: String,
-    required: [true, 'Please provide a file name'],
+    // required: [true, 'Please provide a file name'], // Made optional
   },
   workFileUrl: {
     type: String,
