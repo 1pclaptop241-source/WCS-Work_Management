@@ -60,6 +60,14 @@ const workBreakdownSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  clientInstructions: {
+    type: String,
+    default: '',
+  },
+  adminInstructions: {
+    type: String,
+    default: '',
+  },
   priority: {
     type: String,
     enum: ['low', 'medium', 'high'],

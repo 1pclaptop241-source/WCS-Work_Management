@@ -27,7 +27,10 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
   const [showWorkTypeDetails, setShowWorkTypeDetails] = useState(false);
   const [selectedWorkTypeForDetails, setSelectedWorkTypeForDetails] = useState(null);
   const [feedbackText, setFeedbackText] = useState({}); // { [workBreakdownId]: text }
+
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(null); // stores breakdown ID
+  const [adminInstructionsInput, setAdminInstructionsInput] = useState({});
+  const [isSavingAdminInstructions, setIsSavingAdminInstructions] = useState(null);
 
 
   useEffect(() => {
@@ -132,6 +135,22 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
       showAlert(err.response?.data?.message || 'Failed to add feedback', 'Error');
     } finally {
       setIsSubmittingFeedback(null);
+    }
+  };
+
+  const handleSaveAdminInstructions = async (workBreakdownId) => {
+    const text = adminInstructionsInput[workBreakdownId];
+    if (text === undefined) return;
+
+    try {
+      setIsSavingAdminInstructions(workBreakdownId);
+      await workBreakdownAPI.update(workBreakdownId, { adminInstructions: text });
+      await loadWorkBreakdown();
+      showAlert('Admin instructions saved', 'Success');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save instructions');
+    } finally {
+      setIsSavingAdminInstructions(null);
     }
   };
 
@@ -503,6 +522,46 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                               <span className="info-value text-muted italic">Waiting for upload...</span>
                             </div>
                           )}
+                        </div>
+
+                        {/* Instructions Section */}
+                        <div className="instructions-section" style={{ marginTop: '15px', padding: '15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#64748b', fontWeight: 'bold' }}>
+                              Client Instructions:
+                            </label>
+                            <div style={{ padding: '8px', background: '#fff', borderRadius: '4px', border: '1px solid #e2e8f0', minHeight: '40px' }}>
+                              {bd.clientInstructions ? (
+                                <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>{bd.clientInstructions}</p>
+                              ) : (
+                                <span className="text-muted" style={{ fontStyle: 'italic', fontSize: '0.85rem' }}>No instructions provided.</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#64748b', fontWeight: 'bold' }}>
+                              Admin Instructions (to Editor):
+                            </label>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                              <textarea
+                                className="form-control"
+                                style={{ flex: 1, minHeight: '60px', fontSize: '0.9rem' }}
+                                rows="2"
+                                placeholder="Add instructions for the editor..."
+                                value={adminInstructionsInput[bd._id] !== undefined ? adminInstructionsInput[bd._id] : (bd.adminInstructions || '')}
+                                onChange={(e) => setAdminInstructionsInput(prev => ({ ...prev, [bd._id]: e.target.value }))}
+                              />
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => handleSaveAdminInstructions(bd._id)}
+                                disabled={isSavingAdminInstructions === bd._id}
+                                style={{ height: 'auto', alignSelf: 'flex-start' }}
+                              >
+                                {isSavingAdminInstructions === bd._id ? '...' : 'Save'}
+                              </button>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="work-item-actions">

@@ -32,7 +32,10 @@ const WorkView = ({ project, onBack, onUpdate }) => {
   const [correctionText, setCorrectionText] = useState('');
   const [voiceFile, setVoiceFile] = useState(null);
   const [mediaFiles, setMediaFiles] = useState([]);
+
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [instructionsInput, setInstructionsInput] = useState({});
+  const [isSavingInstructions, setIsSavingInstructions] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -139,6 +142,22 @@ const WorkView = ({ project, onBack, onUpdate }) => {
       showAlert(err.response?.data?.message || 'Failed to add feedback', 'Error');
     } finally {
       setIsSubmittingFeedback(null);
+    }
+  };
+
+  const handleSaveInstructions = async (workBreakdownId) => {
+    const text = instructionsInput[workBreakdownId];
+    if (text === undefined) return; // No change
+
+    try {
+      setIsSavingInstructions(workBreakdownId);
+      await workBreakdownAPI.update(workBreakdownId, { clientInstructions: text });
+      await loadData();
+      await showAlert('Instructions saved', 'Success');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save instructions');
+    } finally {
+      setIsSavingInstructions(null);
     }
   };
 
@@ -352,6 +371,38 @@ const WorkView = ({ project, onBack, onUpdate }) => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             {statusBadge}
                             <WorkTypeMenu workBreakdown={bd} onViewDetails={handleViewWorkTypeDetails} />
+                          </div>
+                        </div>
+
+                        {/* Instructions Section */}
+                        <div style={{ marginBottom: '20px' }}>
+                          <label style={{ display: 'block', fontWeight: 600, color: '#475569', marginBottom: '8px', fontSize: '0.9rem' }}>
+                            Instructions for Editor:
+                          </label>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                            <textarea
+                              style={{
+                                flex: 1,
+                                padding: '10px',
+                                borderRadius: '8px',
+                                border: '1px solid #cbd5e1',
+                                minHeight: '60px',
+                                fontFamily: 'inherit',
+                                fontSize: '0.9rem',
+                                resize: 'vertical'
+                              }}
+                              placeholder="Add specific instructions for this work item... (visible to Editor and Admin)"
+                              value={instructionsInput[bd._id] !== undefined ? instructionsInput[bd._id] : (bd.clientInstructions || '')}
+                              onChange={(e) => setInstructionsInput(prev => ({ ...prev, [bd._id]: e.target.value }))}
+                            />
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleSaveInstructions(bd._id)}
+                              disabled={isSavingInstructions === bd._id}
+                              style={{ height: 'auto', padding: '8px 16px' }}
+                            >
+                              {isSavingInstructions === bd._id ? 'Saving...' : 'Save'}
+                            </button>
                           </div>
                         </div>
 

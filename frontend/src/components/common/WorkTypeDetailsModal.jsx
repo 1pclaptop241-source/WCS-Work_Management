@@ -3,7 +3,9 @@ import './WorkTypeDetailsModal.css';
 const WorkTypeDetailsModal = ({ workBreakdown, onClose }) => {
     if (!workBreakdown) return null;
 
-    const hasDetails = workBreakdown.shareDetails && workBreakdown.shareDetails.trim();
+    const hasDetails = (workBreakdown.shareDetails && workBreakdown.shareDetails.trim()) ||
+        (workBreakdown.adminInstructions && workBreakdown.adminInstructions.trim()) ||
+        (workBreakdown.clientInstructions && workBreakdown.clientInstructions.trim());
     const hasLinks = workBreakdown.links && workBreakdown.links.length > 0;
 
     return (
@@ -16,15 +18,32 @@ const WorkTypeDetailsModal = ({ workBreakdown, onClose }) => {
                 <div className="modal-body">
                     {!hasDetails && !hasLinks ? (
                         <div className="no-details-message">
-                            <p>No additional details or links were shared by the admin for this work type.</p>
+                            <p>No additional details or links were shared for this work type.</p>
                         </div>
                     ) : (
                         <>
-                            {hasDetails && (
+                            {workBreakdown.clientInstructions && workBreakdown.clientInstructions.trim() && (
+                                <div className="details-section" style={{ marginBottom: '20px' }}>
+                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '10px' }}>👤 Client Instructions</h3>
+                                    <div className="details-content" style={{ padding: '10px', background: '#f0f9ff', borderRadius: '8px', borderLeft: '4px solid #0ea5e9' }}>
+                                        <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{workBreakdown.clientInstructions}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {(workBreakdown.adminInstructions || (workBreakdown.shareDetails && workBreakdown.shareDetails.trim())) && (
                                 <div className="details-section">
-                                    <h3>📝 Shared Details</h3>
+                                    <h3 style={{ fontSize: '1.1rem', marginBottom: '10px' }}>📝 Admin Instructions</h3>
                                     <div className="details-content">
-                                        <p style={{ whiteSpace: 'pre-wrap' }}>{workBreakdown.shareDetails}</p>
+                                        {workBreakdown.adminInstructions && (
+                                            <p style={{ whiteSpace: 'pre-wrap', marginBottom: '10px' }}>{workBreakdown.adminInstructions}</p>
+                                        )}
+                                        {workBreakdown.shareDetails && workBreakdown.shareDetails.trim() && (
+                                            <div style={{ borderTop: workBreakdown.adminInstructions ? '1px solid #eee' : 'none', paddingTop: workBreakdown.adminInstructions ? '10px' : '0' }}>
+                                                {workBreakdown.adminInstructions && <strong>Additional Details:</strong>}
+                                                <p style={{ whiteSpace: 'pre-wrap' }}>{workBreakdown.shareDetails}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}

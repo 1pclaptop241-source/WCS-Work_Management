@@ -236,19 +236,37 @@ const UploadWorkPage = () => {
                         </div>
                     )}
 
-                    {/* Admin Shared Details */}
-                    {(workBreakdown.shareDetails || (workBreakdown.links && workBreakdown.links.length > 0)) && (
+                    {/* Work Instructions */}
+                    {(workBreakdown.clientInstructions || workBreakdown.adminInstructions || workBreakdown.shareDetails || (workBreakdown.links && workBreakdown.links.length > 0)) && (
                         <div className="card">
                             <div className="card-header">
-                                <h3>📋 Admin Instructions</h3>
+                                <h3>📋 Work Instructions</h3>
                             </div>
                             <div className="card-body">
-                                {workBreakdown.shareDetails && (
-                                    <div className="admin-details">
-                                        <strong>Details:</strong>
-                                        <p>{workBreakdown.shareDetails}</p>
+                                {/* Client Instructions */}
+                                {workBreakdown.clientInstructions && (
+                                    <div style={{ marginBottom: '15px', padding: '10px', background: '#f0f9ff', borderRadius: '8px', borderLeft: '4px solid #0ea5e9' }}>
+                                        <strong style={{ color: '#0369a1', display: 'block', marginBottom: '5px' }}>Client Instructions:</strong>
+                                        <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{workBreakdown.clientInstructions}</p>
                                     </div>
                                 )}
+
+                                {/* Admin Instructions */}
+                                {(workBreakdown.adminInstructions || workBreakdown.shareDetails) && (
+                                    <div style={{ marginBottom: '15px' }}>
+                                        <strong style={{ display: 'block', marginBottom: '5px' }}>Admin Instructions:</strong>
+                                        {workBreakdown.adminInstructions && (
+                                            <p style={{ whiteSpace: 'pre-wrap', marginBottom: '10px' }}>{workBreakdown.adminInstructions}</p>
+                                        )}
+                                        {workBreakdown.shareDetails && (
+                                            <div className="admin-details">
+                                                <strong>Details:</strong>
+                                                <p>{workBreakdown.shareDetails}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {workBreakdown.links && workBreakdown.links.length > 0 && (
                                     <div className="admin-links">
                                         <strong>Shared Links:</strong>

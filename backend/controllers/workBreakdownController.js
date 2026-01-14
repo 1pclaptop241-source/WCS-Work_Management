@@ -79,10 +79,18 @@ exports.updateWorkBreakdown = async (req, res) => {
 
     const editorId = req.user._id.toString();
     const isAdmin = req.user.role === 'admin';
-    const isAssignedEditor = workBreakdown.assignedEditor.toString() === editorId;
+    const isAssignedEditor = workBreakdown.assignedEditor && workBreakdown.assignedEditor.toString() === editorId;
+    const isClientOwner = workBreakdown.project.client.toString() === editorId;
 
-    if (!(isAdmin || (req.user.role === 'editor' && isAssignedEditor))) {
+    if (!(isAdmin || (req.user.role === 'editor' && isAssignedEditor) || isClientOwner)) {
       return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // Client Updates
+    if (isClientOwner) {
+      if (req.body.clientInstructions !== undefined) {
+        workBreakdown.clientInstructions = req.body.clientInstructions;
+      }
     }
 
     // Admin updates (assignee, deadline, amount)
@@ -101,6 +109,8 @@ exports.updateWorkBreakdown = async (req, res) => {
       }
       if (req.body.deadline) workBreakdown.deadline = req.body.deadline;
       if (req.body.amount) workBreakdown.amount = req.body.amount;
+      if (req.body.adminInstructions !== undefined) workBreakdown.adminInstructions = req.body.adminInstructions;
+      if (req.body.clientInstructions !== undefined) workBreakdown.clientInstructions = req.body.clientInstructions;
 
       // Handle optional sharing details and links
       let detailsUpdated = false;
