@@ -88,13 +88,23 @@ exports.updateWorkBreakdown = async (req, res) => {
 
     // Client Updates
     if (isClientOwner) {
-      if (req.body.clientInstructions !== undefined) {
+      if (req.body.clientInstructions !== undefined && req.body.clientInstructions !== workBreakdown.clientInstructions) {
         workBreakdown.clientInstructions = req.body.clientInstructions;
+        // Also notify editor if client updates
+        await createNotification(
+          workBreakdown.assignedEditor,
+          'assignment_details_updated',
+          'Client Instructions Updated',
+          `The client has updated instructions for your assignment "${workBreakdown.workType}" in project "${workBreakdown.project.title}".`,
+          workBreakdown.project._id
+        );
       }
     }
 
     // Admin updates (assignee, deadline, amount)
     if (isAdmin) {
+      let detailsUpdated = false;
+
       if (req.body.assignedEditor && req.body.assignedEditor !== workBreakdown.assignedEditor.toString()) {
         workBreakdown.assignedEditor = req.body.assignedEditor;
         // If reassigning, reset status if it was declined
@@ -109,11 +119,16 @@ exports.updateWorkBreakdown = async (req, res) => {
       }
       if (req.body.deadline) workBreakdown.deadline = req.body.deadline;
       if (req.body.amount) workBreakdown.amount = req.body.amount;
-      if (req.body.adminInstructions !== undefined) workBreakdown.adminInstructions = req.body.adminInstructions;
-      if (req.body.clientInstructions !== undefined) workBreakdown.clientInstructions = req.body.clientInstructions;
+      if (req.body.adminInstructions !== undefined && req.body.adminInstructions !== workBreakdown.adminInstructions) {
+        workBreakdown.adminInstructions = req.body.adminInstructions;
+        detailsUpdated = true;
+      }
+      if (req.body.clientInstructions !== undefined && req.body.clientInstructions !== workBreakdown.clientInstructions) {
+        workBreakdown.clientInstructions = req.body.clientInstructions;
+        detailsUpdated = true;
+      }
 
       // Handle optional sharing details and links
-      let detailsUpdated = false;
       if (req.body.shareDetails !== undefined && req.body.shareDetails !== workBreakdown.shareDetails) {
         workBreakdown.shareDetails = req.body.shareDetails;
         detailsUpdated = true;

@@ -246,7 +246,6 @@ const UploadWorkPage = () => {
                                 {/* Client Instructions */}
                                 {workBreakdown.clientInstructions && (
                                     <div style={{ marginBottom: '15px', padding: '10px', background: '#f0f9ff', borderRadius: '8px', borderLeft: '4px solid #0ea5e9' }}>
-                                        <strong style={{ color: '#0369a1', display: 'block', marginBottom: '5px' }}>Client Instructions:</strong>
                                         <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{workBreakdown.clientInstructions}</p>
                                     </div>
                                 )}
@@ -254,7 +253,6 @@ const UploadWorkPage = () => {
                                 {/* Admin Instructions */}
                                 {(workBreakdown.adminInstructions || workBreakdown.shareDetails) && (
                                     <div style={{ marginBottom: '15px' }}>
-                                        <strong style={{ display: 'block', marginBottom: '5px' }}>Admin Instructions:</strong>
                                         {workBreakdown.adminInstructions && (
                                             <p style={{ whiteSpace: 'pre-wrap', marginBottom: '10px' }}>{workBreakdown.adminInstructions}</p>
                                         )}

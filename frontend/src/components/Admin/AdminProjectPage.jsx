@@ -33,6 +33,8 @@ const AdminProjectPage = () => {
     const [editFormData, setEditFormData] = useState({ assignedEditor: '', deadline: '', amount: '', shareDetails: '', links: [{ title: '', url: '' }] });
     const [feedbackText, setFeedbackText] = useState({});
     const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(null);
+    const [adminInstructionsInput, setAdminInstructionsInput] = useState({});
+    const [isSavingAdminInstructions, setIsSavingAdminInstructions] = useState(null);
 
     useEffect(() => {
         loadProject();
@@ -176,6 +178,31 @@ const AdminProjectPage = () => {
             showAlert(err.response?.data?.message || 'Failed to add feedback', 'Error');
         } finally {
             setIsSubmittingFeedback(null);
+        }
+    };
+
+    const handleSaveAdminInstructions = async (workBreakdownId) => {
+        const text = adminInstructionsInput[workBreakdownId];
+        if (text === undefined) return;
+
+        try {
+            setIsSavingAdminInstructions(workBreakdownId);
+            await workBreakdownAPI.update(workBreakdownId, { adminInstructions: text });
+            await showAlert('Admin instructions saved', 'Success');
+            await loadWorkBreakdown();
+        } catch (err) {
+            console.error(err);
+            showAlert('Failed to save instructions', 'Error');
+        } finally {
+            setIsSavingAdminInstructions(null);
+        }
+    };
+
+    const focusInstructions = (bdId) => {
+        const input = document.getElementById(`admin-instructions-input-${bdId}`);
+        if (input) {
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            input.focus();
         }
     };
 
@@ -636,92 +663,142 @@ const AdminProjectPage = () => {
 
                                                 <button
                                                     className="btn btn-secondary btn-sm"
-                                                    onClick={() => focusFeedback(bd._id)}
-                                                    style={{ marginLeft: 'auto' }}
+                                                    onClick={() => focusInstructions(bd._id)}
+                                                    title="Add/Edit Instructions"
+                                                >
+                                                    📜 Give Instructions
+                                                </button>
+
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
                                                 >
                                                     💬 Give Feedback
                                                 </button>
                                             </div>
 
+                                            {/* Instructions Section */}
+                                            <div style={{ marginTop: '15px', padding: '15px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    📜 Instructions
+                                                </h4>
+                                                {/* Client Instructions (Read-only) */}
+                                                {bd.clientInstructions && (
+                                                    <div style={{ marginBottom: '15px', padding: '10px', background: '#e0f2fe', borderRadius: '6px', fontSize: '0.9rem', color: '#334155', whiteSpace: 'pre-wrap' }}>
+                                                        {bd.clientInstructions}
+                                                    </div>
+                                                )}
+
+                                                {/* Admin Instructions (Editable) */}
+                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                                                    <textarea
+                                                        id={`admin-instructions-input-${bd._id}`}
+                                                        className="form-control"
+                                                        style={{
+                                                            flex: 1,
+                                                            minHeight: '80px',
+                                                            fontSize: '0.9rem',
+                                                            padding: '8px',
+                                                            borderRadius: '6px',
+                                                            border: '1px solid #cbd5e1'
+                                                        }}
+                                                        placeholder="Enter instructions..."
+                                                        value={adminInstructionsInput[bd._id] !== undefined ? adminInstructionsInput[bd._id] : (bd.adminInstructions || '')}
+                                                        onChange={(e) => setAdminInstructionsInput(prev => ({ ...prev, [bd._id]: e.target.value }))}
+                                                    />
+                                                    <button
+                                                        className="btn btn-primary btn-sm"
+                                                        onClick={() => handleSaveAdminInstructions(bd._id)}
+                                                        disabled={isSavingAdminInstructions === bd._id}
+                                                        style={{ height: '36px' }}
+                                                    >
+                                                        {isSavingAdminInstructions === bd._id ? '...' : 'Save'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
                                             {/* Work File Section - Moved OUT of work-actions for full width */}
                                             {console.log('AdminPage Work Debug:', { workId: work?._id, hasUpload, workFileUrl: work?.workFileUrl, work })}
-                                            {hasUpload && (
-                                                work.workFileUrl ? (
-                                                    <div style={{ marginTop: '15px', padding: '15px', border: '1px solid #e0e0e0', borderRadius: '8px', backgroundColor: '#fff' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                            <strong style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#333' }}>
-                                                                <span style={{ fontSize: '1.2em' }}>📦</span> Source / Work File
-                                                            </strong>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f5f5f5', padding: '4px 10px', borderRadius: '20px' }}>
-                                                                <span style={{ fontSize: '12px', color: '#666', fontWeight: '500' }}>Client Visibility:</span>
-                                                                <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', margin: 0 }}>
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={work.isWorkFileVisibleToClient}
-                                                                        onChange={() => handleToggleVisibility(work._id)}
-                                                                        style={{ opacity: 0, width: 0, height: 0 }}
-                                                                    />
-                                                                    <span style={{
-                                                                        position: 'absolute',
-                                                                        cursor: 'pointer',
-                                                                        top: 0, left: 0, right: 0, bottom: 0,
-                                                                        backgroundColor: work.isWorkFileVisibleToClient ? '#06A77D' : '#ccc',
-                                                                        transition: '.4s',
-                                                                        borderRadius: '34px'
-                                                                    }}>
+                                            {
+                                                hasUpload && (
+                                                    work.workFileUrl ? (
+                                                        <div style={{ marginTop: '15px', padding: '15px', border: '1px solid #e0e0e0', borderRadius: '8px', backgroundColor: '#fff' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                                <strong style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#333' }}>
+                                                                    <span style={{ fontSize: '1.2em' }}>📦</span> Source / Work File
+                                                                </strong>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f5f5f5', padding: '4px 10px', borderRadius: '20px' }}>
+                                                                    <span style={{ fontSize: '12px', color: '#666', fontWeight: '500' }}>Client Visibility:</span>
+                                                                    <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', margin: 0 }}>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={work.isWorkFileVisibleToClient}
+                                                                            onChange={() => handleToggleVisibility(work._id)}
+                                                                            style={{ opacity: 0, width: 0, height: 0 }}
+                                                                        />
                                                                         <span style={{
                                                                             position: 'absolute',
-                                                                            content: '""',
-                                                                            height: '14px',
-                                                                            width: '14px',
-                                                                            left: work.isWorkFileVisibleToClient ? '19px' : '3px',
-                                                                            bottom: '3px',
-                                                                            backgroundColor: 'white',
+                                                                            cursor: 'pointer',
+                                                                            top: 0, left: 0, right: 0, bottom: 0,
+                                                                            backgroundColor: work.isWorkFileVisibleToClient ? '#06A77D' : '#ccc',
                                                                             transition: '.4s',
-                                                                            borderRadius: '50%',
-                                                                        }}></span>
-                                                                    </span>
-                                                                </label>
+                                                                            borderRadius: '34px'
+                                                                        }}>
+                                                                            <span style={{
+                                                                                position: 'absolute',
+                                                                                content: '""',
+                                                                                height: '14px',
+                                                                                width: '14px',
+                                                                                left: work.isWorkFileVisibleToClient ? '19px' : '3px',
+                                                                                bottom: '3px',
+                                                                                backgroundColor: 'white',
+                                                                                transition: '.4s',
+                                                                                borderRadius: '50%',
+                                                                            }}></span>
+                                                                        </span>
+                                                                    </label>
+                                                                </div>
                                                             </div>
+                                                            <a
+                                                                href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '8px',
+                                                                    fontSize: '14px',
+                                                                    color: '#0288d1',
+                                                                    textDecoration: 'none',
+                                                                    fontWeight: '500',
+                                                                    padding: '8px 12px',
+                                                                    backgroundColor: '#e1f5fe',
+                                                                    borderRadius: '6px',
+                                                                    transition: 'background-color 0.2s'
+                                                                }}
+                                                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b3e5fc'}
+                                                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e1f5fe'}
+                                                            >
+                                                                {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '⬇️ Download Source File'}
+                                                                <span style={{ color: '#555', fontWeight: 'normal' }}>({work.workFileName || 'File'})</span>
+                                                            </a>
                                                         </div>
-                                                        <a
-                                                            href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            style={{
-                                                                display: 'inline-flex',
-                                                                alignItems: 'center',
-                                                                gap: '8px',
-                                                                fontSize: '14px',
-                                                                color: '#0288d1',
-                                                                textDecoration: 'none',
-                                                                fontWeight: '500',
-                                                                padding: '8px 12px',
-                                                                backgroundColor: '#e1f5fe',
-                                                                borderRadius: '6px',
-                                                                transition: 'background-color 0.2s'
-                                                            }}
-                                                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#b3e5fc'}
-                                                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e1f5fe'}
-                                                        >
-                                                            {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '⬇️ Download Source File'}
-                                                            <span style={{ color: '#555', fontWeight: 'normal' }}>({work.workFileName || 'File'})</span>
-                                                        </a>
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ marginTop: '15px', padding: '12px', border: '1px dashed #ccc', borderRadius: '6px', backgroundColor: '#fafafa', color: '#666', fontSize: '13px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <span>ℹ️</span> No source file or link uploaded for this work.
-                                                    </div>
+                                                    ) : (
+                                                        <div style={{ marginTop: '15px', padding: '12px', border: '1px dashed #ccc', borderRadius: '6px', backgroundColor: '#fafafa', color: '#666', fontSize: '13px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <span>ℹ️</span> No source file or link uploaded for this work.
+                                                        </div>
+                                                    )
                                                 )
-                                            )}
+                                            }
 
                                             {/* Editor Message */}
-                                            {hasUpload && work.editorMessage && (
-                                                <div className="editor-message">
-                                                    <strong>📝 Editor's Note:</strong>
-                                                    <p>{work.editorMessage}</p>
-                                                </div>
-                                            )}
+                                            {
+                                                hasUpload && work.editorMessage && (
+                                                    <div className="editor-message">
+                                                        <strong>📝 Editor's Note:</strong>
+                                                        <p>{work.editorMessage}</p>
+                                                    </div>
+                                                )
+                                            }
 
                                             {/* Work Feedback Section */}
                                             <div style={{ marginTop: '15px', padding: '15px', background: '#f1f5f9', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -784,52 +861,54 @@ const AdminProjectPage = () => {
                                             </div>
 
                                             {/* Corrections */}
-                                            {(() => {
-                                                const allCorrections = getAllCorrectionsForBreakdown(bd._id);
-                                                return allCorrections.length > 0 && (
-                                                    <div className="corrections-container">
-                                                        <strong>Corrections Requested ({allCorrections.filter(c => !c.done).length} pending, {allCorrections.filter(c => c.done).length} fixed):</strong>
-                                                        <ul>
-                                                            {allCorrections.map((c, i) => (
-                                                                <li key={i} className={c.done ? 'correction-done' : 'correction-pending'}>
-                                                                    <div className="correction-header">
-                                                                        <span className="correction-date">
-                                                                            Requested by {c.addedBy?.name || 'Unknown'} on {formatDateTime(c.addedAt)}
-                                                                        </span>
+                                            {
+                                                (() => {
+                                                    const allCorrections = getAllCorrectionsForBreakdown(bd._id);
+                                                    return allCorrections.length > 0 && (
+                                                        <div className="corrections-container">
+                                                            <strong>Corrections Requested ({allCorrections.filter(c => !c.done).length} pending, {allCorrections.filter(c => c.done).length} fixed):</strong>
+                                                            <ul>
+                                                                {allCorrections.map((c, i) => (
+                                                                    <li key={i} className={c.done ? 'correction-done' : 'correction-pending'}>
+                                                                        <div className="correction-header">
+                                                                            <span className="correction-date">
+                                                                                Requested by {c.addedBy?.name || 'Unknown'} on {formatDateTime(c.addedAt)}
+                                                                            </span>
+                                                                            <div>
+                                                                                {c.done ? (
+                                                                                    <span className="badge badge-success">✓ Fixed by Editor</span>
+                                                                                ) : (
+                                                                                    <button
+                                                                                        className="btn btn-success btn-sm"
+                                                                                        onClick={() => handleMarkCorrectionDone(c.workId, c._id)}
+                                                                                    >
+                                                                                        Mark as Fixed
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
                                                                         <div>
-                                                                            {c.done ? (
-                                                                                <span className="badge badge-success">✓ Fixed by Editor</span>
-                                                                            ) : (
-                                                                                <button
-                                                                                    className="btn btn-success btn-sm"
-                                                                                    onClick={() => handleMarkCorrectionDone(c.workId, c._id)}
-                                                                                >
-                                                                                    Mark as Fixed
-                                                                                </button>
+                                                                            {c.text && <p className="correction-text">{c.text}</p>}
+                                                                            {c.voiceFile && (
+                                                                                <audio controls src={c.voiceFile} className="correction-audio" />
+                                                                            )}
+                                                                            {c.mediaFiles && c.mediaFiles.length > 0 && (
+                                                                                <div className="correction-media">
+                                                                                    {c.mediaFiles.map((m, idx) => (
+                                                                                        <a key={idx} href={m} target="_blank" rel="noopener noreferrer">
+                                                                                            📎 Attachment {idx + 1}
+                                                                                        </a>
+                                                                                    ))}
+                                                                                </div>
                                                                             )}
                                                                         </div>
-                                                                    </div>
-                                                                    <div>
-                                                                        {c.text && <p className="correction-text">{c.text}</p>}
-                                                                        {c.voiceFile && (
-                                                                            <audio controls src={c.voiceFile} className="correction-audio" />
-                                                                        )}
-                                                                        {c.mediaFiles && c.mediaFiles.length > 0 && (
-                                                                            <div className="correction-media">
-                                                                                {c.mediaFiles.map((m, idx) => (
-                                                                                    <a key={idx} href={m} target="_blank" rel="noopener noreferrer">
-                                                                                        📎 Attachment {idx + 1}
-                                                                                    </a>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                );
-                                            })()}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    );
+                                                })()
+                                            }
                                         </div>
                                     );
                                 })}
@@ -849,195 +928,203 @@ const AdminProjectPage = () => {
             </div>
 
             {/* Corrections Modal */}
-            {showCorrectionsModal && selectedSubmission && (
-                <div className="modal-overlay" onClick={() => setShowCorrectionsModal(false)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2>Request Corrections</h2>
-                            <button className="modal-close" onClick={() => setShowCorrectionsModal(false)}>
-                                ×
-                            </button>
-                        </div>
-                        <form onSubmit={handleAddCorrection} className="modal-body">
-                            <div className="form-group">
-                                <label className="form-label">Correction Details</label>
-                                <textarea
-                                    className="form-textarea"
-                                    value={correctionText}
-                                    onChange={(e) => setCorrectionText(e.target.value)}
-                                    rows="4"
-                                    placeholder="Describe what needs to be fixed..."
-                                />
+            {
+                showCorrectionsModal && selectedSubmission && (
+                    <div className="modal-overlay" onClick={() => setShowCorrectionsModal(false)}>
+                        <div className="modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h2>Request Corrections</h2>
+                                <button className="modal-close" onClick={() => setShowCorrectionsModal(false)}>
+                                    ×
+                                </button>
                             </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Voice Note</label>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowVoiceRecorder(true)}>
-                                        {voiceFile ? 'Record New Voice Note' : 'Record Voice Note'}
-                                    </button>
-                                    {voiceFile && <span style={{ color: 'green' }}>Voice recorded</span>}
+                            <form onSubmit={handleAddCorrection} className="modal-body">
+                                <div className="form-group">
+                                    <label className="form-label">Correction Details</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        value={correctionText}
+                                        onChange={(e) => setCorrectionText(e.target.value)}
+                                        rows="4"
+                                        placeholder="Describe what needs to be fixed..."
+                                    />
                                 </div>
-                            </div>
 
-                            <div className="form-group">
-                                <label className="form-label">Reference Files (Images, Videos)</label>
-                                <input type="file" multiple onChange={handleMediaChange} className="form-input" />
-                                {mediaFiles.length > 0 && <p style={{ fontSize: '12px', marginTop: '5px' }}>{mediaFiles.length} files selected</p>}
-                            </div>
+                                <div className="form-group">
+                                    <label className="form-label">Voice Note</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowVoiceRecorder(true)}>
+                                            {voiceFile ? 'Record New Voice Note' : 'Record Voice Note'}
+                                        </button>
+                                        {voiceFile && <span style={{ color: 'green' }}>Voice recorded</span>}
+                                    </div>
+                                </div>
 
-                            <div className="modal-footer">
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={() => setShowCorrectionsModal(false)}
-                                >
-                                    Cancel
-                                </button>
-                                <button type="submit" className="btn btn-success">
-                                    Submit Correction Request
-                                </button>
-                            </div>
-                        </form>
+                                <div className="form-group">
+                                    <label className="form-label">Reference Files (Images, Videos)</label>
+                                    <input type="file" multiple onChange={handleMediaChange} className="form-input" />
+                                    {mediaFiles.length > 0 && <p style={{ fontSize: '12px', marginTop: '5px' }}>{mediaFiles.length} files selected</p>}
+                                </div>
+
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowCorrectionsModal(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn btn-success">
+                                        Submit Correction Request
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Voice Recorder Modal */}
-            {showVoiceRecorder && (
-                <div className="modal-overlay" onClick={() => setShowVoiceRecorder(false)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()}>
-                        <VoiceRecorder
-                            onRecordingComplete={handleVoiceRecordingComplete}
-                            onCancel={() => setShowVoiceRecorder(false)}
-                        />
+            {
+                showVoiceRecorder && (
+                    <div className="modal-overlay" onClick={() => setShowVoiceRecorder(false)}>
+                        <div className="modal" onClick={(e) => e.stopPropagation()}>
+                            <VoiceRecorder
+                                onRecordingComplete={handleVoiceRecordingComplete}
+                                onCancel={() => setShowVoiceRecorder(false)}
+                            />
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {showWorkTypeDetails && selectedWorkTypeForDetails && (
-                <WorkTypeDetailsModal
-                    workBreakdown={selectedWorkTypeForDetails}
-                    onClose={() => {
-                        setShowWorkTypeDetails(false);
-                        setSelectedWorkTypeForDetails(null);
-                    }}
-                />
-            )}
+            {
+                showWorkTypeDetails && selectedWorkTypeForDetails && (
+                    <WorkTypeDetailsModal
+                        workBreakdown={selectedWorkTypeForDetails}
+                        onClose={() => {
+                            setShowWorkTypeDetails(false);
+                            setSelectedWorkTypeForDetails(null);
+                        }}
+                    />
+                )
+            }
 
             {/* Edit Work Breakdown Modal */}
-            {editingWork && (
-                <div className="modal-overlay" onClick={() => setEditingWork(null)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2>Edit Work: {editingWork.workType}</h2>
-                            <button className="modal-close" onClick={() => setEditingWork(null)}>×</button>
-                        </div>
-                        <form onSubmit={handleSaveEdit} className="modal-body">
-                            <div className="form-group">
-                                <label className="form-label">Assigned Editor</label>
-                                <select
-                                    className="form-select"
-                                    value={editFormData.assignedEditor}
-                                    onChange={(e) => setEditFormData({ ...editFormData, assignedEditor: e.target.value })}
-                                    required
-                                >
-                                    <option value="">Select Editor</option>
-                                    {editors.map(editor => (
-                                        <option key={editor._id} value={editor._id}>{editor.name} ({editor.email})</option>
-                                    ))}
-                                </select>
+            {
+                editingWork && (
+                    <div className="modal-overlay" onClick={() => setEditingWork(null)}>
+                        <div className="modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h2>Edit Work: {editingWork.workType}</h2>
+                                <button className="modal-close" onClick={() => setEditingWork(null)}>×</button>
                             </div>
-                            <div className="form-group">
-                                <label className="form-label">Deadline</label>
-                                <input
-                                    type="datetime-local"
-                                    className="form-input"
-                                    value={editFormData.deadline}
-                                    onChange={(e) => setEditFormData({ ...editFormData, deadline: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Amount ({project?.currency})</label>
-                                <input
-                                    type="number"
-                                    className="form-input"
-                                    value={editFormData.amount}
-                                    onChange={(e) => setEditFormData({ ...editFormData, amount: e.target.value })}
-                                    required
-                                    min="0"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Sharing Project Details (Optional)</label>
-                                <textarea
-                                    className="form-textarea"
-                                    value={editFormData.shareDetails}
-                                    onChange={(e) => setEditFormData({ ...editFormData, shareDetails: e.target.value })}
-                                    rows="3"
-                                    placeholder="Add any specific instructions or details for the editor..."
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Sharing Links (Optional)</label>
-                                {editFormData.links.map((link, index) => (
-                                    <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            placeholder="Link Title (e.g. Assets)"
-                                            value={link.title}
-                                            onChange={(e) => {
-                                                const newLinks = [...editFormData.links];
-                                                newLinks[index].title = e.target.value;
-                                                setEditFormData({ ...editFormData, links: newLinks });
-                                            }}
-                                            style={{ flex: 1 }}
-                                        />
-                                        <input
-                                            type="url"
-                                            className="form-input"
-                                            placeholder="URL"
-                                            value={link.url}
-                                            onChange={(e) => {
-                                                const newLinks = [...editFormData.links];
-                                                newLinks[index].url = e.target.value;
-                                                setEditFormData({ ...editFormData, links: newLinks });
-                                            }}
-                                            style={{ flex: 2 }}
-                                        />
-                                        {editFormData.links.length > 1 && (
-                                            <button
-                                                type="button"
-                                                className="btn btn-danger btn-sm"
-                                                onClick={() => {
-                                                    const newLinks = editFormData.links.filter((_, i) => i !== index);
+                            <form onSubmit={handleSaveEdit} className="modal-body">
+                                <div className="form-group">
+                                    <label className="form-label">Assigned Editor</label>
+                                    <select
+                                        className="form-select"
+                                        value={editFormData.assignedEditor}
+                                        onChange={(e) => setEditFormData({ ...editFormData, assignedEditor: e.target.value })}
+                                        required
+                                    >
+                                        <option value="">Select Editor</option>
+                                        {editors.map(editor => (
+                                            <option key={editor._id} value={editor._id}>{editor.name} ({editor.email})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Deadline</label>
+                                    <input
+                                        type="datetime-local"
+                                        className="form-input"
+                                        value={editFormData.deadline}
+                                        onChange={(e) => setEditFormData({ ...editFormData, deadline: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Amount ({project?.currency})</label>
+                                    <input
+                                        type="number"
+                                        className="form-input"
+                                        value={editFormData.amount}
+                                        onChange={(e) => setEditFormData({ ...editFormData, amount: e.target.value })}
+                                        required
+                                        min="0"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Sharing Project Details (Optional)</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        value={editFormData.shareDetails}
+                                        onChange={(e) => setEditFormData({ ...editFormData, shareDetails: e.target.value })}
+                                        rows="3"
+                                        placeholder="Add any specific instructions or details for the editor..."
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Sharing Links (Optional)</label>
+                                    {editFormData.links.map((link, index) => (
+                                        <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                placeholder="Link Title (e.g. Assets)"
+                                                value={link.title}
+                                                onChange={(e) => {
+                                                    const newLinks = [...editFormData.links];
+                                                    newLinks[index].title = e.target.value;
                                                     setEditFormData({ ...editFormData, links: newLinks });
                                                 }}
-                                            >
-                                                ×
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary btn-sm"
-                                    onClick={() => setEditFormData({ ...editFormData, links: [...editFormData.links, { title: '', url: '' }] })}
-                                >
-                                    + Add Another Link
-                                </button>
-                            </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-secondary" onClick={() => setEditingWork(null)}>Cancel</button>
-                                <button type="submit" className="btn btn-success">Save Changes</button>
-                            </div>
-                        </form>
+                                                style={{ flex: 1 }}
+                                            />
+                                            <input
+                                                type="url"
+                                                className="form-input"
+                                                placeholder="URL"
+                                                value={link.url}
+                                                onChange={(e) => {
+                                                    const newLinks = [...editFormData.links];
+                                                    newLinks[index].url = e.target.value;
+                                                    setEditFormData({ ...editFormData, links: newLinks });
+                                                }}
+                                                style={{ flex: 2 }}
+                                            />
+                                            {editFormData.links.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-danger btn-sm"
+                                                    onClick={() => {
+                                                        const newLinks = editFormData.links.filter((_, i) => i !== index);
+                                                        setEditFormData({ ...editFormData, links: newLinks });
+                                                    }}
+                                                >
+                                                    ×
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => setEditFormData({ ...editFormData, links: [...editFormData.links, { title: '', url: '' }] })}
+                                    >
+                                        + Add Another Link
+                                    </button>
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-secondary" onClick={() => setEditingWork(null)}>Cancel</button>
+                                    <button type="submit" className="btn btn-success">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
