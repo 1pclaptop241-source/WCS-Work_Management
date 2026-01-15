@@ -5,10 +5,35 @@ import { useDialog } from '../../context/DialogContext';
 import { formatDateTime } from '../../utils/formatDate';
 import OngoingProjects from './OngoingProjects';
 import WorkView from './WorkView';
-import ProjectDetails from './ProjectDetails';
 import confetti from 'canvas-confetti';
 import CountUp from 'react-countup';
-import './ClientDashboard.css';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Plus, Trash2, Link as LinkIcon, FileText, Calendar, DollarSign, Video, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const ClientDashboard = () => {
   const { user } = useAuth();
@@ -17,7 +42,7 @@ const ClientDashboard = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeView, setActiveView] = useState('projects-ongoing'); // 'projects-ongoing', 'projects-created', 'work'
+  const [activeTab, setActiveTab] = useState('projects-ongoing');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [deletionReports, setDeletionReports] = useState([]);
   const [linkTitle, setLinkTitle] = useState('');
@@ -32,80 +57,9 @@ const ClientDashboard = () => {
     rawFootageLinks: [],
     scriptFile: null
   });
-  /*
-  // ...
-  */
+
   const [editingProject, setEditingProject] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-
-  // ...
-
-  const handleEditProject = (project) => {
-    setEditingProject(project);
-
-    // Format date for datetime-local input (YYYY-MM-DDTHH:mm)
-    let deadlineStr = '';
-    if (project.deadline) {
-      const date = new Date(project.deadline);
-      const tzoffset = date.getTimezoneOffset() * 60000;
-      deadlineStr = new Date(date.getTime() - tzoffset).toISOString().slice(0, 16);
-    }
-
-    setFormData({
-      title: project.title,
-      description: project.description,
-      deadline: deadlineStr,
-      projectDetails: project.projectDetails || '',
-      currency: project.currency || 'INR',
-      amount: project.clientAmount || project.amount || '',
-      rawFootageLinks: project.rawFootageLinks || [],
-      scriptFile: null // File input can't be pre-filled securely, leaving empty implies no change unless new file selected
-    });
-    setLinkTitle('');
-    setLinkUrl('');
-    setShowCreateModal(true);
-  };
-
-  const handleModalClose = () => {
-    setShowCreateModal(false);
-    setEditingProject(null);
-    setFormData({
-      title: '',
-      description: '',
-      deadline: '',
-      projectDetails: '',
-      currency: 'INR',
-      amount: '',
-      rawFootageLinks: [],
-      scriptFile: null
-    });
-    setLinkTitle('');
-    setLinkUrl('');
-  };
-
-  // ... in Render ...
-  // Updates for OngoingProjects calls:
-  // onEdit={handleEditProject}
-
-  // Updates for Modal:
-  // Title: {editingProject ? "Edit Project" : "Create New Project"}
-  // Submit Handler:
-  /*
-                   if (editingProject) {
-                        await projectsAPI.update(editingProject._id, submitData); // Need to check if update supports FormData? 
-                        // actually updateProject in backend supports req.body, but creates req.file.
-                        // api.js update method might need check. existing update uses json.
-                        // checking api.js...
-                    } else {
-                        await projectsAPI.createWithFile(submitData);
-                    }
-  */
-
-  // Wait, I need to check `api.js` to see if `update` supports `FormData` or if I need `updateWithFile`.
-  // Usually `update` takes JSON. If script file is updated, I might need a specific endpoint or change `update` to multipart.
-  // The backend `updateProject` uses `req.body`. `multer` (upload.single) is likely not attached to `updateProject` route?
-  // I should check `backend/routes/projects.js`.
 
   useEffect(() => {
     loadProjects();
@@ -117,11 +71,9 @@ const ClientDashboard = () => {
       if (!isBackground) setLoading(true);
       const response = await projectsAPI.getAll();
       const sortedProjects = response.data.sort((a, b) => {
-        // 1. Closed projects always last
         if (a.closed && !b.closed) return 1;
         if (!a.closed && b.closed) return -1;
 
-        // 2. Awaiting Approval (submitted/under_review) first
         const isAwaitingAction = (p) => p.status === 'submitted' || p.status === 'under_review';
         const aWaiting = isAwaitingAction(a);
         const bWaiting = isAwaitingAction(b);
@@ -129,7 +81,6 @@ const ClientDashboard = () => {
         if (aWaiting && !bWaiting) return -1;
         if (!aWaiting && bWaiting) return 1;
 
-        // 3. Fallback to createdAt (newest first)
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
 
@@ -171,376 +122,378 @@ const ClientDashboard = () => {
     }
   };
 
+  const handleEditProject = (project) => {
+    setEditingProject(project);
+
+    let deadlineStr = '';
+    if (project.deadline) {
+      const date = new Date(project.deadline);
+      const tzoffset = date.getTimezoneOffset() * 60000;
+      deadlineStr = new Date(date.getTime() - tzoffset).toISOString().slice(0, 16);
+    }
+
+    setFormData({
+      title: project.title,
+      description: project.description,
+      deadline: deadlineStr,
+      projectDetails: project.projectDetails || '',
+      currency: project.currency || 'INR',
+      amount: project.clientAmount || project.amount || '',
+      rawFootageLinks: project.rawFootageLinks || [],
+      scriptFile: null
+    });
+    setLinkTitle('');
+    setLinkUrl('');
+    setShowCreateModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowCreateModal(false);
+    setEditingProject(null);
+    setFormData({
+      title: '',
+      description: '',
+      deadline: '',
+      projectDetails: '',
+      currency: 'INR',
+      amount: '',
+      rawFootageLinks: [],
+      scriptFile: null
+    });
+    setLinkTitle('');
+    setLinkUrl('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      const submitData = new FormData();
+      submitData.append('title', formData.title);
+      submitData.append('description', formData.description);
+      const isoDeadline = new Date(formData.deadline).toISOString();
+      submitData.append('deadline', isoDeadline);
+      submitData.append('projectDetails', formData.projectDetails || '');
+      submitData.append('currency', formData.currency);
+      submitData.append('amount', formData.amount);
+      submitData.append('rawFootageLinks', JSON.stringify(formData.rawFootageLinks));
+      if (formData.scriptFile) {
+        submitData.append('scriptFile', formData.scriptFile);
+      }
+
+      if (editingProject) {
+        await projectsAPI.updateWithFile(editingProject._id, submitData);
+        await showAlert('Project updated successfully', 'Success');
+      } else {
+        await projectsAPI.createWithFile(submitData);
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#06A77D', '#FFD700', '#007BFF']
+        });
+        await showAlert('Project created successfully! Waiting for admin approval.', 'Success');
+      }
+
+      handleModalClose();
+      await loadProjects();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save project');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (loading) {
-    return <div className="spinner"></div>;
+    return <div className="p-8 flex justify-center text-muted-foreground">Loading dashboard...</div>;
+  }
+
+  // If viewing a specific project work view, render that
+  if (selectedProject) {
+    return (
+      <div className="container mx-auto p-4 md:p-6 animate-in fade-in duration-300">
+        <WorkView
+          project={selectedProject}
+          onBack={() => setSelectedProject(null)}
+          onUpdate={() => loadProjects(true)}
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="container">
-      {activeView !== 'work' && (
-        <div className="dashboard-header">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{ fontSize: '15px', color: '#666', fontWeight: '500' }}>
-              <h3>Welcome, {user.name}!</h3>
-            </div>
-          </div>
-          <br />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => setShowCreateModal(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 16px',
-                fontWeight: '600',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                height: 'fit-content',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <span>+</span> Create Project
-            </button>
-
-            <div className="project-count" style={{ whiteSpace: 'nowrap', backgroundColor: '#e6f7f2', color: '#06A77D', border: '1px solid #06A77D', fontSize: '12px', padding: '4px 10px', borderRadius: '20px' }}>
-              <span style={{ fontSize: '10px', marginRight: '6px' }}>●</span>
-              <strong style={{ marginRight: '4px' }}>
-                <CountUp
-                  end={projects.filter(p => p.accepted && !p.closed).length}
-                  duration={1.5}
-                />
-              </strong>
-              Active
-            </div>
-          </div>
+    <div className="container mx-auto p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Client Dashboard</h1>
+          <p className="text-muted-foreground">Welcome back, {user.name}!</p>
         </div>
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex flex-col items-end mr-4">
+            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Active Projects</span>
+            <span className="text-2xl font-bold text-primary">
+              <CountUp end={projects.filter(p => p.accepted && !p.closed).length} duration={1.5} />
+            </span>
+          </div>
+          <Button onClick={() => setShowCreateModal(true)} className="gap-2 shadow-sm">
+            <Plus className="h-4 w-4" /> Create Project
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      {error && <div className="alert alert-error">{error}</div>}
-
-      {/* Deletion Reports Section */}
+      {/* Deletion Reports */}
       {deletionReports.length > 0 && (
-        <div className="card" style={{ marginBottom: '20px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', position: 'relative' }}>
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 className="card-title" style={{ color: '#856404', margin: 0 }}>
-              ⚠️ Data Deletion Notifications
-            </h2>
-            <button
-              className="modal-close"
-              onClick={() => {
-                setDeletionReports([]);
-                // In a real app, we might mark these as read in DB, but for now UI clearing is requested
-              }}
-              style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#856404' }}
-            >
-              ×
-            </button>
-          </div>
-          <div className="card-body">
+        <Card className="border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10 dark:border-yellow-600">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              <CardTitle className="text-yellow-800 dark:text-yellow-300">Data Deletion Notifications</CardTitle>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setDeletionReports([])} className="text-yellow-800 hover:text-yellow-900">
+              <span className="text-xl">×</span>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
             {deletionReports.map((report) => (
-              <div key={report._id} style={{ marginBottom: '15px', padding: '15px', backgroundColor: 'white', borderRadius: '5px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div>
-                    <strong>Data Deletion Report</strong>
-                    <p style={{ margin: '5px 0', fontSize: '14px', color: '#666' }}>
-                      Deleted on: {formatDateTime(report.deletedAt)}
-                    </p>
-                    <p style={{ margin: '5px 0', fontSize: '14px', color: '#666' }}>
-                      Projects deleted: {report.deletedProjects.length} | Payments deleted: {report.deletedPayments.length}
-                    </p>
-                  </div>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => handleDownloadReport(report.reportId)}
-                  >
-                    Download PDF Report
-                  </button>
+              <div key={report._id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-3 bg-white/50 dark:bg-black/20 rounded-lg gap-4">
+                <div>
+                  <p className="font-medium">Data Deletion Report</p>
+                  <p className="text-sm text-muted-foreground">Deleted on: {formatDateTime(report.deletedAt)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Projects: {report.deletedProjects.length} | Payments: {report.deletedPayments.length}
+                  </p>
                 </div>
-                <p style={{ fontSize: '13px', color: '#856404', fontStyle: 'italic' }}>
-                  The administrator has deleted projects and payments. Please download the PDF report for details.
-                </p>
+                <Button variant="outline" size="sm" onClick={() => handleDownloadReport(report.reportId)} className="gap-2 border-yellow-200 hover:bg-yellow-100">
+                  <FileText className="h-4 w-4" /> Download PDF
+                </Button>
               </div>
             ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      {activeView !== 'work' && (
-        <div className="tabs">
-          <button
-            className={`tab ${activeView === 'projects-ongoing' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveView('projects-ongoing');
-              setSelectedProject(null);
-            }}
-          >
-            Ongoing Projects
-          </button>
-          <button
-            className={`tab ${activeView === 'projects-created' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveView('projects-created');
-              setSelectedProject(null);
-            }}
-          >
-            Created Projects
-          </button>
-        </div>
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+          <TabsTrigger value="projects-ongoing">Ongoing Projects</TabsTrigger>
+          <TabsTrigger value="projects-created">Created Projects</TabsTrigger>
+        </TabsList>
 
-      <div className="client-content">
-        {activeView === 'projects-ongoing' && (
+        <TabsContent value="projects-ongoing" className="mt-6 space-y-4">
           <OngoingProjects
             projects={projects.filter(p => p.accepted)}
             onProjectSelect={(project) => {
               setSelectedProject(project);
-              setActiveView('work');
             }}
             onEdit={handleEditProject}
           />
-        )}
+        </TabsContent>
 
-        {activeView === 'projects-created' && (
+        <TabsContent value="projects-created" className="mt-6 space-y-4">
           <OngoingProjects
             projects={projects.filter(p => !p.accepted)}
             onProjectSelect={(project) => {
               setSelectedProject(project);
-              setActiveView('work');
             }}
             onEdit={handleEditProject}
           />
-        )}
+        </TabsContent>
+      </Tabs>
 
-        {activeView === 'work' && selectedProject && (
-          <WorkView
-            project={selectedProject}
-            onBack={() => {
-              setActiveView('projects-ongoing');
-              setSelectedProject(null);
-            }}
-            onUpdate={() => loadProjects(true)}
-          />
-        )}
-      </div>
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                  <h2>{editingProject ? 'Edit Project' : 'Create New Project'}</h2>
-                  <button className="modal-close" onClick={handleModalClose} style={{ fontSize: '24px', background: 'none', border: 'none', cursor: 'pointer' }}>×</button>
-                </div>
+      {/* Create/Edit Project Modal */}
+      <Dialog open={showCreateModal} onOpenChange={(open) => !open && handleModalClose()}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle>{editingProject ? 'Edit Project' : 'Create New Project'}</DialogTitle>
+          </DialogHeader>
 
-                {/* Visual Roadmap */}
-                {!editingProject && (
-                  <div className="project-roadmap">
-                    <div className="roadmap-line">
-                      <div className="roadmap-line-fill" style={{ width: '0%' }}></div>
+          <ScrollArea className="flex-1 px-6 py-4">
+            <form id="project-form" onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="title">Project Title</Label>
+                <Input
+                  id="title"
+                  placeholder="e.g. Summer Vacation Vlog #1"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Project Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Describe your vision, style, and requirements..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  required
+                  className="min-h-[100px]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Budget Estimate</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="amount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Amount"
+                        className="pl-9"
+                        value={formData.amount}
+                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                        required
+                        disabled={editingProject && editingProject.accepted}
+                      />
                     </div>
-                    <div className="roadmap-step active">
-                      <div className="step-circle">1</div>
-                      <span className="step-label">Submit</span>
-                    </div>
-                    <div className="roadmap-step">
-                      <div className="step-circle">2</div>
-                      <span className="step-label">Review</span>
-                    </div>
-                    <div className="roadmap-step">
-                      <div className="step-circle">3</div>
-                      <span className="step-label">Assign</span>
-                    </div>
-                    <div className="roadmap-step">
-                      <div className="step-circle">4</div>
-                      <span className="step-label">Start</span>
+                    <div className="w-[100px]">
+                      <select
+                        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        value={formData.currency}
+                        onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                        disabled={editingProject && editingProject.accepted}
+                      >
+                        <option value="INR">INR</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                      </select>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-            <form
-              className="modal-body"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (isSubmitting) return;
-
-                try {
-                  setIsSubmitting(true);
-                  const submitData = new FormData();
-                  submitData.append('title', formData.title);
-                  submitData.append('description', formData.description);
-                  // Fix: Convert local datetime to ISO string to preserve absolute time
-                  const isoDeadline = new Date(formData.deadline).toISOString();
-                  submitData.append('deadline', isoDeadline);
-                  submitData.append('projectDetails', formData.projectDetails || '');
-                  submitData.append('currency', formData.currency);
-                  submitData.append('amount', formData.amount);
-                  submitData.append('rawFootageLinks', JSON.stringify(formData.rawFootageLinks));
-                  if (formData.scriptFile) {
-                    submitData.append('scriptFile', formData.scriptFile);
-                  }
-
-                  if (editingProject) {
-                    await projectsAPI.updateWithFile(editingProject._id, submitData);
-                    await showAlert('Project updated successfully', 'Success');
-                  } else {
-                    await projectsAPI.createWithFile(submitData);
-                    // Success Celebration
-                    confetti({
-                      particleCount: 150,
-                      spread: 70,
-                      origin: { y: 0.6 },
-                      colors: ['#06A77D', '#FFD700', '#007BFF']
-                    });
-                    await showAlert('Project created successfully! Waiting for admin approval.', 'Success');
-                  }
-
-                  handleModalClose();
-                  await loadProjects();
-                } catch (err) {
-                  setError(err.response?.data?.message || 'Failed to save project');
-                } finally {
-                  setIsSubmitting(false);
-                }
-              }}
-            >
-              <div className="form-group">
-                <label className="form-label">Project Title</label>
-                <input className="form-input" placeholder="e.g. Summer Vacation Vlog #1" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Project Description</label>
-                <textarea className="form-textarea" placeholder="Describe your vision, style, and any specific requirements..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Project Assets & Links</label>
-                <span className="form-helper">Add links to Google Drive, Dropbox, or WeTransfer folders containing your footage.</span>
-                <div style={{ marginBottom: '10px', marginTop: '10px' }}>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="Link Title"
-                      value={linkTitle}
-                      onChange={(e) => setLinkTitle(e.target.value)}
-                      style={{ flex: 1 }}
-                    />
-                    <input
-                      type="url"
-                      className="form-input"
-                      placeholder="Link URL"
-                      value={linkUrl}
-                      onChange={(e) => setLinkUrl(e.target.value)}
-                      style={{ flex: 2 }}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm"
-                      onClick={() => {
-                        if (linkTitle && linkUrl) {
-                          setFormData({
-                            ...formData,
-                            rawFootageLinks: [...formData.rawFootageLinks, { title: linkTitle, url: linkUrl }]
-                          });
-                          setLinkTitle('');
-                          setLinkUrl('');
-                        }
-                      }}
-                    >
-                      Add Link
-                    </button>
-                  </div>
-                  {formData.rawFootageLinks.length > 0 && (
-                    <div style={{ marginTop: '10px' }}>
-                      {formData.rawFootageLinks.map((link, index) => (
-                        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px', padding: '8px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-                          <span style={{ flex: 1, fontWeight: 'bold' }}>{link.title}:</span>
-                          <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ flex: 2, color: '#2E86AB' }}>{link.url}</a>
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => {
-                              setFormData({
-                                ...formData,
-                                rawFootageLinks: formData.rawFootageLinks.filter((_, i) => i !== index)
-                              });
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                  {editingProject && editingProject.accepted && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> Budget locked after acceptance
+                    </p>
                   )}
                 </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Budget / Estimate</label>
-                <span className="form-helper">Specify your expected budget for this project.</span>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}
-                  title={editingProject && editingProject.accepted ? "Budget cannot be changed after project acceptance" : ""}>
-                  <input
-                    type="number"
-                    className="form-input"
-                    placeholder="Amount"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    required
-                    min="0"
-                    step="0.01"
-                    style={{ flex: 2, cursor: editingProject && editingProject.accepted ? 'not-allowed' : 'text' }}
-                    disabled={editingProject && editingProject.accepted}
-                  />
-                  <select
-                    className="form-select"
-                    value={formData.currency}
-                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    style={{ flex: 1, cursor: editingProject && editingProject.accepted ? 'not-allowed' : 'pointer' }}
-                    disabled={editingProject && editingProject.accepted}
-                  >
-                    <option value="INR">INR (₹)</option>
-                    <option value="USD">USD ($)</option>
-                    <option value="EUR">EUR (€)</option>
-                  </select>
+
+                <div className="space-y-2">
+                  <Label htmlFor="deadline">Desired Deadline</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="deadline"
+                      type="datetime-local"
+                      className="pl-9"
+                      value={formData.deadline}
+                      onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Desired Deadline</label>
-                <input type="datetime-local" className="form-input" value={formData.deadline} onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Script or Guideline (Optional)</label>
-                <span className="form-helper">Upload any PDF or Word document that outlines the flow.</span>
-                <input
-                  type="file"
-                  className="form-input"
-                  accept=".pdf,.doc,.docx"
-                  style={{ marginTop: '8px' }}
-                  onChange={(e) => setFormData({ ...formData, scriptFile: e.target.files[0] })}
-                />
-                {formData.scriptFile && (
-                  <p style={{ marginTop: '5px', fontSize: '14px', color: '#666' }}>
-                    Selected: {formData.scriptFile.name}
-                  </p>
+
+              <div className="space-y-4 border rounded-md p-4 bg-muted/20">
+                <div className="space-y-1">
+                  <Label>Project Assets & Links</Label>
+                  <p className="text-xs text-muted-foreground">Add links to cloud folders (Drive, Dropbox) with your footage.</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Link Title (e.g. Raw Footage)"
+                    value={linkTitle}
+                    onChange={(e) => setLinkTitle(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Input
+                    placeholder="URL"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    className="flex-[2]"
+                  />
+                  <Button type="button" onClick={() => {
+                    if (linkTitle && linkUrl) {
+                      setFormData({
+                        ...formData,
+                        rawFootageLinks: [...formData.rawFootageLinks, { title: linkTitle, url: linkUrl }]
+                      });
+                      setLinkTitle('');
+                      setLinkUrl('');
+                    }
+                  }}>
+                    Add
+                  </Button>
+                </div>
+
+                {formData.rawFootageLinks.length > 0 && (
+                  <div className="space-y-2">
+                    {formData.rawFootageLinks.map((link, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-background rounded border text-sm">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <LinkIcon className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                          <span className="font-medium">{link.title}:</span>
+                          <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">{link.url}</a>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              rawFootageLinks: formData.rawFootageLinks.filter((_, i) => i !== index)
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-              <div className="form-group">
-                <label className="form-label">Additional Instructions (Optional)</label>
-                <textarea className="form-textarea" placeholder="Any final notes for the editor..." value={formData.projectDetails} onChange={(e) => setFormData({ ...formData, projectDetails: e.target.value })} />
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleModalClose} disabled={isSubmitting}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                  {isSubmitting ? 'Processing...' : (editingProject ? 'Update' : 'Create')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
+              <div className="space-y-2">
+                <Label htmlFor="script">Script or Guideline (Optional)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="script"
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={(e) => setFormData({ ...formData, scriptFile: e.target.files[0] })}
+                    className="cursor-pointer"
+                  />
+                </div>
+                {formData.scriptFile && (
+                  <p className="text-xs text-muted-foreground">Selected: {formData.scriptFile.name}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="details">Additional Instructions</Label>
+                <Textarea
+                  id="details"
+                  placeholder="Any final notes..."
+                  value={formData.projectDetails}
+                  onChange={(e) => setFormData({ ...formData, projectDetails: e.target.value })}
+                />
+              </div>
+
+            </form>
+          </ScrollArea>
+
+          <DialogFooter className="px-6 py-4 border-t bg-muted/20">
+            <Button variant="outline" type="button" onClick={handleModalClose} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" form="project-form" disabled={isSubmitting}>
+              {isSubmitting ? 'Processing...' : (editingProject ? 'Update Project' : 'Create Project')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -4,7 +4,27 @@ import { worksAPI, workBreakdownAPI, API_BASE_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatDate, formatDateTime } from '../../utils/formatDate';
 import ProjectRoadmap from '../common/ProjectRoadmap';
-import './UploadWorkPage.css';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+    ArrowLeft, Upload, FileText, Link as LinkIcon, Download,
+    MessageSquare, Send, Paperclip, Mic, FileIcon,
+    AlertCircle, CheckCircle2, Clock, Info
+} from 'lucide-react';
 
 const UploadWorkPage = () => {
     const { workBreakdownId } = useParams();
@@ -12,11 +32,9 @@ const UploadWorkPage = () => {
     const { user } = useAuth();
 
     const [workBreakdown, setWorkBreakdown] = useState(null);
-    const [workFile, setWorkFile] = useState(null);
     const [uploadType, setUploadType] = useState('output'); // 'output' or 'source'
     const [linkUrl, setLinkUrl] = useState('');
     const [workLinkUrl, setWorkLinkUrl] = useState('');
-    // const [editorMessage, setEditorMessage] = useState(''); // Removed message state
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
@@ -90,27 +108,8 @@ const UploadWorkPage = () => {
             setError('');
             setSuccess(false);
 
-            // Determine what we are sending based on active tab
-            // If output tab: send linkUrl (and null source)
-            // If source tab: send workLinkUrl (and null output)
-            // Backend now supports partials.
-
             const submitLinkUrl = uploadType === 'output' ? linkUrl : '';
             const submitWorkLinkUrl = uploadType === 'source' ? workLinkUrl : '';
-            /*
-            95:             const formData = new FormData();
-            96:             formData.append('projectId', workBreakdown.project._id);
-            ...
-            109:             await worksAPI.upload(
-            110:                 workBreakdown.project._id,
-            ...
-            */
-            // The `formData` variable created in lines 95-107 is UNUSED in the original `handleSubmit`.
-            // The API call uses arguments. 
-            // So I should modify the API call to pass `workFile` and update `api.js` later.
-            // OR I should use the `formData` I built and pass THAT if `worksAPI.upload` supports it.
-            // To be robust, I will use `formData` and update `api.js` to accept it, OR I will update the arguments here and in `api.js`.
-            // I will update the arguments here to include `workFile`.
 
             await worksAPI.upload(
                 workBreakdown.project._id,
@@ -140,380 +139,377 @@ const UploadWorkPage = () => {
     };
 
     if (loading) {
-        return <div className="spinner"></div>;
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
     }
 
     if (!workBreakdown) {
         return (
-            <div className="container">
-                <div className="alert alert-error">{error || 'Work not found'}</div>
-                <button className="btn btn-secondary" onClick={() => navigate('/editor/dashboard')}>
-                    Back to Dashboard
-                </button>
+            <div className="container max-w-4xl py-10">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error || 'Work not found'}</AlertDescription>
+                </Alert>
+                <Button className="mt-4" onClick={() => navigate('/editor/dashboard')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+                </Button>
             </div>
         );
     }
 
     if (workBreakdown.status === 'declined') {
         return (
-            <div className="container">
-                <div className="alert alert-error" style={{ backgroundColor: '#f8d7da', color: '#721c24' }}>
-                    <h3>🚫 Work Declined</h3>
-                    <p>You have declined this work. You cannot upload files or view details for declined tasks.</p>
-                </div>
-                <button className="btn btn-secondary" onClick={() => navigate('/editor/dashboard')}>
-                    Back to Dashboard
-                </button>
+            <div className="container max-w-4xl py-10">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Work Declined</AlertTitle>
+                    <AlertDescription>You have declined this work. You cannot upload files or view details for declined tasks.</AlertDescription>
+                </Alert>
+                <Button className="mt-4" variant="outline" onClick={() => navigate('/editor/dashboard')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+                </Button>
             </div>
         );
     }
 
     return (
-        <div className="upload-work-page">
-            <div className="page-header">
-                <button className="btn-back" onClick={() => navigate('/editor/dashboard')}>
-                    ← Back to Dashboard
-                </button>
-                <h1>Upload Work: {workBreakdown.workType}</h1>
+        <div className="container max-w-[1400px] py-6 space-y-6">
+            <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" onClick={() => navigate('/editor/dashboard')}>
+                    <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                </Button>
+                <h1 className="text-2xl font-bold tracking-tight">Upload Work: {workBreakdown.workType}</h1>
             </div>
 
-            <div className="page-content">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column - Work Details */}
-                <div className="work-details-section">
+                <div className="lg:col-span-2 space-y-6">
                     <ProjectRoadmap
                         projectId={workBreakdown.project?._id}
                         currentWorkType={workBreakdown.workType}
                         projectTitle={workBreakdown.project?.title}
                     />
 
-                    <div className="card">
-                        <div className="card-header">
-                            <h2>Work Details</h2>
-                        </div>
-                        <div className="card-body">
-                            <div className="detail-item">
-                                <strong>Project:</strong>
-                                <span>{workBreakdown.project?.title}</span>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Work Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Project</Label>
+                                    <div className="font-medium">{workBreakdown.project?.title}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Work Type</Label>
+                                    <div className="font-medium">{workBreakdown.workType}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Deadline</Label>
+                                    <div className="font-medium">{formatDate(workBreakdown.deadline)}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Amount</Label>
+                                    <div className="font-medium">
+                                        {workBreakdown.project?.currency === 'INR' ? '₹' :
+                                            workBreakdown.project?.currency === 'USD' ? '$' :
+                                                workBreakdown.project?.currency === 'EUR' ? '€' : ''}
+                                        {workBreakdown.amount} {workBreakdown.project?.currency || 'INR'}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="detail-item">
-                                <strong>Work Type:</strong>
-                                <span>{workBreakdown.workType}</span>
-                            </div>
-                            <div className="detail-item">
-                                <strong>Deadline:</strong>
-                                <span>{formatDate(workBreakdown.deadline)}</span>
-                            </div>
-                            <div className="detail-item">
-                                <strong>Amount:</strong>
-                                <span>
-                                    {workBreakdown.project?.currency === 'INR' ? '₹' :
-                                        workBreakdown.project?.currency === 'USD' ? '$' :
-                                            workBreakdown.project?.currency === 'EUR' ? '€' : ''}
-                                    {workBreakdown.amount} {workBreakdown.project?.currency || 'INR'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
 
                     {/* Client Script Section */}
                     {workBreakdown.project?.scriptFile && (
-                        <div className="card">
-                            <div className="card-header">
-                                <h3>📄 Client Script</h3>
-                            </div>
-                            <div className="card-body">
-                                <a
-                                    href={workBreakdown.project.scriptFile.match(/^https?:\/\//) ? workBreakdown.project.scriptFile : (workBreakdown.project.scriptFile.startsWith('/') || workBreakdown.project.scriptFile.startsWith('uploads') ? `${API_BASE_URL}${workBreakdown.project.scriptFile}` : `https://${workBreakdown.project.scriptFile}`)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="script-download-btn"
-                                >
-                                    <span>📥</span>
-                                    <span>Download Script File</span>
-                                    <span>↗</span>
-                                </a>
-                            </div>
-                        </div>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> Client Script</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <Button variant="outline" asChild className="w-full justify-start">
+                                    <a
+                                        href={workBreakdown.project.scriptFile.match(/^https?:\/\//) ? workBreakdown.project.scriptFile : (workBreakdown.project.scriptFile.startsWith('/') || workBreakdown.project.scriptFile.startsWith('uploads') ? `${API_BASE_URL}${workBreakdown.project.scriptFile}` : `https://${workBreakdown.project.scriptFile}`)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Download Script File
+                                    </a>
+                                </Button>
+                            </CardContent>
+                        </Card>
                     )}
 
                     {/* Work Instructions */}
                     {(workBreakdown.clientInstructions || workBreakdown.adminInstructions || workBreakdown.shareDetails || (workBreakdown.links && workBreakdown.links.length > 0)) && (
-                        <div className="card">
-                            <div className="card-header">
-                                <h3>📋 Work Instructions</h3>
-                            </div>
-                            <div className="card-body">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><Info className="h-5 w-5" /> Instructions</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
                                 {/* Client Instructions */}
                                 {workBreakdown.clientInstructions && (
-                                    <div style={{ marginBottom: '15px', padding: '10px', background: '#f0f9ff', borderRadius: '8px', borderLeft: '4px solid #0ea5e9' }}>
-                                        <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{workBreakdown.clientInstructions}</p>
+                                    <div className="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500">
+                                        <Label className="text-blue-700 font-semibold mb-1 block">Client Instructions</Label>
+                                        <p className="text-sm text-blue-900 whitespace-pre-wrap">{workBreakdown.clientInstructions}</p>
                                     </div>
                                 )}
 
                                 {/* Admin Instructions */}
                                 {(workBreakdown.adminInstructions || workBreakdown.shareDetails) && (
-                                    <div style={{ marginBottom: '15px' }}>
+                                    <div className="space-y-2">
                                         {workBreakdown.adminInstructions && (
-                                            <p style={{ whiteSpace: 'pre-wrap', marginBottom: '10px' }}>{workBreakdown.adminInstructions}</p>
+                                            <div>
+                                                <Label className="font-semibold">Admin Instructions</Label>
+                                                <p className="text-sm text-foreground whitespace-pre-wrap mt-1">{workBreakdown.adminInstructions}</p>
+                                            </div>
                                         )}
                                         {workBreakdown.shareDetails && (
-                                            <div className="admin-details">
-                                                <strong>Details:</strong>
-                                                <p>{workBreakdown.shareDetails}</p>
+                                            <div className="bg-muted p-3 rounded-md">
+                                                <Label className="font-semibold">Details</Label>
+                                                <p className="text-sm text-muted-foreground mt-1">{workBreakdown.shareDetails}</p>
                                             </div>
                                         )}
                                     </div>
                                 )}
 
                                 {workBreakdown.links && workBreakdown.links.length > 0 && (
-                                    <div className="admin-links">
-                                        <strong>Shared Links:</strong>
-                                        {workBreakdown.links.map((link, idx) => (
-                                            <a
-                                                key={idx}
-                                                href={link.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="admin-link"
-                                            >
-                                                🔗 {link.title || `Link ${idx + 1}`}
-                                            </a>
-                                        ))}
+                                    <div className="space-y-2">
+                                        <Label className="font-semibold">Shared Links</Label>
+                                        <div className="grid gap-2">
+                                            {workBreakdown.links.map((link, idx) => (
+                                                <a
+                                                    key={idx}
+                                                    href={link.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 text-sm text-primary hover:underline bg-muted/50 p-2 rounded-md transition-colors hover:bg-muted"
+                                                >
+                                                    <LinkIcon className="h-4 w-4" />
+                                                    {link.title || `Link ${idx + 1}`}
+                                                </a>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     )}
 
                     {/* Work Feedback & Discussion */}
                     {workBreakdown.feedback && workBreakdown.feedback.length > 0 && (
-                        <div className="card feedback-card">
-                            <div className="card-header">
-                                <h3>💬 General Feedback & Discussion</h3>
-                            </div>
-                            <div className="card-body">
-                                <div className="feedback-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    {workBreakdown.feedback.map((f, i) => (
-                                        <div
-                                            key={i}
-                                            className={`feedback-bubble ${f.from?._id === user._id ? 'sent' : 'received'}`}
-                                            style={{
-                                                padding: '10px 15px',
-                                                borderRadius: '15px',
-                                                backgroundColor: f.from?._id === user._id ? '#e3f2fd' : '#f1f5f9',
-                                                border: '1px solid #e2e8f0',
-                                                maxWidth: '85%',
-                                                alignSelf: f.from?._id === user._id ? 'flex-end' : 'flex-start'
-                                            }}
-                                        >
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '4px' }}>
-                                                <strong style={{ fontSize: '11px', color: '#1976d2' }}>{f.from?.name || 'User'} ({f.from?.role})</strong>
-                                                <span style={{ fontSize: '10px', color: '#94a3b8' }}>{formatDateTime(f.timestamp)}</span>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Discussion</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <ScrollArea className="h-[300px] w-full rounded-md border p-4">
+                                    <div className="space-y-4">
+                                        {workBreakdown.feedback.map((f, i) => (
+                                            <div
+                                                key={i}
+                                                className={`flex flex-col max-w-[85%] ${f.from?._id === user._id ? 'ml-auto items-end' : 'mr-auto items-start'}`}
+                                            >
+                                                <div className={`p-3 rounded-lg text-sm ${f.from?._id === user._id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                                                    <p className="whitespace-pre-wrap">{f.content}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-1 px-1">
+                                                    <span className="text-xs font-semibold text-muted-foreground">{f.from?.name || 'User'}</span>
+                                                    <span className="text-[10px] text-muted-foreground">{formatDateTime(f.timestamp)}</span>
+                                                </div>
                                             </div>
-                                            <p style={{ margin: 0, fontSize: '13px', color: '#334155', whiteSpace: 'pre-wrap' }}>{f.content}</p>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
 
-                                <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
-                                    <input
-                                        type="text"
-                                        style={{
-                                            flex: 1,
-                                            padding: '8px 12px',
-                                            borderRadius: '20px',
-                                            border: '1px solid #cbd5e1',
-                                            fontSize: '13px',
-                                            outline: 'none'
-                                        }}
-                                        placeholder="Write a message..."
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="Type your message..."
                                         value={feedbackText}
                                         onChange={(e) => setFeedbackText(e.target.value)}
                                         onKeyPress={(e) => e.key === 'Enter' && handleAddFeedback()}
                                     />
-                                    <button
-                                        className="btn btn-primary btn-sm"
-                                        style={{ borderRadius: '20px', padding: '0 15px' }}
-                                        onClick={handleAddFeedback}
-                                        disabled={isSubmittingFeedback || !feedbackText.trim()}
-                                    >
-                                        {isSubmittingFeedback ? '...' : 'Send'}
-                                    </button>
+                                    <Button onClick={handleAddFeedback} disabled={isSubmittingFeedback || !feedbackText.trim()}>
+                                        <Send className="h-4 w-4" />
+                                    </Button>
                                 </div>
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     )}
 
                     {/* Previous Submissions */}
                     {submissions.length > 0 && (
-                        <div className="card">
-                            <div className="card-header">
-                                <h3>History & Corrections</h3>
-                            </div>
-                            <div className="card-body">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><History className="h-5 w-5" /> History & Corrections</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
                                 {submissions.map((sub) => (
-                                    <div key={sub._id} className="submission-item">
-                                        <div className="submission-header">
-                                            {sub.submissionType === 'link' ? (
-                                                <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="submission-link">
-                                                    🔗 {sub.fileName}
-                                                </a>
-                                            ) : (
-                                                <a href={sub.fileUrl.match(/^https?:\/\//) ? sub.fileUrl : (sub.fileUrl.startsWith('/') || sub.fileUrl.startsWith('uploads') ? `${API_BASE_URL}${sub.fileUrl}` : `https://${sub.fileUrl}`)} target="_blank" rel="noopener noreferrer" className="submission-link">
-                                                    📁 {sub.fileName}
-                                                </a>
-                                            )}
-                                            <span className={`badge ${sub.status === 'approved' ? 'badge-success' : 'badge-warning'}`}>
-                                                {sub.status}
-                                            </span>
-                                            <span className="date">{formatDateTime(sub.submittedAt)}</span>
+                                    <div key={sub._id} className="border rounded-lg p-4 space-y-3 bg-muted/10">
+                                        <div className="flex flex-wrapjustify-between items-start gap-2">
+                                            <div className="flex items-center gap-2">
+                                                {sub.submissionType === 'link' ? (
+                                                    <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline font-medium">
+                                                        <LinkIcon className="h-4 w-4" /> {sub.fileName}
+                                                    </a>
+                                                ) : (
+                                                    <a href={sub.fileUrl.match(/^https?:\/\//) ? sub.fileUrl : (sub.fileUrl.startsWith('/') || sub.fileUrl.startsWith('uploads') ? `${API_BASE_URL}${sub.fileUrl}` : `https://${sub.fileUrl}`)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline font-medium">
+                                                        <FileIcon className="h-4 w-4" /> {sub.fileName}
+                                                    </a>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant={sub.status === 'approved' ? 'default' : 'secondary'} className={sub.status === 'approved' ? 'bg-green-500 hover:bg-green-600' : ''}>
+                                                    {sub.status}
+                                                </Badge>
+                                                <span className="text-xs text-muted-foreground">{formatDateTime(sub.submittedAt)}</span>
+                                            </div>
                                         </div>
 
                                         {sub.editorMessage && (
-                                            <div className="editor-message">
-                                                <strong>Your Message:</strong>
-                                                <p>{sub.editorMessage}</p>
+                                            <div className="bg-blue-50/50 p-3 rounded-md text-sm border border-blue-100">
+                                                <strong className="text-blue-700 block mb-1">Your Message:</strong>
+                                                <p className="text-foreground">{sub.editorMessage}</p>
                                             </div>
                                         )}
 
                                         {sub.corrections && sub.corrections.length > 0 && (
-                                            <div className="corrections-container">
-                                                <h4>Corrections ({sub.corrections.filter(c => !c.done).length} pending)</h4>
-                                                <ul>
+                                            <div className="bg-amber-50/50 mt-4 p-4 rounded-md border border-amber-100">
+                                                <h4 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                                                    <AlertCircle className="h-4 w-4" />
+                                                    Corrections ({sub.corrections.filter(c => !c.done).length} pending)
+                                                </h4>
+                                                <div className="space-y-3">
                                                     {sub.corrections.map((corr, idx) => (
-                                                        <li key={idx} className={corr.done ? 'correction-done' : 'correction-pending'}>
-                                                            <div className="correction-status">
-                                                                <span className="date">{formatDateTime(corr.addedAt)}</span>
-                                                                <span className={corr.done ? 'status-fixed' : 'status-pending'}>
-                                                                    {corr.done ? '✓ Fixed' : '⚠ Needs Fix'}
-                                                                </span>
+                                                        <div key={idx} className={`p-3 rounded-md border ${corr.done ? 'bg-green-50/50 border-green-200' : 'bg-white border-amber-200 shadow-sm'}`}>
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <span className="text-xs text-muted-foreground">{formatDateTime(corr.addedAt)}</span>
+                                                                <Badge variant={corr.done ? 'outline' : 'warning'} className={corr.done ? 'text-green-600 border-green-200' : 'bg-amber-100 text-amber-800 border-amber-200'}>
+                                                                    {corr.done ? <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Fixed</span> : 'Needs Fix'}
+                                                                </Badge>
                                                             </div>
-                                                            {corr.text && <div className="correction-text">{corr.text}</div>}
+                                                            {corr.text && <p className="text-sm text-foreground mb-2">{corr.text}</p>}
+
                                                             {corr.voiceFile && (
-                                                                <div className="correction-voice">
-                                                                    <strong>🎤 Voice Note:</strong>
-                                                                    <audio controls src={corr.voiceFile.match(/^https?:\/\//) ? corr.voiceFile : (corr.voiceFile.startsWith('/') || corr.voiceFile.startsWith('uploads') ? `${API_BASE_URL}${corr.voiceFile}` : `https://${corr.voiceFile}`)} />
+                                                                <div className="mt-2 text-sm">
+                                                                    <div className="flex items-center gap-1 font-medium text-muted-foreground mb-1"><Mic className="h-3 w-3" /> Voice Note</div>
+                                                                    <audio controls src={corr.voiceFile.match(/^https?:\/\//) ? corr.voiceFile : (corr.voiceFile.startsWith('/') || corr.voiceFile.startsWith('uploads') ? `${API_BASE_URL}${corr.voiceFile}` : `https://${corr.voiceFile}`)} className="w-full h-8" />
                                                                 </div>
                                                             )}
+
                                                             {corr.mediaFiles && corr.mediaFiles.length > 0 && (
-                                                                <div className="correction-media">
-                                                                    <strong>📎 Attachments:</strong>
-                                                                    {corr.mediaFiles.map((m, i) => (
-                                                                        <a key={i} href={m.match(/^https?:\/\//) ? m : (m.startsWith('/') || m.startsWith('uploads') ? `${API_BASE_URL}${m}` : `https://${m}`)} target="_blank" rel="noopener noreferrer">
-                                                                            📄 File {i + 1}
-                                                                        </a>
-                                                                    ))}
+                                                                <div className="mt-2">
+                                                                    <div className="flex items-center gap-1 font-medium text-muted-foreground mb-1"><Paperclip className="h-3 w-3" /> Attachments</div>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {corr.mediaFiles.map((m, i) => (
+                                                                            <a
+                                                                                key={i}
+                                                                                href={m.match(/^https?:\/\//) ? m : (m.startsWith('/') || m.startsWith('uploads') ? `${API_BASE_URL}${m}` : `https://${m}`)}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="text-xs bg-muted hover:bg-muted/80 px-2 py-1 rounded border flex items-center gap-1 transition-colors"
+                                                                            >
+                                                                                <FileIcon className="h-3 w-3" /> File {i + 1}
+                                                                            </a>
+                                                                        ))}
+                                                                    </div>
                                                                 </div>
                                                             )}
-                                                        </li>
+                                                        </div>
                                                     ))}
-                                                </ul>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
                                 ))}
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     )}
                 </div>
 
                 {/* Right Column - Upload Form */}
-                <div className="upload-form-section">
-                    <div className="card">
-                        <div className="card-header">
-                            <h2>Upload Your Work</h2>
-                        </div>
-                        <div className="card-body">
-                            {error && <div className="alert alert-error">{error}</div>}
-                            {success && <div className="alert alert-success">Work uploaded successfully! Redirecting...</div>}
-
-                            <div className="upload-tabs" style={{ display: 'flex', borderBottom: '1px solid #e0e0e0', marginBottom: '20px' }}>
-                                <button
-                                    type="button"
-                                    className={`tab-btn ${uploadType === 'output' ? 'active' : ''}`}
-                                    onClick={() => setUploadType('output')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '12px',
-                                        background: 'none',
-                                        border: 'none',
-                                        borderBottom: uploadType === 'output' ? '2px solid #2E86AB' : 'none',
-                                        color: uploadType === 'output' ? '#2E86AB' : '#666',
-                                        fontWeight: uploadType === 'output' ? '600' : '400',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    📤 Final Output
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`tab-btn ${uploadType === 'source' ? 'active' : ''}`}
-                                    onClick={() => setUploadType('source')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '12px',
-                                        background: 'none',
-                                        border: 'none',
-                                        borderBottom: uploadType === 'source' ? '2px solid #2E86AB' : 'none',
-                                        color: uploadType === 'source' ? '#2E86AB' : '#666',
-                                        fontWeight: uploadType === 'source' ? '600' : '400',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    📦 Source File
-                                </button>
-                            </div>
-
-                            <form onSubmit={handleSubmit}>
-                                {/* Final Output Tab */}
-                                {uploadType === 'output' && (
-                                    <div className="form-group">
-                                        <label className="form-label">Link URL (Output)</label>
-                                        <input
-                                            type="url"
-                                            className="form-input"
-                                            value={linkUrl}
-                                            onChange={(e) => setLinkUrl(e.target.value)}
-                                            placeholder="https://example.com/your-work"
-                                            required={uploadType === 'output'}
-                                        />
-                                        <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                                            Provide the link to the final rendered output (e.g. Frame.io, Vimeo, Drive).
-                                        </p>
-                                    </div>
+                <div className="lg:col-span-1">
+                    <div className="sticky top-6">
+                        <Card className="border-2 border-primary/10 shadow-lg">
+                            <CardHeader className="bg-muted/30 pb-4">
+                                <CardTitle className="flex items-center gap-2"><Upload className="h-5 w-5 text-primary" /> Upload Work</CardTitle>
+                                <CardDescription>Submit your work for review</CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                {error && (
+                                    <Alert variant="destructive" className="mb-4">
+                                        <AlertCircle className="h-4 w-4" />
+                                        <AlertTitle>Error</AlertTitle>
+                                        <AlertDescription>{error}</AlertDescription>
+                                    </Alert>
+                                )}
+                                {success && (
+                                    <Alert className="mb-4 border-green-200 bg-green-50 text-green-800">
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                        <AlertTitle>Success</AlertTitle>
+                                        <AlertDescription>Work uploaded successfully! Redirecting...</AlertDescription>
+                                    </Alert>
                                 )}
 
-                                {/* Source File Tab */}
-                                {uploadType === 'source' && (
-                                    <div className="form-group">
-                                        <label className="form-label">
-                                            Work/Project File (Source)
-                                        </label>
-                                        <input
-                                            type="url"
-                                            className="form-input"
-                                            value={workLinkUrl}
-                                            onChange={(e) => setWorkLinkUrl(e.target.value)}
-                                            placeholder="https://drive.google.com/..."
-                                            required={uploadType === 'source'}
-                                        />
-                                        <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                                            Provide the link to the source project files for the next editor.
-                                        </p>
-                                    </div>
-                                )}
+                                <Tabs defaultValue="output" value={uploadType} onValueChange={setUploadType} className="w-full">
+                                    <TabsList className="grid w-full grid-cols-2 mb-4">
+                                        <TabsTrigger value="output">Final Output</TabsTrigger>
+                                        <TabsTrigger value="source">Source File</TabsTrigger>
+                                    </TabsList>
 
-                                {/* Submit Button */}
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary btn-block"
-                                    style={{ marginTop: '20px' }}
-                                    disabled={uploading}
-                                >
-                                    {uploading ? 'Uploading...' : (uploadType === 'output' ? '📤 Upload Final Output' : '📦 Upload Source File')}
-                                </button>
-                            </form>
-                        </div>
+                                    <form onSubmit={handleSubmit}>
+                                        <TabsContent value="output" className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="output-url">Final Output URL</Label>
+                                                <Input
+                                                    id="output-url"
+                                                    placeholder="https://example.com/your-work"
+                                                    value={linkUrl}
+                                                    onChange={(e) => setLinkUrl(e.target.value)}
+                                                    required={uploadType === 'output'}
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    Provide the link to the final rendered output (e.g. Frame.io, Vimeo, Drive).
+                                                </p>
+                                            </div>
+                                        </TabsContent>
+
+                                        <TabsContent value="source" className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="source-url">Source File URL</Label>
+                                                <Input
+                                                    id="source-url"
+                                                    placeholder="https://drive.google.com/..."
+                                                    value={workLinkUrl}
+                                                    onChange={(e) => setWorkLinkUrl(e.target.value)}
+                                                    required={uploadType === 'source'}
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    Provide the link to the source project files for the next editor.
+                                                </p>
+                                            </div>
+                                        </TabsContent>
+
+                                        <Button type="submit" className="w-full mt-6" disabled={uploading}>
+                                            {uploading ? (
+                                                <>
+                                                    <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                                    Uploading...
+                                                </>
+                                            ) : (
+                                                uploadType === 'output' ? 'Submit Final Output' : 'Submit Source File'
+                                            )}
+                                        </Button>
+                                    </form>
+                                </Tabs>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </div>

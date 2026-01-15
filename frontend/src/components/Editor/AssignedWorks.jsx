@@ -4,18 +4,33 @@ import { formatDateTime } from '../../utils/formatDate';
 import { projectsAPI, worksAPI, workBreakdownAPI } from '../../services/api';
 import WorkTypeMenu from '../common/WorkTypeMenu';
 import WorkTypeDetailsModal from '../common/WorkTypeDetailsModal';
-import StatusBadge from '../common/StatusBadge';
 import EditorNotesModal from './EditorNotesModal';
 import VersionHistoryModal from '../common/VersionHistoryModal';
 import { useDialog } from '../../context/DialogContext';
-import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import {
-  FaClock, FaCheckCircle, FaExclamationCircle, FaUpload,
-  FaPlay, FaClipboardList, FaStickyNote, FaRegStickyNote,
-  FaMoneyBillWave, FaCalendarAlt, FaBan, FaHourglassHalf
-} from 'react-icons/fa';
-import './AssignedWorks.css';
+  Clock, CheckCircle, Upload, MoreVertical,
+  Flag, Calculator, CalendarDays, Ban, Play, StickyNote, FileText,
+  AlertCircle, History, MessageSquare, Loader2
+} from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
 
 // Deadline Countdown Component
 const DeadlineCountdown = ({ deadline, createdAt, deadlineInfo }) => {
@@ -47,7 +62,7 @@ const DeadlineCountdown = ({ deadline, createdAt, deadlineInfo }) => {
 
   const getDisplayText = () => {
     if (deadlineInfo.status === 'overdue' || (timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0)) {
-      return "Deadline crossed, work faster";
+      return "Deadline crossed";
     }
 
     if (timeLeft.days > 0) {
@@ -78,135 +93,30 @@ const DeadlineCountdown = ({ deadline, createdAt, deadlineInfo }) => {
   const isOverdue = deadlineInfo.status === 'overdue' || (timeLeft.days === 0 && timeLeft.hours === 0 && timeLeft.minutes === 0 && timeLeft.seconds === 0);
   const timeLeftPercentage = getTimeLeftPercentage();
 
+  // Map custom colors to Tailwind classes approx
+  let colorClass = "bg-primary";
+  if (isOverdue) colorClass = "bg-destructive";
+  else if (deadlineInfo.status === "urgent") colorClass = "bg-amber-500";
+  else colorClass = "bg-emerald-500";
+
+  // Custom Styles for Progress color as shadcn Progress doesn't support color prop directly easily without class override
+  // But we can use style for dynamic width and className for color
+
   return (
-    <div className="deadline-section">
-      <div className="deadline-countdown">
-        <span className={`countdown-text ${deadlineInfo.className}`}>
+    <div className="bg-muted/50 p-3 rounded-lg border">
+      <div className="flex justify-between items-center mb-2">
+        <span className={`font-mono font-bold text-sm tracking-widest ${isOverdue ? 'text-destructive' : (deadlineInfo.status === 'urgent' ? 'text-amber-600' : 'text-emerald-600')}`}>
           {getDisplayText()}
         </span>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-        <span style={{ fontSize: '11px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>Time Left</span>
-        <span style={{ fontSize: '11px', fontWeight: '700', color: isOverdue ? '#dc3545' : deadlineInfo.color }}>
+      <div className="flex justify-between items-center mb-1">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase">Time Left</span>
+        <span className={`text-[10px] font-bold ${isOverdue ? 'text-destructive' : (deadlineInfo.status === 'urgent' ? 'text-amber-600' : 'text-emerald-600')}`}>
           {Math.round(timeLeftPercentage)}%
         </span>
       </div>
-      {/* Visual deadline progress */}
-      <div className="deadline-progress-bar">
-        <div
-          className="deadline-progress-fill"
-          style={{
-            width: `${isOverdue ? 100 : timeLeftPercentage}%`,
-            backgroundColor: isOverdue ? '#dc3545' : deadlineInfo.color
-          }}
-        />
-      </div>
-    </div>
-  );
-};
-
-// Editor Work Menu Component
-const EditorWorkMenu = ({ work, onDecline, onViewDetails }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useState(null); // Just a placeholder, actually we need standard ref.
-  // Using simple click handler for now as ref needs useRef import which is there.
-
-  // Calculate if decline is allowed
-  const canDecline = () => {
-    // Logic: Can only decline if MORE than 80% time remains (less than 20% used)
-    // User requirement: "disable the decline button for editor when the timeleft for deadline is under 80%"
-
-    if (!work.createdAt || !work.deadline) return true; // Fallback
-
-    const created = new Date(work.createdAt).getTime();
-    const deadline = new Date(work.deadline).getTime();
-    const now = Date.now();
-    const totalDuration = deadline - created;
-    const timeRemaining = deadline - now;
-
-    if (timeRemaining <= 0) return false; // Overdue
-    if (totalDuration <= 0) return true; // Weird case
-
-    // Check if more than 80% time remains
-    const percentageRemaining = timeRemaining / totalDuration;
-    return percentageRemaining >= 0.8;
-  };
-
-  const isDeclineEnabled = canDecline();
-
-  return (
-    <div className="work-menu-container" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-      <button
-        className="menu-trigger-btn"
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          background: 'none',
-          border: 'none',
-          fontSize: '20px',
-          cursor: 'pointer',
-          color: '#666',
-          padding: '0 5px'
-        }}
-      >
-        ⋮
-      </button>
-      {isOpen && (
-        <div className="menu-dropdown" style={{
-          position: 'absolute',
-          top: '100%',
-          right: 0,
-          background: 'white',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          borderRadius: '4px',
-          zIndex: 10,
-          overflow: 'hidden',
-          minWidth: '150px'
-        }}>
-          <button
-            onClick={() => { setIsOpen(false); onViewDetails(work); }}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '10px 15px',
-              textAlign: 'left',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: '#333',
-              fontSize: '14px',
-              borderBottom: '1px solid #eee'
-            }}
-          >
-            📋 View Details
-          </button>
-          <button
-            onClick={() => { setIsOpen(false); onDecline(work); }}
-            disabled={!isDeclineEnabled}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '10px 15px',
-              textAlign: 'left',
-              background: 'none',
-              border: 'none',
-              cursor: isDeclineEnabled ? 'pointer' : 'not-allowed',
-              color: isDeclineEnabled ? '#dc3545' : '#999',
-              fontSize: '14px'
-            }}
-            title={!isDeclineEnabled ? "Cannot decline when less than 80% of time remains. You can only decline in the early stages." : ""}
-          >
-            🚫 Decline Work
-          </button>
-        </div>
-      )}
-      {/* Backdrop to close */}
-      {isOpen && (
-        <div
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 }}
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      <Progress value={isOverdue ? 100 : timeLeftPercentage} className="h-2" indicatorClassName={colorClass} />
     </div>
   );
 };
@@ -215,22 +125,23 @@ const EditorWorkMenu = ({ work, onDecline, onViewDetails }) => {
 const PriorityStar = ({ priority, onClick }) => {
   const getStarColor = () => {
     switch (priority) {
-      case 'high': return '#ffc107'; // Gold
-      case 'medium': return '#adb5bd'; // Gray
-      case 'low': return '#dee2e6'; // Light Gray
-      default: return '#adb5bd';
+      case 'high': return 'text-amber-400 fill-amber-400';
+      case 'medium': return 'text-muted-foreground/40 fill-muted-foreground/40';
+      case 'low': return 'text-muted-foreground/20 fill-muted-foreground/20';
+      default: return 'text-muted-foreground/40 fill-muted-foreground/40';
     }
   };
 
   return (
-    <div
-      className="priority-star"
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8 hover:bg-transparent"
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       title={`Priority: ${priority}`}
-      style={{ cursor: 'pointer', fontSize: '20px', color: getStarColor(), transition: 'color 0.2s' }}
     >
-      ★
-    </div>
+      <Flag className={`h-5 w-5 ${getStarColor()} transition-colors`} />
+    </Button>
   );
 };
 
@@ -252,17 +163,6 @@ const AssignedWorks = ({ onUpdate }) => {
     navigate(`/editor/upload-work/${workBreakdown._id}`);
   };
 
-  const getStatusBadge = (status) => {
-    const statusMap = {
-      assigned: 'badge-primary',
-      in_progress: 'badge-primary',
-      submitted: 'badge-success',
-      under_review: 'badge-warning',
-      completed: 'badge-success',
-    };
-    return statusMap[status] || 'badge-secondary';
-  };
-
   const getDeadlineStatus = (deadline) => {
     const now = new Date();
     const deadlineDate = new Date(deadline);
@@ -270,11 +170,11 @@ const AssignedWorks = ({ onUpdate }) => {
     const daysUntil = Math.ceil(diff / (1000 * 60 * 60 * 24));
 
     if (diff <= 0) {
-      return { status: 'overdue', days: Math.abs(daysUntil), className: 'deadline-overdue', color: '#dc3545' };
+      return { status: 'overdue', days: Math.abs(daysUntil), className: 'text-destructive', color: '#dc3545' };
     } else if (daysUntil <= 3) {
-      return { status: 'urgent', days: daysUntil, className: 'deadline-urgent', color: '#ffc107' };
+      return { status: 'urgent', days: daysUntil, className: 'text-amber-600', color: '#ffc107' };
     } else {
-      return { status: 'normal', days: daysUntil, className: 'deadline-normal', color: '#28a745' };
+      return { status: 'normal', days: daysUntil, className: 'text-emerald-600', color: '#28a745' };
     }
   };
 
@@ -302,20 +202,9 @@ const AssignedWorks = ({ onUpdate }) => {
 
     if (approvedWorks.length > 0) {
       // Small celebration on load if there are approved works
-      // Only trigger if we haven't celebrated this session? 
-      // For now, just a subtle effect or only on status change would be better, 
-      // but without previous state, let's skip auto-confetti on load to avoid annoyance.
     }
   }, [works]);
 
-  const triggerCelebration = (e) => {
-    e.stopPropagation();
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-  };
 
   const [processingId, setProcessingId] = useState(null);
 
@@ -373,6 +262,29 @@ const AssignedWorks = ({ onUpdate }) => {
   };
 
   const handleDeclineWork = async (work) => {
+    // Calculate if decline is allowed
+    const canDecline = () => {
+      if (!work.createdAt || !work.deadline) return true; // Fallback
+
+      const created = new Date(work.createdAt).getTime();
+      const deadline = new Date(work.deadline).getTime();
+      const now = Date.now();
+      const totalDuration = deadline - created;
+      const timeRemaining = deadline - now;
+
+      if (timeRemaining <= 0) return false; // Overdue
+      if (totalDuration <= 0) return true; // Weird case
+
+      // Check if more than 80% time remains
+      const percentageRemaining = timeRemaining / totalDuration;
+      return percentageRemaining >= 0.8;
+    };
+
+    if (!canDecline()) {
+      showAlert("Cannot decline when less than 80% of time remains.", "Warning");
+      return;
+    }
+
     const isConfirmed = await confirm({
       title: 'Decline Work',
       message: `Are you sure you want to decline "${work.workType}" for project "${work.project?.title}"? This action cannot be undone.`,
@@ -420,212 +332,192 @@ const AssignedWorks = ({ onUpdate }) => {
   };
 
   return (
-    <div className="assigned-works">
+    <div className="space-y-6">
       {/* Stats Overview */}
-      <div className="stats-overview">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md ${filterStatus === 'pending' ? 'border-primary ring-1 ring-primary' : ''}`}
+          onClick={() => setFilterStatus('pending')}
+        >
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+              <Clock className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold">{stats.pending}</div>
+              <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Pending</div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="stat-card" onClick={() => setFilterStatus('pending')} style={{ cursor: 'pointer', borderColor: filterStatus === 'pending' ? '#06A77D' : '#e0e0e0' }}>
-          <div className="stat-icon" style={{ backgroundColor: '#fff3cd', color: '#856404' }}><FaHourglassHalf /></div>
-          <div className="stat-content">
-            <div className="stat-value">{stats.pending}</div>
-            <div className="stat-label">Pending</div>
-          </div>
-        </div>
-        <div className="stat-card" onClick={() => setFilterStatus('completed')} style={{ cursor: 'pointer', borderColor: filterStatus === 'completed' ? '#06A77D' : '#e0e0e0' }}>
-          <div className="stat-icon" style={{ backgroundColor: '#d1e7dd', color: '#0f5132' }}><FaCheckCircle /></div>
-          <div className="stat-content">
-            <div className="stat-value">{stats.completed}</div>
-            <div className="stat-label">Completed</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="dashboard-controls" style={{ marginBottom: '20px', display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-
-
-
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md ${filterStatus === 'completed' ? 'border-primary ring-1 ring-primary' : ''}`}
+          onClick={() => setFilterStatus('completed')}
+        >
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+              <CheckCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold">{stats.completed}</div>
+              <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Completed</div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Works Grid */}
       {filteredWorks.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon"><FaClipboardList /></div>
-          <h3>No {filterStatus !== 'all' ? filterStatus.replace('_', ' ') : ''} works found</h3>
-          <p>{filterStatus === 'all' ? 'You don\'t have any assigned works yet.' : `You don't have any ${filterStatus.replace('_', ' ')} works.`}</p>
-        </div>
+        <Card className="p-10 text-center text-muted-foreground">
+          <CardContent className="flex flex-col items-center gap-4">
+            <Upload className="h-16 w-16 opacity-20" />
+            <h3 className="text-xl font-semibold text-foreground">No {filterStatus !== 'all' ? filterStatus.replace('_', ' ') : ''} works found</h3>
+            <p>{filterStatus === 'all' ? 'You don\'t have any assigned works yet.' : `You don't have any ${filterStatus.replace('_', ' ')} works.`}</p>
+          </CardContent>
+        </Card>
       ) : (
-        <motion.div
-          className="works-grid"
-          layout
-        >
-          <AnimatePresence>
-            {filteredWorks.map((work) => {
-              const deadlineInfo = getDeadlineStatus(work.deadline);
-              const isDeclined = work.status === 'declined';
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredWorks.map((work) => {
+            const deadlineInfo = getDeadlineStatus(work.deadline);
+            const isDeclined = work.status === 'declined';
 
-              return (
-                <motion.div
-                  key={work._id}
-                  className="work-card"
-                  onClick={() => !isDeclined && handleWorkSelect(work)}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  whileHover={!isDeclined ? { y: -5, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' } : {}}
-                  transition={{ duration: 0.2 }}
-                  style={{ cursor: isDeclined ? 'default' : 'pointer' }}
-                >
-                  {/* Card Header */}
-                  <div className="work-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div className="work-title-section">
-                      <h3 className="work-project-title">{work.project?.title}</h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span className="work-type-badge">{work.workType}</span>
-                        {/* Notes icon moved here - next to work type */}
-                        <button
-                          className="btn-icon"
+            return (
+              <Card
+                key={work._id}
+                className={`flex flex-col overflow-hidden transition-all hover:shadow-lg ${isDeclined ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1 hover:border-primary/50'}`}
+                onClick={() => !isDeclined && handleWorkSelect(work)}
+              >
+                <CardHeader className="p-5 pb-3 bg-muted/20 border-b relative">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-lg leading-tight line-clamp-1" title={work.project?.title}>{work.project?.title}</h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="default" className="bg-primary/90 hover:bg-primary text-[10px]">{work.workType}</Badge>
+
+                        {/* Notes Button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
                           onClick={(e) => { e.stopPropagation(); handleOpenNotes(work); }}
                           title="My Notes"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px', color: '#666', display: 'flex', alignItems: 'center' }}
                         >
-                          {work.editorNotes ? <FaStickyNote color="#ffc107" /> : <FaRegStickyNote />}
-                        </button>
+                          {work.editorNotes ? <StickyNote className="h-4 w-4 text-amber-500 fill-amber-500" /> : <StickyNote className="h-4 w-4" />}
+                        </Button>
+
                         {/* Version Badge */}
                         {work.submissionStats?.latestVersion > 0 && (
-                          <span className="version-badge" style={{
-                            fontSize: '0.75rem',
-                            padding: '2px 6px',
-                            backgroundColor: '#e2e8f0',
-                            color: '#475569',
-                            borderRadius: '4px',
-                            fontWeight: '600',
-                            border: '1px solid #cbd5e1'
-                          }}>
-                            v{work.submissionStats.latestVersion}
-                          </span>
-                        )}
-                        {/* General Feedback Badge */}
-                        {work.feedback && work.feedback.length > 0 && (
-                          <span className="feedback-indicator" title="General Feedback Available" style={{
-                            fontSize: '0.75rem',
-                            padding: '2px 8px',
-                            backgroundColor: '#eff6ff',
-                            color: '#2563eb',
-                            borderRadius: '12px',
-                            fontWeight: '600',
-                            border: '1px solid #bfdbfe',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}>
-                            💬 {work.feedback.length}
-                          </span>
+                          <Badge variant="outline" className="text-[10px] h-5 px-1 bg-background">v{work.submissionStats.latestVersion}</Badge>
                         )}
 
-                        {/* History Badge */}
+                        {/* History Button */}
                         {work.submissionStats?.submissionCount > 0 && (
-                          <button
-                            className="btn-icon"
+                          <Button
+                            variant="ghost" size="icon" className="h-6 w-6 text-blue-500 hover:text-blue-600"
                             onClick={(e) => { e.stopPropagation(); handleOpenHistory(work); }}
-                            title="View Version History"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', color: '#3b82f6', display: 'flex', alignItems: 'center', marginLeft: '4px' }}
+                            title="View History"
                           >
-                            <FaClock style={{ marginRight: '2px' }} /> History
-                          </button>
+                            <History className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
                     </div>
-                    {!isDeclined && <EditorWorkMenu work={work} onDecline={handleDeclineWork} onViewDetails={handleViewWorkTypeDetails} />}
+                    {!isDeclined && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2"><MoreVertical className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewWorkTypeDetails(work); }}>
+                            <FileText className="mr-2 h-4 w-4" /> View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); handleDeclineWork(work); }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Ban className="mr-2 h-4 w-4" /> Decline Work
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
+                </CardHeader>
 
-                  {/* Priority and Status Row */}
-                  <div style={{ padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CardContent className="p-5 flex-1 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       <PriorityStar priority={work.priority || 'medium'} onClick={() => !isDeclined && handlePriorityToggle(work)} />
-                      <span style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase' }}>{work.priority || 'medium'}</span>
+                      <span className="text-xs font-medium text-muted-foreground uppercase">{work.priority || 'medium'}</span>
                     </div>
-
-                    {/* Status label moved to right end */}
+                    {/* Status Badge */}
                     {(() => {
                       const stats = work.submissionStats;
+                      let label = work.status;
+                      let variant = "secondary";
+                      let icon = null;
 
-                      // Derive display status
-                      let displayStatus = work.status;
+                      if (work.status === 'declined') { label = 'Declined'; variant = "destructive"; }
+                      else if (work.approved) { label = 'Approved'; variant = "default"; icon = <CheckCircle className="h-3 w-3 mr-1" />; } // Use default/success style
+                      else if (stats?.needsResubmission && stats?.pendingCorrections > 0) { label = 'Needs Revision'; variant = "warning"; icon = <AlertCircle className="h-3 w-3 mr-1" />; }
+                      else if (stats?.hasSubmission) { label = 'Under Review'; variant = "secondary"; icon = <Clock className="h-3 w-3 mr-1" />; }
+                      else if (work.status === 'in_progress') { label = 'In Progress'; variant = "outline"; className = "border-blue-500 text-blue-500"; icon = <Loader2 className="h-3 w-3 mr-1 animate-spin" />; }
+                      else if (work.status === 'pending') { label = 'Assigned'; variant = "secondary"; }
 
-                      if (work.status === 'declined') displayStatus = 'declined';
-                      else if (work.approved) displayStatus = 'approved';
-                      else if (stats?.needsResubmission && stats?.pendingCorrections > 0) displayStatus = 'needs_revision';
-                      else if (stats?.hasSubmission) displayStatus = 'under_review';
-                      else if (work.status === 'in_progress') displayStatus = 'in_progress';
-                      else if (work.status === 'pending') displayStatus = 'assigned'; // Display "Assigned" for pending to be clearer? Or keep pending.
-
-                      return <StatusBadge status={displayStatus} />;
+                      return <Badge variant={variant} className={`flex items-center ${work.status === 'in_progress' ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' : ''} ${work.approved ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200' : ''}`}>
+                        {icon} {label}
+                      </Badge>;
                     })()}
                   </div>
 
-                  {/* Card Body */}
-                  <div className="work-card-body">
-                    {/* Payment and Deadline Info Row */}
-                    <div className="work-info-row">
-                      <div className="info-item">
-                        <span className="info-icon" style={{ color: '#28a745' }}><FaMoneyBillWave /></span>
-                        <div className="info-details">
-                          <span className="info-label">Payment</span>
-                          <span className="info-value">{work.project?.currency || 'INR'} {work.amount?.toFixed(2)}</span>
-                        </div>
-                      </div>
-                      <div className="info-item">
-                        <span className="info-icon" style={{ color: '#dc3545' }}><FaCalendarAlt /></span>
-                        <div className="info-details">
-                          <span className="info-label">Deadline</span>
-                          <span className="info-value">{formatDateTime(work.deadline)}</span>
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-muted/40 rounded-lg border flex flex-col items-center justify-center text-center gap-1">
+                      <span className="text-emerald-500"><Calculator className="h-5 w-5" /></span>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Payment</span>
+                      <span className="text-sm font-bold">{work.project?.currency || 'INR'} {work.amount?.toFixed(2)}</span>
                     </div>
-
-                    {/* Deadline Countdown and Progress */}
-                    {!work.approved && (
-                      <DeadlineCountdown
-                        deadline={work.deadline}
-                        createdAt={work.createdAt}
-                        deadlineInfo={deadlineInfo}
-                      />
-                    )}
+                    <div className="p-3 bg-muted/40 rounded-lg border flex flex-col items-center justify-center text-center gap-1">
+                      <span className="text-destructive"><CalendarDays className="h-5 w-5" /></span>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Deadline</span>
+                      <span className="text-sm font-bold">{formatDateTime(work.deadline)}</span>
+                    </div>
                   </div>
 
-                  {/* Card Footer */}
-                  {!isDeclined && (
-                    <div className="work-card-footer" style={{ display: 'flex', gap: '10px' }}>
-                      {work.status !== 'in_progress' && work.status !== 'completed' && !work.approved && (
-                        <button
-                          className="btn-work-action"
-                          disabled={processingId === work._id + '-status'}
-                          onClick={(e) => { e.stopPropagation(); handleStartWorking(work); }}
-                          style={{
-                            background: '#6c757d',
-                            flex: 1,
-                            opacity: processingId === work._id + '-status' ? 0.7 : 1,
-                            cursor: processingId === work._id + '-status' ? 'not-allowed' : 'pointer'
-                          }}
-                        >
-                          <span style={{ fontSize: '14px' }}>
-                            {processingId === work._id + '-status' ? <FaClock className="spin" /> : <FaPlay />}
-                          </span>
-                          {processingId === work._id + '-status' ? ' Starting...' : ' Start'}
-                        </button>
-                      )}
-                      <button className="btn-work-action" onClick={(e) => { e.stopPropagation(); handleWorkSelect(work); }} style={{ flex: 1 }}>
-                        <span style={{ fontSize: '14px' }}><FaUpload /></span> {work.submissionStats?.hasSubmission ? 'View Submission' : 'Upload Work'}
-                      </button>
-                    </div>
+                  {!work.approved && (
+                    <DeadlineCountdown
+                      deadline={work.deadline}
+                      createdAt={work.createdAt}
+                      deadlineInfo={deadlineInfo}
+                    />
                   )}
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </motion.div>
+
+                </CardContent>
+
+                {!isDeclined && (
+                  <CardFooter className="p-4 bg-muted/20 border-t gap-3">
+                    {work.status !== 'in_progress' && work.status !== 'completed' && !work.approved && (
+                      <Button
+                        className="flex-1" // Use standard button
+                        disabled={processingId === work._id + '-status'}
+                        onClick={(e) => { e.stopPropagation(); handleStartWorking(work); }}
+                      >
+                        {processingId === work._id + '-status' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+                        Start
+                      </Button>
+                    )}
+                    <Button
+                      variant={work.status === 'in_progress' ? "default" : "secondary"}
+                      className="flex-1"
+                      onClick={(e) => { e.stopPropagation(); handleWorkSelect(work); }}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {work.submissionStats?.hasSubmission ? 'View Work' : 'Upload'}
+                    </Button>
+                  </CardFooter>
+                )}
+              </Card>
+            );
+          })}
+        </div>
       )
       }
 

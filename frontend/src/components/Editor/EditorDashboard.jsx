@@ -4,7 +4,23 @@ import { useDialog } from '../../context/DialogContext';
 import { projectsAPI, resetAPI } from '../../services/api';
 import { formatDateTime } from '../../utils/formatDate';
 import AssignedWorks from './AssignedWorks';
-import './EditorDashboard.css';
+import PaymentInfo from './PaymentInfo'; // Importing PaymentInfo to likely usage in Tabs
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FileDown, Trash2 } from 'lucide-react';
 
 const EditorDashboard = () => {
   const { user } = useAuth();
@@ -13,7 +29,6 @@ const EditorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletionReports, setDeletionReports] = useState([]);
-
 
   useEffect(() => {
     loadData();
@@ -59,71 +74,72 @@ const EditorDashboard = () => {
   };
 
   if (loading) {
-    return <div className="spinner"></div>;
+    // Basic loading state, could be improved with Skeleton
+    return <div className="p-8 flex justify-center text-muted-foreground">Loading dashboard...</div>;
   }
 
   return (
-    <div className="container">
-      <div className="dashboard-header">
-
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div className="welcome-message">
-            <h3>Welcome, {user.name}!</h3>
-          </div>
-
+    <div className="container mx-auto p-6 space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">Welcome back, {user.name}!</p>
         </div>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Deletion Reports Section */}
       {deletionReports.length > 0 && (
-        <div className="card" style={{ marginBottom: '20px', backgroundColor: '#fff3cd', border: '1px solid #ffc107', position: 'relative' }}>
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 className="card-title" style={{ color: '#856404', margin: 0 }}>
-              ⚠️ Data Deletion Notifications
-            </h2>
-            <button
-              className="modal-close"
-              onClick={() => setDeletionReports([])}
-              style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#856404' }}
-            >
-              ×
-            </button>
-          </div>
-          <div className="card-body">
+        <Card className="border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10 dark:border-yellow-600">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              <CardTitle className="text-yellow-800 dark:text-yellow-300">Data Deletion Notifications</CardTitle>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setDeletionReports([])}>
+              <span className="sr-only">Dismiss</span>
+              <span className="text-xl">×</span>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
             {deletionReports.map((report) => (
-              <div key={report._id} style={{ marginBottom: '15px', padding: '15px', backgroundColor: 'white', borderRadius: '5px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div>
-                    <strong>Data Deletion Report</strong>
-                    <p style={{ margin: '5px 0', fontSize: '14px', color: '#666' }}>
-                      Deleted on: {formatDateTime(report.deletedAt)}
-                    </p>
-                    <p style={{ margin: '5px 0', fontSize: '14px', color: '#666' }}>
-                      Projects deleted: {report.deletedProjects.length} | Payments deleted: {report.deletedPayments.length}
-                    </p>
-                  </div>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => handleDownloadReport(report.reportId)}
-                  >
-                    Download PDF Report
-                  </button>
+              <div key={report._id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-3 bg-white/50 dark:bg-black/20 rounded-lg gap-4">
+                <div>
+                  <p className="font-medium">Data Deletion Report</p>
+                  <p className="text-sm text-muted-foreground">Deleted on: {formatDateTime(report.deletedAt)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Projects: {report.deletedProjects.length} | Payments: {report.deletedPayments.length}
+                  </p>
                 </div>
-                <p style={{ fontSize: '13px', color: '#856404', fontStyle: 'italic' }}>
-                  The administrator has deleted projects and payments. Please download the PDF report for details.
-                </p>
+                <Button variant="outline" size="sm" onClick={() => handleDownloadReport(report.reportId)} className="gap-2">
+                  <FileDown className="h-4 w-4" /> Download PDF
+                </Button>
               </div>
             ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="tab-content" style={{ marginTop: '20px' }}>
-        <AssignedWorks projects={projects} onUpdate={loadData} />
-      </div>
+      <Tabs defaultValue="works" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
+          <TabsTrigger value="works">Assigned Works</TabsTrigger>
+          <TabsTrigger value="payments">Payments & Earnings</TabsTrigger>
+        </TabsList>
 
+        <TabsContent value="works" className="space-y-4 mt-6">
+          <AssignedWorks projects={projects} onUpdate={loadData} />
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-4 mt-6">
+          <PaymentInfo />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

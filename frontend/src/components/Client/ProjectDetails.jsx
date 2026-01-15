@@ -1,7 +1,21 @@
 import { useState } from 'react';
 import { projectsAPI } from '../../services/api';
 import { formatDate } from '../../utils/formatDate';
-import './ProjectDetails.css';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Edit, Save, X, Info } from 'lucide-react';
 
 const ProjectDetails = ({ project, onUpdate }) => {
   const [editing, setEditing] = useState(false);
@@ -35,101 +49,100 @@ const ProjectDetails = ({ project, onUpdate }) => {
   };
 
   return (
-    <div className="project-details">
-      <div className="section-header">
-        <h3>Project Details</h3>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-xl font-semibold">Project Details</CardTitle>
         {!editing && (
-          <button className="btn btn-primary btn-sm" onClick={() => setEditing(true)}>
-            Edit
-          </button>
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-2">
+            <Edit className="h-4 w-4" /> Edit
+          </Button>
         )}
-      </div>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-4">
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-      {error && <div className="alert alert-error">{error}</div>}
+        {editing ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                placeholder="Enter project description..."
+              />
+            </div>
 
-      {editing ? (
-        <div className="edit-form">
-          <div className="form-group">
-            <label className="form-label">Description</label>
-            <textarea
-              className="form-textarea"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows="4"
-            />
+            <div className="space-y-2">
+              <Label>Additional Project Details</Label>
+              <Textarea
+                value={projectDetails}
+                onChange={(e) => setProjectDetails(e.target.value)}
+                rows={6}
+                placeholder="Add any additional project details here..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={handleCancel} disabled={loading}>
+                <X className="h-4 w-4 mr-2" /> Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={loading}>
+                {loading ? 'Saving...' : <><Save className="h-4 w-4 mr-2" /> Save Changes</>}
+              </Button>
+            </div>
           </div>
-
-          <div className="form-group">
-            <label className="form-label">Additional Project Details</label>
-            <textarea
-              className="form-textarea"
-              value={projectDetails}
-              onChange={(e) => setProjectDetails(e.target.value)}
-              rows="6"
-              placeholder="Add any additional project details here..."
-            />
-          </div>
-
-          <div className="form-actions">
-            <button
-              className="btn btn-secondary"
-              onClick={handleCancel}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={handleSave}
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="details-view">
-          <div className="detail-item">
-            <strong>
-              Description:
-              {project.editedFields?.description && project.accepted && (
-                <span className="badge badge-warning" style={{ fontSize: '0.7rem', marginLeft: '8px' }}>Edited</span>
-              )}
-            </strong>
-            <p>{project.description}</p>
-          </div>
-
-          {project.projectDetails && (
-            <div className="detail-item">
-              <strong>
-                Additional Details:
-                {project.editedFields?.projectDetails && project.accepted && (
-                  <span className="badge badge-warning" style={{ fontSize: '0.7rem', marginLeft: '8px' }}>Edited</span>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-medium leading-none mb-2 flex items-center gap-2 text-primary">
+                Description
+                {project.editedFields?.description && project.accepted && (
+                  <Badge variant="warning" className="text-[10px] px-1 py-0 h-4 bg-yellow-500/15 text-yellow-700 hover:bg-yellow-500/25 border-yellow-200">Edited</Badge>
                 )}
-              </strong>
-              <p>{project.projectDetails}</p>
+              </h4>
+              <p className="text-sm text-foreground bg-muted/40 p-3 rounded-md">{project.description}</p>
             </div>
-          )}
 
-          <div className="detail-item">
-            <strong>
-              Deadline:
-              {project.editedFields?.deadline && project.accepted && (
-                <span className="badge badge-warning" style={{ fontSize: '0.7rem', marginLeft: '8px' }}>Edited</span>
+            {project.projectDetails && (
+              <div>
+                <h4 className="text-sm font-medium leading-none mb-2 flex items-center gap-2 text-primary">
+                  Additional Details
+                  {project.editedFields?.projectDetails && project.accepted && (
+                    <Badge variant="warning" className="text-[10px] px-1 py-0 h-4 bg-yellow-500/15 text-yellow-700 hover:bg-yellow-500/25 border-yellow-200">Edited</Badge>
+                  )}
+                </h4>
+                <p className="text-sm text-foreground bg-muted/40 p-3 rounded-md whitespace-pre-wrap">{project.projectDetails}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-muted/40 p-3 rounded-md">
+                <h4 className="text-sm font-medium leading-none mb-1 flex items-center gap-2 text-primary">
+                  Deadline
+                  {project.editedFields?.deadline && project.accepted && (
+                    <Badge variant="warning" className="text-[10px] px-1 py-0 h-4 bg-yellow-500/15 text-yellow-700 hover:bg-yellow-500/25 border-yellow-200">Edited</Badge>
+                  )}
+                </h4>
+                <p className="text-sm font-semibold">{formatDate(project.deadline)}</p>
+              </div>
+
+              {project.assignedEditor && (
+                <div className="bg-muted/40 p-3 rounded-md">
+                  <h4 className="text-sm font-medium leading-none mb-1 text-primary">Assigned Editor</h4>
+                  <p className="text-sm font-semibold">{project.assignedEditor.name}</p>
+                </div>
               )}
-            </strong>
-            <p>{formatDate(project.deadline)}</p>
-          </div>
-
-          {project.assignedEditor && (
-            <div className="detail-item">
-              <strong>Assigned Editor:</strong>
-              <p>{project.assignedEditor.name}</p>
             </div>
-          )}
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

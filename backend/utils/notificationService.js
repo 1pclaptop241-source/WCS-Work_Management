@@ -2,8 +2,8 @@ const webpush = require('web-push');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 
-const publicVapidKey = process.env.PUBLIC_VAPID_KEY || process.env.VAPID_PUBLIC_KEY || 'BNkFJo9qLIl4SwPzr5UkvVE74joxfzlfvTvdPHTo_GyW8n34uVmbIvInLyvnu3ACDMdOYmEi_7YCXecH3yXJvAg';
-const privateVapidKey = process.env.PRIVATE_VAPID_KEY || process.env.VAPID_PRIVATE_KEY || 'ux-0USM5rnetlGygKaADlCWHP2FPAzY9vq8YbbyfFjE';
+const publicVapidKey = process.env.PUBLIC_VAPID_KEY || process.env.VAPID_PUBLIC_KEY;
+const privateVapidKey = process.env.PRIVATE_VAPID_KEY || process.env.VAPID_PRIVATE_KEY;
 
 webpush.setVapidDetails(
     'mailto:support@wisecutstudios.com',

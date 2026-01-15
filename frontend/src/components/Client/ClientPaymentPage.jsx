@@ -5,7 +5,45 @@ import { useDialog } from '../../context/DialogContext';
 import { formatDate } from '../../utils/formatDate';
 import { generateInvoice } from '../../utils/generateInvoice';
 import confetti from 'canvas-confetti';
-import './ClientPaymentPage.css';
+import {
+  Download,
+  CreditCard,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Upload,
+  DollarSign,
+  IndianRupee,
+  Euro,
+  FileText,
+  ExternalLink
+} from 'lucide-react';
+
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const ClientPaymentPage = () => {
   const { user } = useAuth();
@@ -59,12 +97,6 @@ const ClientPaymentPage = () => {
 
   const displayedPayments = activeTab === 'pending' ? pendingPayments : historyPayments;
 
-  // Calculate total based on selection or all pending if none selected? 
-  // Better UX: If selection > 0, pay selection. If 0, button disabled or pays all? 
-  // Let's force explicit selection or "Select All".
-  // Actually, keeping "Pay Total" as "Pay All Pending" is useful shortcut. 
-  // I will show "Pay Selected (X)" if selection > 0, else "Select Payments to Pay".
-
   const paymentsToPay = selectedPaymentIds.length > 0
     ? pendingPayments.filter(p => selectedPaymentIds.includes(p._id))
     : [];
@@ -78,8 +110,8 @@ const ClientPaymentPage = () => {
     });
   };
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
+  const handleSelectAll = (checked) => {
+    if (checked) {
       setSelectedPaymentIds(pendingPayments.filter(p => !p.paid).map(p => p._id));
     } else {
       setSelectedPaymentIds([]);
@@ -88,7 +120,6 @@ const ClientPaymentPage = () => {
 
   const handlePay = async () => {
     try {
-
       if (selectedPaymentIds.length === 0) {
         await showAlert('Please select at least one payment.', 'Validation Error');
         return;
@@ -96,13 +127,12 @@ const ClientPaymentPage = () => {
 
       await paymentsAPI.markBulkClientPaid(selectedPaymentIds, totalPaymentScreenshot);
 
-      // Payment Success Animation (Money!)
       confetti({
         particleCount: 150,
         spread: 100,
         origin: { y: 0.6 },
         zIndex: 2100,
-        colors: ['#28a745', '#85bb65', '#d4edda'], // Green shades
+        colors: ['#28a745', '#85bb65', '#d4edda'],
         shapes: ['circle', 'square'],
         scalar: 1.2
       });
@@ -120,7 +150,6 @@ const ClientPaymentPage = () => {
 
   const handleUpdateProof = async () => {
     try {
-
       setIsUpdatingProof(true);
       await paymentsAPI.markClientPaid(selectedPaymentForEdit._id, newProofFile);
       await loadPayments();
@@ -136,243 +165,272 @@ const ClientPaymentPage = () => {
   };
 
   if (loading) {
-    return <div className="spinner"></div>;
+    return <div className="flex h-[80vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>;
   }
 
   return (
-    <div className="container">
-      <div className="dashboard-header">
-        <h1>Payment Information</h1>
+    <div className="container mx-auto p-4 md:p-8 pt-6 max-w-7xl">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold tracking-tight">Payment Information</h1>
+        <Button variant="outline" onClick={loadPayments} disabled={loading}>
+          <Clock className="mr-2 h-4 w-4" /> Refresh
+        </Button>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      {/* Tabs */}
-      <div className="tabs" style={{ marginBottom: '20px' }}>
-        <button
-          className={`tab ${activeTab === 'pending' ? 'active' : ''}`}
-          onClick={() => setActiveTab('pending')}
-        >
-          Pending ({pendingPayments.length})
-        </button>
-        <button
-          className={`tab ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          History ({historyPayments.length})
-        </button>
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(pendingPayments.reduce((sum, p) => sum + (p.finalAmount || p.originalAmount || 0), 0))}</div>
+            <p className="text-xs text-muted-foreground">{pendingPayments.length} invoices pending</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(historyPayments.reduce((sum, p) => sum + (p.finalAmount || p.originalAmount || 0), 0))}</div>
+            <p className="text-xs text-muted-foreground">{historyPayments.length} invoices paid</p>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="card">
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 className="card-title">Payments to Admin</h2>
-          {activeTab === 'pending' && pendingPayments.length > 0 && selectedPaymentIds.length > 0 && (
-            <button
-              className="btn btn-primary"
-              onClick={() => setShowPayTotalModal(true)}
-            >
-              Pay Selected ({formatCurrency(amountToPay, payments[0]?.project?.currency || 'INR')})
-            </button>
-          )}
-        </div>
-        <div className="card-body">
-          {displayedPayments.length === 0 ? (
-            <p className="text-center">
-              {activeTab === 'pending' ? 'No pending payments.' : 'No payment history.'}
-            </p>
-          ) : (
-            <>
-              <div className="table-responsive">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '40px' }}>
-                        {activeTab === 'pending' && pendingPayments.filter(p => !p.paid).length > 0 && (
-                          <input
-                            type="checkbox"
-                            onChange={handleSelectAll}
-                            checked={selectedPaymentIds.length === pendingPayments.filter(p => !p.paid).length}
-                          />
-                        )}
-                      </th>
-                      <th>Project</th>
-                      <th>Status</th>
-                      <th>Payment Paid Date</th>
-                      <th>Closed Date</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedPayments.map((payment) => {
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pending">Pending ({pendingPayments.length})</TabsTrigger>
+          <TabsTrigger value="history">History ({historyPayments.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pending" className="space-y-4">
+          {/* Pending Payments Table */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Payments to Admin</CardTitle>
+                <CardDescription>Select payments to settle securely.</CardDescription>
+              </div>
+              {pendingPayments.length > 0 && selectedPaymentIds.length > 0 && (
+                <Button onClick={() => setShowPayTotalModal(true)} className="bg-green-600 hover:bg-green-700">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Pay Selected ({formatCurrency(amountToPay, payments[0]?.project?.currency || 'INR')})
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {pendingPayments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                  <CheckCircle2 className="h-12 w-12 mb-4 text-green-500 opacity-50" />
+                  <p>No pending payments. You are all caught up!</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">
+                        <Checkbox
+                          checked={selectedPaymentIds.length > 0 && selectedPaymentIds.length === pendingPayments.filter(p => !p.paid).length}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Closed Date</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingPayments.map((payment) => {
                       const isPending = !payment.paid && !payment.received;
                       return (
-                        <tr key={payment._id}>
-                          <td>
-                            {activeTab === 'pending' && isPending && (
-                              <input
-                                type="checkbox"
+                        <TableRow key={payment._id}>
+                          <TableCell>
+                            {isPending && (
+                              <Checkbox
                                 checked={selectedPaymentIds.includes(payment._id)}
-                                onChange={() => handleCheckboxChange(payment._id)}
+                                onCheckedChange={() => handleCheckboxChange(payment._id)}
                               />
                             )}
-                          </td>
-                          <td>{payment.project?.title}</td>
-                          <td>
-                            {payment.received ? (
-                              <span className="badge badge-success" style={{
-                                display: 'inline-block', padding: '8px 16px', borderRadius: '20px',
-                                backgroundColor: '#d4edda', color: '#155724', fontWeight: 'bold', fontSize: '13px', border: '1px solid #c3e6cb'
-                              }}>
-                                ✓ Payment Successful
-                              </span>
-                            ) : payment.paid ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
-                                {payment.paymentScreenshot ? (
-                                  <a
-                                    href={payment.paymentScreenshot}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="badge badge-primary"
-                                    style={{
-                                      display: 'inline-block', padding: '8px 16px', borderRadius: '20px',
-                                      backgroundColor: '#cfe2ff', color: '#084298', fontWeight: 'bold', fontSize: '13px', border: '1px solid #b6d4fe',
-                                      textDecoration: 'none', cursor: 'pointer'
-                                    }}
-                                    title="Click to view proof"
-                                  >
-                                    ⏱ Verifying
-                                  </a>
-                                ) : (
-                                  <span className="badge badge-primary" style={{
-                                    display: 'inline-block', padding: '8px 16px', borderRadius: '20px',
-                                    backgroundColor: '#cfe2ff', color: '#084298', fontWeight: 'bold', fontSize: '13px', border: '1px solid #b6d4fe'
-                                  }}>
-                                    ⏱ Verifying
-                                  </span>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex flex-col">
+                              <span>{payment.project?.title}</span>
+                              <span className="text-xs text-muted-foreground">ID: {payment.invoiceId || 'N/A'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {payment.paid ? (
+                              <div className="flex flex-col gap-2">
+                                <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100 w-fit">
+                                  <Clock className="mr-1 h-3 w-3" /> Verifying
+                                </Badge>
+                                {payment.paymentScreenshot && (
+                                  <Button variant="link" size="sm" asChild className="h-auto p-0 text-xs justify-start">
+                                    <a href={payment.paymentScreenshot} target="_blank" rel="noopener noreferrer">View Proof</a>
+                                  </Button>
                                 )}
-                                <button
-                                  className="btn btn-xs btn-outline-secondary"
-                                  style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', border: '1px solid #ccc' }}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-xs w-fit"
                                   onClick={() => {
                                     setSelectedPaymentForEdit(payment);
                                     setShowEditProofModal(true);
                                   }}
                                 >
-                                  {payment.paymentScreenshot ? '✎ Edit Proof' : '+ Add Proof'}
-                                </button>
+                                  Edit Proof
+                                </Button>
                               </div>
                             ) : (
-                              <span className="badge badge-warning" style={{
-                                display: 'inline-block', padding: '8px 16px', borderRadius: '20px',
-                                backgroundColor: '#fff3cd', color: '#997404', fontWeight: 'bold', fontSize: '13px', border: '1px solid #ffecb5'
-                              }}>
-                                ⚠ Pending
-                              </span>
+                              <Badge variant="warning" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
+                                <AlertCircle className="mr-1 h-3 w-3" /> Pending
+                              </Badge>
                             )}
-                          </td>
-                          <td>{payment.paidAt ? formatDate(payment.paidAt) : '-'}</td>
-                          <td>{payment.project?.closedAt ? formatDate(payment.project.closedAt) : '-'}</td>
-                          <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
-                              <strong>
-                                {formatCurrency(payment.finalAmount || payment.originalAmount || 0, payment.project?.currency || 'INR')}
-                              </strong>
-                              {/* {payment.received && (
-                                <button
-                                  className="btn btn-sm btn-secondary"
-                                  style={{ fontSize: '11px', padding: '2px 8px' }}
-                                  onClick={() => generateInvoice(payment, user)}
-                                >
-                                  Download Invoice
-                                </button>
-                              )} */}
-                            </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                          <TableCell>{payment.project?.closedAt ? formatDate(payment.project.closedAt) : '-'}</TableCell>
+                          <TableCell className="text-right font-bold">
+                            {formatCurrency(payment.finalAmount || payment.originalAmount || 0, payment.project?.currency || 'INR')}
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                  {/* Total Row - show total of SELECTED if any, or total pending? */}
-                  <tfoot>
-                    <tr style={{ fontWeight: 'bold', backgroundColor: '#f9f9f9', borderTop: '2px solid #ddd' }}>
-                      <td colSpan="5" style={{ textAlign: 'right' }}>
-                        {activeTab === 'pending' && selectedPaymentIds.length > 0 ? 'Total Selected Amount:' : activeTab === 'pending' ? 'Total Pending Amount:' : 'Total History Amount:'}
-                      </td>
-                      <td style={{ fontSize: '1.2em', color: '#dc3545' }}>
-                        {activeTab === 'pending'
-                          ? (selectedPaymentIds.length > 0
-                            ? formatCurrency(amountToPay, payments[0]?.project?.currency || 'INR')
-                            : formatCurrency(pendingPayments.filter(p => !p.paid).reduce((sum, p) => sum + (p.finalAmount || p.originalAmount || 0), 0), payments[0]?.project?.currency || 'INR'))
-                          : formatCurrency(historyPayments.reduce((sum, p) => sum + (p.finalAmount || p.originalAmount || 0), 0), payments[0]?.project?.currency || 'INR')
-                        }
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+            {pendingPayments.length > 0 && (
+              <CardFooter className="bg-muted/50 flex justify-end py-4">
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground mr-2 inline">Total Pending:</div>
+                  <span className="text-xl font-bold text-destructive">
+                    {formatCurrency(pendingPayments.filter(p => !p.paid).reduce((sum, p) => sum + (p.finalAmount || p.originalAmount || 0), 0), payments[0]?.project?.currency || 'INR')}
+                  </span>
+                </div>
+              </CardFooter>
+            )}
+          </Card>
+        </TabsContent>
 
-      {/* Pay Total Modal */}
-      {showPayTotalModal && (
-        <div className="modal-overlay" onClick={() => setShowPayTotalModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Upload Payment Proof</h2>
-              <button className="modal-close" onClick={() => setShowPayTotalModal(false)}>&times;</button>
+        <TabsContent value="history" className="space-y-4">
+          {/* History Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment History</CardTitle>
+              <CardDescription>View your past transactions.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {historyPayments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No payment history available.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Payment Paid Date</TableHead>
+                      <TableHead>Closed Date</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {historyPayments.map((payment) => (
+                      <TableRow key={payment._id}>
+                        <TableCell className="font-medium">{payment.project?.title}</TableCell>
+                        <TableCell>
+                          <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">
+                            <CheckCircle2 className="mr-1 h-3 w-3" /> Paid
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{payment.paidAt ? formatDate(payment.paidAt) : '-'}</TableCell>
+                        <TableCell>{payment.project?.closedAt ? formatDate(payment.project.closedAt) : '-'}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(payment.finalAmount || payment.originalAmount || 0, payment.project?.currency || 'INR')}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Pay Total Dialog */}
+      <Dialog open={showPayTotalModal} onOpenChange={setShowPayTotalModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Payment Proof</DialogTitle>
+            <DialogDescription>
+              You are ensuring payment for <strong>{paymentsToPay.length}</strong> items.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="p-4 bg-muted rounded-md flex justify-between items-center">
+              <span className="font-medium">Total Amount:</span>
+              <span className="text-xl font-bold">{formatCurrency(amountToPay, payments[0]?.project?.currency || 'INR')}</span>
             </div>
-            <div className="modal-body">
-              <p>You are about to pay for <strong>{paymentsToPay.length}</strong> selected items.</p>
-              <p style={{ fontSize: '1.2em' }}>Total Amount: <strong>{formatCurrency(amountToPay, payments[0]?.project?.currency || 'INR')}</strong></p>
-              <div className="form-group">
-                <label>Upload Screenshot (Optional)</label>
-                <input
+            <div className="space-y-2">
+              <Label htmlFor="proof-upload">Upload Screenshot (Optional)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="proof-upload"
                   type="file"
-                  className="form-input"
                   accept="image/*"
                   onChange={(e) => setTotalPaymentScreenshot(e.target.files[0])}
                 />
               </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowPayTotalModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handlePay}>Submit Payment</button>
+              <p className="text-[10px] text-muted-foreground">Supported formats: JPG, PNG, PDF</p>
             </div>
           </div>
-        </div>
-      )}
-      {/* Edit Proof Modal */}
-      {showEditProofModal && (
-        <div className="modal-overlay" onClick={() => { if (!isUpdatingProof) setShowEditProofModal(false) }}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Update Payment Proof</h2>
-              <button className="modal-close" onClick={() => setShowEditProofModal(false)}>&times;</button>
-            </div>
-            <div className="modal-body">
-              <p>You are updating the proof for project: <strong>{selectedPaymentForEdit?.project?.title}</strong></p>
-              <div className="form-group">
-                <label>Upload New Screenshot (Optional)</label>
-                <input
-                  type="file"
-                  className="form-input"
-                  accept="image/*"
-                  onChange={(e) => setNewProofFile(e.target.files[0])}
-                  disabled={isUpdatingProof}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowEditProofModal(false)} disabled={isUpdatingProof}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleUpdateProof} disabled={isUpdatingProof}>
-                {isUpdatingProof ? 'Updating...' : 'Update Proof'}
-              </button>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPayTotalModal(false)}>Cancel</Button>
+            <Button onClick={handlePay} className="bg-green-600 hover:bg-green-700">Submit Payment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Proof Dialog */}
+      <Dialog open={showEditProofModal} onOpenChange={(open) => !isUpdatingProof && setShowEditProofModal(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Payment Proof</DialogTitle>
+            <DialogDescription>Updating proof for: <strong>{selectedPaymentForEdit?.project?.title}</strong></DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-proof">Upload New Screenshot</Label>
+              <Input
+                id="new-proof"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setNewProofFile(e.target.files[0])}
+                disabled={isUpdatingProof}
+              />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditProofModal(false)} disabled={isUpdatingProof}>Cancel</Button>
+            <Button onClick={handleUpdateProof} disabled={isUpdatingProof}>
+              {isUpdatingProof ? 'Updating...' : 'Update Proof'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

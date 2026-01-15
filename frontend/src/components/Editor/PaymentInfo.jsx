@@ -3,9 +3,34 @@ import { paymentsAPI, API_BASE_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useDialog } from '../../context/DialogContext';
 import { formatDate } from '../../utils/formatDate';
-import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import './PaymentInfo.css';
+import {
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  ArrowUpRight,
+  DollarSign,
+  Calendar,
+  Wallet,
+  AlertTriangle,
+  Check
+} from 'lucide-react';
+
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 const PaymentInfo = () => {
   const { user } = useAuth();
@@ -92,15 +117,7 @@ const PaymentInfo = () => {
 
 
   if (loading) {
-    return <div className="spinner"></div>;
-  }
-
-  if (paymentData.length === 0) {
-    return (
-      <div className="card">
-        <p className="text-center">No payment information available yet.</p>
-      </div>
-    );
+    return <div className="flex h-[80vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>;
   }
 
   const pendingPayments = paymentData.filter(p => !p.received && p.paymentType !== 'bonus' && p.paymentType !== 'deduction');
@@ -109,224 +126,265 @@ const PaymentInfo = () => {
   const displayedPayments = activeTab === 'pending' ? pendingPayments : historyPayments;
 
   return (
-    <div className="payment-info">
-      {/* Tabs */}
-      <div className="tabs" style={{ marginBottom: '20px' }}>
-        <button
-          className={`tab ${activeTab === 'pending' ? 'active' : ''}`}
-          onClick={() => setActiveTab('pending')}
-        >
-          Pending ({pendingPayments.length})
-        </button>
-        <button
-          className={`tab ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('history'); setSelectedIds([]); }}
-        >
-          History ({historyPayments.length})
-        </button>
-      </div>
-      <motion.div
-        className="card"
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        key={activeTab} // To re-trigger animation on tab switch
-      >
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 className="card-title">Payment Information</h2>
-          {activeTab === 'pending' && selectedIds.length > 0 && (
-            <button
-              className="btn btn-success btn-sm"
-              onClick={handleBulkMarkReceived}
-              disabled={processingId === 'bulk'}
-            >
-              {processingId === 'bulk' ? 'Processing...' : `Mark ${selectedIds.length} as Received`}
-            </button>
-          )}
+    <div className="container mx-auto p-4 md:p-8 pt-6 max-w-7xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Payment Information</h1>
+          <p className="text-muted-foreground mt-1">Track your earnings and payment status.</p>
         </div>
-        <div className="table-responsive">
-          <table className="table">
-            <thead>
-              <tr>
-                {activeTab === 'pending' && (
-                  <th style={{ width: '40px' }}>
-                    <input
-                      type="checkbox"
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedIds(pendingPayments.filter(p => p.paid).map(p => p._id));
-                        } else {
-                          setSelectedIds([]);
-                        }
-                      }}
-                      checked={selectedIds.length > 0 && selectedIds.length === pendingPayments.filter(p => p.paid).length}
-                    />
-                  </th>
-                )}
-                <th>Project</th>
-                <th>Work Type</th>
-                <th>Deadline</th>
-                <th>Original Amount</th>
-                <th>Final Amount</th>
-                <th>Deadline Crossed</th>
-                <th>Status</th>
-                {activeTab === 'pending' && <th>Action</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {displayedPayments.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="text-center">
-                    {activeTab === 'pending' ? 'No pending payments.' : 'No payment history.'}
-                  </td>
-                </tr>
+        <Button variant="outline" onClick={loadPayments} disabled={loading}>
+          <Clock className="mr-2 h-4 w-4" /> Refresh
+        </Button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-3 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
+            <AlertCircle className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(pendingPayments.reduce((sum, p) => sum + (p.finalAmount || p.originalAmount || p.baseAmount || 0), 0))}</div>
+            <p className="text-xs text-muted-foreground">{pendingPayments.length} payments pending</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Received</CardTitle>
+            <Wallet className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(historyPayments.filter(p => p.received).reduce((sum, p) => sum + (p.finalAmount || p.originalAmount || p.baseAmount || 0), 0))}</div>
+            <p className="text-xs text-muted-foreground">{historyPayments.filter(p => p.received).length} payments received</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Coming Soon</CardTitle>
+            <Calendar className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">--</div>
+            <p className="text-xs text-muted-foreground">Next payout cycle</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); setSelectedIds([]); }} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pending">Pending ({pendingPayments.length})</TabsTrigger>
+          <TabsTrigger value="history">History ({historyPayments.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pending" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Pending Payments</CardTitle>
+                <CardDescription>Payments that are approved but not yet received/verified by you.</CardDescription>
+              </div>
+              {pendingPayments.length > 0 && selectedIds.length > 0 && (
+                <Button
+                  onClick={handleBulkMarkReceived}
+                  disabled={processingId === 'bulk'}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {processingId === 'bulk' ? 'Processing...' : `Mark ${selectedIds.length} Received`}
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {pendingPayments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                  <CheckCircle2 className="h-12 w-12 mb-4 text-green-500 opacity-50" />
+                  <p>No pending payments found.</p>
+                </div>
               ) : (
-                displayedPayments.map((payment, index) => (
-                  <motion.tr
-                    key={payment._id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    {activeTab === 'pending' && (
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          disabled={!payment.paid}
-                          checked={selectedIds.includes(payment._id)}
-                          onChange={() => {
-                            if (selectedIds.includes(payment._id)) {
-                              setSelectedIds(selectedIds.filter(id => id !== payment._id));
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">
+                        <Checkbox
+                          checked={selectedIds.length > 0 && selectedIds.length === pendingPayments.filter(p => p.paid).length}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedIds(pendingPayments.filter(p => p.paid).map(p => p._id));
                             } else {
-                              setSelectedIds([...selectedIds, payment._id]);
+                              setSelectedIds([]);
                             }
                           }}
+                          aria-label="Select all"
                         />
-                      </td>
-                    )}
-                    <td>{payment.project?.title || 'N/A'}</td>
-                    <td>{payment.workType || 'N/A'}</td>
-                    <td>{formatDate(payment.deadline)}</td>
-                    <td>{formatCurrency(payment.originalAmount || payment.baseAmount || 0, payment.project?.currency || 'INR')}</td>
-                    <td>
-                      <strong className={payment.deadlineCrossed ? 'final-amount-reduced' : 'final-amount'}>
-                        {formatCurrency(payment.finalAmount || payment.originalAmount || payment.baseAmount || 0, payment.project?.currency || 'INR')}
-                      </strong>
-                    </td>
-                    <td>
-                      {payment.deadlineCrossed ? (
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
-                          borderRadius: '12px',
-                          backgroundColor: '#f8d7da',
-                          color: '#842029',
-                          fontWeight: 'bold',
-                          fontSize: '11px',
-                          border: '1px solid #f5c2c7'
-                        }}>
-                          Yes ({payment.daysLate || 0} days)
-                        </span>
-                      ) : (
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
-                          borderRadius: '12px',
-                          backgroundColor: '#d4edda',
-                          color: '#155724',
-                          fontWeight: 'bold',
-                          fontSize: '11px',
-                          border: '1px solid #c3e6cb'
-                        }}>
-                          No
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      {payment.received ? (
-                        <span className="badge badge-success">Received</span>
-                      ) : (payment.paymentType === 'bonus' || payment.paymentType === 'deduction') ? (
-                        <span className="badge badge-success">Applied</span>
-                      ) : payment.paid ? (
-                        payment.paymentScreenshot ? (
-                          <a
-                            href={payment.paymentScreenshot.match(/^https?:\/\//) ? payment.paymentScreenshot : (payment.paymentScreenshot.startsWith('/') || payment.paymentScreenshot.startsWith('uploads') ? `${API_BASE_URL}${payment.paymentScreenshot}` : `https://${payment.paymentScreenshot}`)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="badge badge-primary clickable-badge"
-                            title="Click to view proof"
-                            style={{ textDecoration: 'none', cursor: 'pointer' }}
-                          >
-                            Paid (Proof)
-                          </a>
-                        ) : (
-                          <span className="badge badge-primary">Paid</span>
-                        )
-                      ) : (
-                        <span className="badge badge-warning">Pending</span>
-                      )}
-                    </td>
-                    {activeTab === 'pending' && (
-                      <td>
-                        {payment.paid && !payment.received && (
-                          <button
-                            className="btn btn-xs btn-outline-success"
-                            onClick={() => handleMarkReceived(payment._id)}
-                            disabled={processingId === payment._id}
-                          >
-                            {processingId === payment._id ? '...' : 'Mark Received'}
-                          </button>
-                        )}
-                        {!payment.paid && <span style={{ color: '#999', fontSize: '11px' }}>Awaiting Payment</span>}
-                      </td>
-                    )}
-                  </motion.tr>
-                ))
+                      </TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Work Type</TableHead>
+                      <TableHead>Deadline</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingPayments.map((payment) => (
+                      <TableRow key={payment._id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.includes(payment._id)}
+                            onCheckedChange={() => {
+                              if (selectedIds.includes(payment._id)) {
+                                setSelectedIds(selectedIds.filter(id => id !== payment._id));
+                              } else {
+                                setSelectedIds([...selectedIds, payment._id]);
+                              }
+                            }}
+                            disabled={!payment.paid}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{payment.project?.title || 'N/A'}</TableCell>
+                        <TableCell>{payment.workType || 'N/A'}</TableCell>
+                        <TableCell>{formatDate(payment.deadline)}</TableCell>
+                        <TableCell>
+                          {payment.paid ? (
+                            payment.paymentScreenshot ? (
+                              <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 flex w-fit items-center gap-1 cursor-pointer hover:bg-blue-100" asChild>
+                                <a href={payment.paymentScreenshot} target="_blank" rel="noopener noreferrer">
+                                  <CheckCircle2 className="h-3 w-3" /> Paid (Proof)
+                                </a>
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-800">Paid</Badge>
+                            )
+                          ) : (
+                            <Badge variant="outline" className="border-yellow-200 bg-yellow-50 text-yellow-700 flex w-fit items-center gap-1">
+                              <Clock className="h-3 w-3" /> Pending
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(payment.finalAmount || payment.originalAmount || payment.baseAmount || 0, payment.project?.currency || 'INR')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {payment.paid && !payment.received && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => handleMarkReceived(payment._id)}
+                              disabled={processingId === payment._id}
+                            >
+                              {processingId === payment._id ? 'Processing...' : 'Mark Received'}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <div className="payment-summary">
-        <div className="summary-card">
-          <h3>Payment Summary</h3>
-          {(() => {
-            const totals = displayedPayments.reduce((acc, p) => {
-              const cur = p.project?.currency || 'INR';
-              if (!acc[cur]) {
-                acc[cur] = { original: 0, penalty: 0, final: 0 };
-              }
-              acc[cur].original += (p.originalAmount || p.baseAmount || 0);
-              acc[cur].penalty += (p.penaltyAmount || 0);
-              acc[cur].final += (p.finalAmount || p.originalAmount || p.baseAmount || 0);
-              return acc;
-            }, {});
+        <TabsContent value="history" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment History</CardTitle>
+              <CardDescription>Past payments and deductions.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {historyPayments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">No payment history available.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {historyPayments.map((payment) => (
+                      <TableRow key={payment._id}>
+                        <TableCell className="font-medium">{payment.project?.title || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{payment.workType || payment.paymentType}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {payment.received ? (
+                            <Badge className="bg-green-600 hover:bg-green-700">Received</Badge>
+                          ) : (
+                            <Badge variant="secondary">Applied</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{formatDate(payment.paidAt || payment.updatedAt)}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(payment.finalAmount || payment.originalAmount || payment.baseAmount || 0, payment.project?.currency || 'INR')}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
-            return Object.keys(totals).map(cur => (
-              <div key={cur} className="currency-summary" style={{ marginBottom: '20px', paddingBottom: '10px', borderBottom: Object.keys(totals).length > 1 ? '1px dashed #eee' : 'none' }}>
-                {Object.keys(totals).length > 1 && <h4 style={{ color: '#666', marginBottom: '10px' }}>{cur}</h4>}
-                <div className="summary-item">
-                  <span>Total Original Amount:</span>
-                  <strong>{formatCurrency(totals[cur].original, cur)}</strong>
+      {/* Payment Summary Footer */}
+      {displayedPayments.length > 0 && (
+        <Card className="mt-8 bg-muted/30">
+          <CardHeader>
+            <CardTitle className="text-lg">Payment Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const totals = displayedPayments.reduce((acc, p) => {
+                const cur = p.project?.currency || 'INR';
+                if (!acc[cur]) {
+                  acc[cur] = { original: 0, penalty: 0, final: 0 };
+                }
+                acc[cur].original += (p.originalAmount || p.baseAmount || 0);
+                acc[cur].penalty += (p.penaltyAmount || 0);
+                acc[cur].final += (p.finalAmount || p.originalAmount || p.baseAmount || 0);
+                return acc;
+              }, {});
+
+              return (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {Object.keys(totals).map(cur => (
+                    <div key={cur} className="space-y-3 p-4 border rounded-lg bg-background">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-muted-foreground">Currency</span>
+                        <Badge variant="outline">{cur}</Badge>
+                      </div>
+                      <Separator />
+                      <div className="flex justify-between text-sm">
+                        <span>Original:</span>
+                        <span>{formatCurrency(totals[cur].original, cur)}</span>
+                      </div>
+                      {totals[cur].penalty > 0 && (
+                        <div className="flex justify-between text-sm text-destructive">
+                          <span>Penalties:</span>
+                          <span>-{formatCurrency(totals[cur].penalty, cur)}</span>
+                        </div>
+                      )}
+                      <Separator />
+                      <div className="flex justify-between font-bold text-lg">
+                        <span>Total:</span>
+                        <span>{formatCurrency(totals[cur].final, cur)}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="summary-item">
-                  <span>Total Penalties:</span>
-                  <strong className="penalty-amount">
-                    -{formatCurrency(totals[cur].penalty, cur)}
-                  </strong>
-                </div>
-                <div className="summary-item summary-total">
-                  <span>Total Expected {cur === 'INR' ? 'Rupees' : 'Amount'}:</span>
-                  <strong>
-                    {formatCurrency(totals[cur].final, cur)}
-                  </strong>
-                </div>
-              </div>
-            ));
-          })()}
-        </div>
-      </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

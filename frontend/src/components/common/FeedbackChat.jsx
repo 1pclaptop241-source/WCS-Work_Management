@@ -1,107 +1,129 @@
-import { API_BASE_URL } from '../../services/api';
+import React from 'react';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { X, Paperclip, Check, Play } from 'lucide-react';
 import { formatDateTime } from '../../utils/formatDate';
 import { motion, AnimatePresence } from 'framer-motion';
-import './FeedbackChat.css';
 
-const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, markingId }) => {
+const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, markingId, onClose }) => {
+
     if (!corrections || corrections.length === 0) {
         return (
-            <div className="feedback-chat empty">
-                <p style={{ color: '#888', fontStyle: 'italic', textAlign: 'center' }}>
-                    No feedback or corrections yet.
-                </p>
-            </div>
+            <Card className="w-full h-full flex items-center justify-center p-6 border-dashed">
+                <div className="text-center text-muted-foreground">
+                    <p>No feedback or corrections yet.</p>
+                </div>
+            </Card>
         );
     }
 
     return (
-        <div className="feedback-chat">
-            {corrections.map((msg, index) => {
-                // Determine if message is sent by current user or someone else
-                // Ideally 'addedBy' should have an ID. If it's populated, check _id. 
-                // If not populated (legacy), default to 'received' style unless we can determine.
-                const isMe = msg.addedBy?._id === currentUser?._id;
-                const isMarking = markingId === msg._id;
+        <Card className="flex flex-col h-[500px] w-full shadow-md border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between py-3 px-4 border-b">
+                <CardTitle className="text-base font-medium">Feedback & Corrections</CardTitle>
+                {onClose && (
+                    <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+                        <X className="h-4 w-4" />
+                    </Button>
+                )}
+            </CardHeader>
 
-                return (
-                    <div key={index} className={`chat-message ${isMe ? 'sent' : 'received'}`}>
-                        <div className="message-avatar" title={msg.addedBy?.name || 'User'}>
-                            {(msg.addedBy?.name || 'U').charAt(0).toUpperCase()}
-                        </div>
+            <ScrollArea className="flex-1 p-4">
+                <div className="flex flex-col gap-4">
+                    {corrections.map((msg, index) => {
+                        const isMe = msg.addedBy?._id === currentUser?._id;
+                        const isMarking = markingId === msg._id;
 
-                        <div className="message-content">
-                            <div className="message-header">
-                                <span className="sender-name">{msg.addedBy?.name || 'Unknown'}</span>
-                                <span className="message-time">{formatDateTime(msg.addedAt)}</span>
-                            </div>
+                        return (
+                            <div key={index} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                <Avatar className="h-8 w-8 border">
+                                    <AvatarFallback className={isMe ? "bg-primary text-primary-foreground" : "bg-muted"}>
+                                        {(msg.addedBy?.name || 'U').charAt(0).toUpperCase()}
+                                    </AvatarFallback>
+                                </Avatar>
 
-                            <div className="message-body">
-                                {msg.text || (
-                                    <span style={{ fontStyle: 'italic', color: '#888' }}>
-                                        {(msg.voiceFile || msg.mediaFiles?.length > 0) ? 'Shared files' : 'No text content'}
-                                    </span>
-                                )}
-                            </div>
+                                <div className={`flex flex-col gap-1 max-w-[85%] ${isMe ? 'items-end' : 'items-start'}`}>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                                        <span className="font-medium text-foreground">{msg.addedBy?.name || 'Unknown'}</span>
+                                        <span>{formatDateTime(msg.addedAt)}</span>
+                                    </div>
 
-                            {(msg.voiceFile || (msg.mediaFiles && msg.mediaFiles.length > 0)) && (
-                                <div className="message-attachments">
-                                    {msg.voiceFile && (
-                                        <div style={{ width: '100%' }}>
-                                            <audio
-                                                controls
-                                                src={msg.voiceFile}
-                                                className="voice-note-player"
-                                            />
-                                        </div>
-                                    )}
-                                    {msg.mediaFiles && msg.mediaFiles.map((file, i) => (
-                                        <a
-                                            key={i}
-                                            href={file}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="attachment-link"
-                                        >
-                                            📎 Attachment {i + 1}
-                                        </a>
-                                    ))}
-                                </div>
-                            )}
-
-                            <div className="message-actions">
-                                {msg.done ? (
-                                    <motion.span
-                                        className="status-badge status-fixed"
-                                        initial={{ scale: 0, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        type="spring"
-                                        stiffness={500}
+                                    <div
+                                        className={`p-3 rounded-lg text-sm shadow-sm ${isMe
+                                                ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                                : 'bg-card border rounded-tl-none'
+                                            }`}
                                     >
-                                        ✓ Fixed
-                                    </motion.span>
-                                ) : (
-                                    canMarkFixed ? (
-                                        <motion.button
-                                            className="mark-fixed-btn"
-                                            onClick={() => !isMarking && onMarkFixed(msg._id)}
-                                            disabled={isMarking}
-                                            whileHover={!isMarking ? { scale: 1.05 } : {}}
-                                            whileTap={!isMarking ? { scale: 0.95 } : {}}
-                                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                                            style={{ opacity: isMarking ? 0.7 : 1, cursor: isMarking ? 'not-allowed' : 'pointer' }}
-                                        >
-                                            {isMarking ? 'Marking Fixed...' : 'Mark as Fixed'}
-                                        </motion.button>
-                                    ) : (
-                                        <span className="status-badge status-pending">⚠ Pending Fix</span>
-                                    )
-                                )}
+                                        <p className="whitespace-pre-wrap leading-relaxed">
+                                            {msg.text || <span className="italic opacity-80">Shared files</span>}
+                                        </p>
+
+                                        {/* Attachments */}
+                                        {(msg.voiceFile || (msg.mediaFiles && msg.mediaFiles.length > 0)) && (
+                                            <div className="mt-3 flex flex-col gap-2">
+                                                {msg.voiceFile && (
+                                                    <div className="bg-background/20 rounded p-1">
+                                                        <audio controls src={msg.voiceFile} className="h-8 w-full max-w-[200px]" />
+                                                    </div>
+                                                )}
+
+                                                {msg.mediaFiles && msg.mediaFiles.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {msg.mediaFiles.map((file, i) => (
+                                                            <a
+                                                                key={i}
+                                                                href={file}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border ${isMe
+                                                                        ? 'bg-primary-foreground/10 border-white/20 hover:bg-white/20'
+                                                                        : 'bg-muted hover:bg-muted/80'
+                                                                    }`}
+                                                            >
+                                                                <Paperclip className="h-3 w-3" />
+                                                                Attachment {i + 1}
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="mt-1">
+                                        {msg.done ? (
+                                            <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 gap-1">
+                                                <Check className="h-3 w-3" /> Fixed
+                                            </Badge>
+                                        ) : (
+                                            canMarkFixed ? (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-7 text-xs gap-1 hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                                                    onClick={() => !isMarking && onMarkFixed(msg._id)}
+                                                    disabled={isMarking}
+                                                >
+                                                    {isMarking ? 'Marking...' : 'Mark as Fixed'}
+                                                </Button>
+                                            ) : (
+                                                <Badge variant="secondary" className="text-xs text-yellow-700 bg-yellow-50 border-yellow-200">
+                                                    Pending Fix
+                                                </Badge>
+                                            )
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
+                        );
+                    })}
+                </div>
+            </ScrollArea>
+        </Card>
     );
 };
 

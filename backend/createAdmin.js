@@ -5,7 +5,7 @@ require('dotenv').config();
 async function createAdmin() {
   try {
     // Connect to MongoDB using the same connection string as your app
-    const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/wisecutstudios';
+    const MONGODB_URI = process.env.MONGODB_URI;
 
     await mongoose.connect(MONGODB_URI, {
       useNewUrlParser: true,

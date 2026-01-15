@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useDialog } from '../../context/DialogContext';
-import { worksAPI, projectsAPI, workBreakdownAPI, API_BASE_URL } from '../../services/api';
+import { worksAPI, workBreakdownAPI, API_BASE_URL } from '../../services/api';
 import { formatDate, formatDateTime } from '../../utils/formatDate';
 import ProjectDetails from './ProjectDetails';
 import VoiceRecorder from '../common/VoiceRecorder';
@@ -9,8 +9,33 @@ import WorkTypeMenu from '../common/WorkTypeMenu';
 import WorkTypeDetailsModal from '../common/WorkTypeDetailsModal';
 import FeedbackChat from '../common/FeedbackChat';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaDownload, FaEdit, FaCheck, FaComments, FaFileAlt, FaVideo, FaCheckCircle, FaRegCircle } from 'react-icons/fa';
-import './WorkView.css';
+import {
+  Download, Edit, Check, MessageSquare, FileText, Video, AlertCircle,
+  ArrowLeft, Paperclip, Mic, Send, Info, CheckCircle2, Circle
+} from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const WorkView = ({ project, onBack, onUpdate }) => {
   const { user } = useAuth();
@@ -26,7 +51,6 @@ const WorkView = ({ project, onBack, onUpdate }) => {
   const [selectedWorkTypeForDetails, setSelectedWorkTypeForDetails] = useState(null);
   const [feedbackText, setFeedbackText] = useState({});
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(null);
-
 
   // New state for corrections
   const [correctionText, setCorrectionText] = useState('');
@@ -147,7 +171,7 @@ const WorkView = ({ project, onBack, onUpdate }) => {
 
   const handleSaveInstructions = async (workBreakdownId) => {
     const text = instructionsInput[workBreakdownId];
-    if (text === undefined) return; // No change
+    if (text === undefined) return;
 
     try {
       setIsSavingInstructions(workBreakdownId);
@@ -198,122 +222,82 @@ const WorkView = ({ project, onBack, onUpdate }) => {
   };
 
   return (
-    <div className="work-view">
-      <div className="work-view-header" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', flexWrap: 'nowrap' }}>
-        <button
-          title="Back to Projects"
-          style={{
-            padding: '8px',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            color: 'var(--primary-blue)',
-            border: '1px solid #e2e8f0',
-            borderRadius: '50%',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            width: '40px',
-            height: '40px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-            flexShrink: 0
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--primary-blue)';
-            e.currentTarget.style.color = 'white';
-            e.currentTarget.style.transform = 'translateX(-3px)';
-            e.currentTarget.style.boxShadow = '0 4px 6px rgba(46, 134, 171, 0.2)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
-            e.currentTarget.style.color = 'var(--primary-blue)';
-            e.currentTarget.style.transform = 'translateX(0)';
-            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-          }}
-          onClick={onBack}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12"></line>
-            <polyline points="12 19 5 12 12 5"></polyline>
-          </svg>
-        </button>
-        <h2 style={{
-          margin: 0,
-          fontSize: '1.5rem',
-          flex: 1,
-          minWidth: 0,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }}>{project.title}</h2>
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" onClick={onBack} title="Back to Projects" className="shrink-0 rounded-full h-10 w-10">
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <h2 className="text-2xl font-bold truncate flex-1 text-primary">{project.title}</h2>
       </div>
 
       {/* Action Banner */}
       {(() => {
         const needsReview = breakdowns.some(bd => {
           const work = getLatestSubmission(bd._id);
-          return work && !bd.approvals?.client; // Has submission but not yet client approved
+          return work && !bd.approvals?.client;
         });
 
         if (needsReview) {
           return (
-            <div style={{ margin: '0 20px 20px', padding: '15px', background: '#e3f2fd', borderLeft: '5px solid #2196f3', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <span style={{ fontSize: '24px' }}>🔔</span>
-              <div>
-                <h4 style={{ margin: '0 0 5px', color: '#0d47a1' }}>Action Required</h4>
-                <p style={{ margin: 0, color: '#333' }}>You have items ready for review. Please check the "Pending Approval" items below.</p>
-              </div>
-            </div>
+            <Alert className="bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/10 dark:text-blue-200 dark:border-blue-800">
+              <AlertCircle className="h-5 w-5 !text-blue-600 dark:!text-blue-400" />
+              <AlertTitle className="text-blue-800 dark:text-blue-300 font-semibold">Action Required</AlertTitle>
+              <AlertDescription className="text-blue-700 dark:text-blue-400">
+                You have items ready for review. Please check the "Pending Approval" items below.
+              </AlertDescription>
+            </Alert>
           );
         }
         return null;
       })()}
 
-      {/* Progress Bar */}
-      <div style={{ padding: '0 20px 20px 20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px', fontWeight: '600' }}>
-          <span>Work Completion</span>
-          <span>{(() => {
-            const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-            const donePct = breakdowns
-              .filter(w => w.approvals?.admin && w.approvals?.client)
-              .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-            const progress = totalPct > 0 ? (donePct / totalPct) * 100 : 0;
-            return Math.round(progress);
-          })()}%</span>
-        </div>
-        <div style={{ width: '100%', height: '12px', backgroundColor: '#e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
-          <div
-            style={{
-              width: `${(() => {
+      {/* Progress Section */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-lg font-medium">Work Completion</CardTitle>
+            <span className="text-sm font-bold text-primary">
+              {(() => {
                 const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
                 const donePct = breakdowns
                   .filter(w => w.approvals?.admin && w.approvals?.client)
                   .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-                return totalPct > 0 ? (donePct / totalPct) * 100 : 0;
-              })()}%`,
-              height: '100%',
-              backgroundColor: '#06A77D',
-              transition: 'width 0.3s ease'
-            }}
-          />
-        </div>
-      </div>
+                const progress = totalPct > 0 ? (donePct / totalPct) * 100 : 0;
+                return Math.round(progress);
+              })()}%
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Progress value={(() => {
+            const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
+            const donePct = breakdowns
+              .filter(w => w.approvals?.admin && w.approvals?.client)
+              .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
+            return totalPct > 0 ? (donePct / totalPct) * 100 : 0;
+          })()} className="h-3" />
+        </CardContent>
+      </Card>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      <div className="work-content">
-        <div className="works-section">
-          <div className="section-header">
-            <h3>Project Work Items</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold">Project Work Items</h3>
           </div>
 
           {loading ? (
-            <div className="spinner"></div>
+            <div className="flex justify-center p-8 text-muted-foreground">Loading work items...</div>
           ) : breakdowns.length === 0 ? (
-            <div className="card"><p>No work breakdown defined.</p></div>
+            <Card><CardContent className="p-6 text-center text-muted-foreground">No work breakdown defined.</CardContent></Card>
           ) : (
-            <div className="works-list">
+            <div className="space-y-6">
               <AnimatePresence>
                 {breakdowns.map((bd, index) => {
                   const work = getLatestSubmission(bd._id);
@@ -326,126 +310,88 @@ const WorkView = ({ project, onBack, onUpdate }) => {
 
                   let statusBadge;
                   if (!hasUpload) {
-                    statusBadge = <span className="badge badge-secondary">Pending Upload</span>;
+                    statusBadge = <Badge variant="secondary">Pending Upload</Badge>;
                   } else if (isApproved) {
-                    statusBadge = <span className="badge badge-success">Approved</span>;
+                    statusBadge = <Badge className="bg-green-600 hover:bg-green-700">Approved</Badge>;
                   } else if (hasPendingCorrections) {
-                    statusBadge = <span className="badge badge-warning">Needs Revision</span>;
+                    statusBadge = <Badge variant="warning" className="bg-yellow-500 hover:bg-yellow-600 text-white">Needs Revision</Badge>;
                   } else {
-                    statusBadge = <span className="badge badge-primary">Pending Approval</span>;
+                    statusBadge = <Badge className="bg-blue-600 hover:bg-blue-700">Pending Approval</Badge>;
                   }
 
                   return (
                     <motion.div
                       key={bd._id}
-                      className="work-item"
-                      style={{
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '12px',
-                        backgroundColor: '#fff',
-                        marginBottom: '20px',
-                        overflow: 'hidden',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                      }}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
+                      transition={{ delay: index * 0.05 }}
                       layout
                     >
-                      {/* Status Strip */}
-                      <div style={{ height: '4px', background: isApproved ? '#10b981' : hasPendingCorrections ? '#f59e0b' : '#3b82f6', width: '100%' }} />
-
-                      <div style={{ padding: '20px' }}>
-                        {/* Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-                          <div>
-                            <h3 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', color: '#1e293b' }}>{bd.workType}</h3>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
-                              {hasUpload ? (
-                                <>
-                                  Latest Submission: <span style={{ fontWeight: 500 }}>{formatDate(work.submittedAt)}</span>
-                                </>
-                              ) : 'Waiting for submission...'}
-                            </p>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            {statusBadge}
-                            <WorkTypeMenu workBreakdown={bd} onViewDetails={handleViewWorkTypeDetails} />
-                          </div>
-                        </div>
-
-                        {/* Instructions Section */}
-                        <div style={{ marginBottom: '20px' }}>
-                          <label style={{ display: 'block', fontWeight: 600, color: '#475569', marginBottom: '8px', fontSize: '0.9rem' }}>
-                            Instructions for Editor:
-                          </label>
-                          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                            <textarea
-                              style={{
-                                flex: 1,
-                                padding: '10px',
-                                borderRadius: '8px',
-                                border: '1px solid #cbd5e1',
-                                minHeight: '60px',
-                                fontFamily: 'inherit',
-                                fontSize: '0.9rem',
-                                resize: 'vertical'
-                              }}
-                              placeholder="Add specific instructions for this work item... (visible to Editor and Admin)"
-                              value={instructionsInput[bd._id] !== undefined ? instructionsInput[bd._id] : (bd.clientInstructions || '')}
-                              onChange={(e) => setInstructionsInput(prev => ({ ...prev, [bd._id]: e.target.value }))}
-                            />
-                            <button
-                              className="btn btn-primary btn-sm"
-                              onClick={() => handleSaveInstructions(bd._id)}
-                              disabled={isSavingInstructions === bd._id}
-                              style={{ height: 'auto', padding: '8px 16px' }}
-                            >
-                              {isSavingInstructions === bd._id ? 'Saving...' : 'Save'}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Approval Status Steps (Only if uploaded) */}
-                        {hasUpload && (
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '20px',
-                            background: '#f8fafc',
-                            padding: '10px 15px',
-                            borderRadius: '8px',
-                            marginBottom: '20px',
-                            fontSize: '0.9rem'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: adminApproved ? '#059669' : '#64748b' }}>
-                              {adminApproved ? <FaCheckCircle /> : <FaRegCircle />}
-                              <span style={{ fontWeight: adminApproved ? 600 : 400 }}>Admin Review</span>
+                      <Card className={`overflow-hidden border-l-4 ${isApproved ? 'border-l-green-500' : hasPendingCorrections ? 'border-l-yellow-500' : 'border-l-blue-500'}`}>
+                        <div className={`h-1 w-full ${isApproved ? 'bg-green-500' : hasPendingCorrections ? 'bg-yellow-500' : 'bg-blue-500'}`} />
+                        <CardHeader className="pb-3 pt-5">
+                          <div className="flex justify-between items-start gap-4">
+                            <div>
+                              <CardTitle className="text-xl">{bd.workType}</CardTitle>
+                              <CardDescription className="mt-1">
+                                {hasUpload ? (
+                                  <>Latest Submission: <span className="font-medium text-foreground">{formatDate(work.submittedAt)}</span></>
+                                ) : 'Waiting for submission...'}
+                              </CardDescription>
                             </div>
-                            <div style={{ width: '1px', height: '15px', background: '#e2e8f0' }} />
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: clientApproved ? '#059669' : '#64748b' }}>
-                              {clientApproved ? <FaCheckCircle /> : <FaRegCircle />}
-                              <span style={{ fontWeight: clientApproved ? 600 : 400 }}>Client Review</span>
+                            <div className="flex items-center gap-2">
+                              {statusBadge}
+                              <WorkTypeMenu workBreakdown={bd} onViewDetails={handleViewWorkTypeDetails} />
                             </div>
                           </div>
-                        )}
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          {/* Instructions */}
+                          <div className="space-y-2">
+                            <Label className="text-muted-foreground font-semibold">Instructions for Editor:</Label>
+                            <div className="flex gap-2 items-start">
+                              <Textarea
+                                className="min-h-[80px] resize-y"
+                                placeholder="Add specific instructions for this work item... (visible to Editor and Admin)"
+                                value={instructionsInput[bd._id] !== undefined ? instructionsInput[bd._id] : (bd.clientInstructions || '')}
+                                onChange={(e) => setInstructionsInput(prev => ({ ...prev, [bd._id]: e.target.value }))}
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => handleSaveInstructions(bd._id)}
+                                disabled={isSavingInstructions === bd._id}
+                              >
+                                {isSavingInstructions === bd._id ? 'Saving...' : 'Save'}
+                              </Button>
+                            </div>
+                          </div>
 
-                        <div className="work-actions">
+                          {/* Approval Status Steps */}
+                          {hasUpload && (
+                            <div className="flex items-center gap-4 bg-muted/40 p-3 rounded-lg text-sm border">
+                              <div className={`flex items-center gap-2 ${adminApproved ? 'text-green-600 font-semibold' : 'text-muted-foreground'}`}>
+                                {adminApproved ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                                <span>Admin Review</span>
+                              </div>
+                              <div className="h-4 w-[1px] bg-border" />
+                              <div className={`flex items-center gap-2 ${clientApproved ? 'text-green-600 font-semibold' : 'text-muted-foreground'}`}>
+                                {clientApproved ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                                <span>Client Review</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Actions */}
                           {hasUpload ? (
-                            <>
-                              <div style={{ display: 'flex', gap: '12px', width: '100%', marginBottom: '15px' }}>
-                                <button
-                                  className="btn btn-primary"
-                                  onClick={() => handleDownload(work)}
-                                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 600 }}
-                                >
-                                  <FaDownload />
+                            <div className="space-y-4">
+                              <div className="flex flex-wrap gap-3">
+                                <Button className="flex-1 gap-2" variant="outline" onClick={() => handleDownload(work)}>
+                                  <Download className="h-4 w-4" />
                                   {work.submissionType === 'link' ? 'View Link' : 'Download File'}
-                                </button>
+                                </Button>
 
-                                <button
-                                  className="btn btn-success"
-                                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 600, backgroundColor: isApproved ? '#94a3b8' : '#059669', borderColor: isApproved ? '#94a3b8' : '#059669', cursor: isApproved ? 'default' : 'pointer' }}
+                                <Button
+                                  className={`flex-1 gap-2 ${isApproved ? 'bg-muted text-muted-foreground hover:bg-muted' : 'bg-green-600 hover:bg-green-700 text-white'}`}
                                   disabled={isApproved}
                                   onClick={() => {
                                     if (isApproved) return;
@@ -456,15 +402,13 @@ const WorkView = ({ project, onBack, onUpdate }) => {
                                     setShowCorrectionsModal(true);
                                   }}
                                 >
-                                  <FaEdit />
-                                  Request Changes
-                                </button>
+                                  <Edit className="h-4 w-4" /> Request Changes
+                                </Button>
                               </div>
 
                               {!isApproved && !clientApproved && (
-                                <button
-                                  className="btn btn-success"
-                                  style={{ width: '100%', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#10b981', borderColor: '#10b981' }}
+                                <Button
+                                  className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                                   onClick={async () => {
                                     const isConfirmed = await confirm({
                                       title: `Approve ${bd.workType}?`,
@@ -486,140 +430,118 @@ const WorkView = ({ project, onBack, onUpdate }) => {
                                     }
                                   }}
                                   disabled={approvingKey === bd._id || hasPendingCorrections}
-                                  title={hasPendingCorrections ? "Complete all corrections first" : "Approve this work"}
                                 >
-                                  {approvingKey === bd._id ? <span className="spinner-small" /> : <FaCheck />}
-                                  {approvingKey === bd._id ? 'Finalizing...' : 'Approve Work'}
-                                </button>
+                                  {approvingKey === bd._id ? 'Finalizing...' : <><Check className="h-4 w-4" /> Approve Work</>}
+                                </Button>
                               )}
-                            </>
+
+                              {work.workFileUrl && work.isWorkFileVisibleToClient && (
+                                <div className="text-center">
+                                  <a
+                                    href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors underline"
+                                  >
+                                    {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '📦 Download Source File'}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
                           ) : (
-                            <div style={{ padding: '30px', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#64748b' }}>
-                              <p style={{ margin: 0 }}>Editor is working on this task.</p>
+                            <div className="p-8 text-center bg-muted/30 border border-dashed rounded-lg text-muted-foreground">
+                              Editor is working on this task.
                             </div>
                           )}
 
-                          {hasUpload && work.workFileUrl && work.isWorkFileVisibleToClient && (
-                            <div style={{ margin: '10px 0' }}>
-                              <a
-                                href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#64748b', textDecoration: 'none', padding: '6px 10px', borderRadius: '4px', background: '#f1f5f9' }}
-                              >
-                                {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '📦 Download Source File'}
-                              </a>
+                          {/* Editor Note */}
+                          {hasUpload && work.editorMessage && (
+                            <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-lg p-4 flex gap-3">
+                              <span className="text-xl">📝</span>
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">Note from Editor:</p>
+                                <p className="text-sm text-foreground">{work.editorMessage}</p>
+                              </div>
                             </div>
                           )}
 
-                          {/* Feedback Section */}
-                          <div style={{ marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '15px' }}>
+                          {/* Corrections / Chat */}
+                          {(() => {
+                            const allCorrections = getAllCorrections(bd._id);
+                            if (allCorrections.length > 0) {
+                              return (
+                                <div className="pt-4 border-t">
+                                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Technical Corrections & Requests</h4>
+                                  <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
+                                    <FeedbackChat
+                                      corrections={allCorrections}
+                                      currentUser={user}
+                                      canMarkFixed={true}
+                                      markingId={markingFixId}
+                                      onMarkFixed={(correctionId) => {
+                                        const corr = allCorrections.find(c => c._id === correctionId);
+                                        if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            }
+                          })()}
+
+                          {/* Feedback / Discussion */}
+                          <div className="pt-4 border-t">
                             <div
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: focusFeedback ? '10px' : '0' }}
+                              className="flex items-center gap-2 mb-3 cursor-pointer text-muted-foreground hover:text-primary transition-colors"
                               onClick={() => focusFeedback(bd._id)}
                             >
-                              <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <FaComments className="text-gray-400" /> Discussion
-                              </h4>
-                              {(!bd.feedback || bd.feedback.length === 0) && (
-                                <span style={{ fontSize: '0.8rem', color: '#3b82f6' }}>Add comment</span>
-                              )}
+                              <MessageSquare className="h-4 w-4" />
+                              <h4 className="text-sm font-semibold">Discussion</h4>
+                              {(!bd.feedback || bd.feedback.length === 0) && <span className="text-xs text-blue-500 font-normal">Add comment</span>}
                             </div>
 
-                            {(bd.feedback && bd.feedback.length > 0) || true ? (
-                              <>
-                                <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '15px', paddingRight: '5px' }}>
-                                  {bd.feedback && bd.feedback.length > 0 ? (
-                                    bd.feedback.map((f, i) => (
-                                      <div key={i} style={{
-                                        marginBottom: '8px',
-                                        padding: '8px 12px',
-                                        background: f.from?._id === user._id ? '#eff6ff' : '#f8fafc',
-                                        borderRadius: '8px',
-                                        border: f.from?._id === user._id ? '1px solid #dbeafe' : '1px solid #e2e8f0',
-                                        alignSelf: f.from?._id === user._id ? 'flex-end' : 'flex-start',
-                                        maxWidth: '100%'
-                                      }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '2px' }}>
-                                          <span style={{ fontSize: '0.75rem', fontWeight: '600', color: f.from?._id === user._id ? '#1d4ed8' : '#334155' }}>
-                                            {f.from?.name || 'User'}
-                                            {f.from?._id === user._id && ' (You)'}
-                                          </span>
-                                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{formatDateTime(f.timestamp)}</span>
-                                        </div>
-                                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', whiteSpace: 'pre-wrap' }}>{f.content}</p>
-                                      </div>
-                                    ))
-                                  ) : (
-                                    null
-                                  )}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                  <input
-                                    id={`feedback-input-${bd._id}`}
-                                    type="text"
-                                    style={{
-                                      flex: 1,
-                                      padding: '10px 14px',
-                                      borderRadius: '20px',
-                                      border: '1px solid #cbd5e1',
-                                      fontSize: '0.9rem',
-                                      outline: 'none',
-                                      transition: 'border-color 0.2s',
-                                      backgroundColor: '#f8fafc'
-                                    }}
-                                    placeholder="Write a comment..."
-                                    value={feedbackText[bd._id] || ''}
-                                    onChange={(e) => setFeedbackText(prev => ({ ...prev, [bd._id]: e.target.value }))}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleAddFeedback(bd._id)}
-                                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                                    onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
-                                  />
-                                  <button
-                                    className="btn btn-primary btn-sm"
-                                    style={{ borderRadius: '20px', padding: '0 20px', height: 'auto' }}
-                                    onClick={() => handleAddFeedback(bd._id)}
-                                    disabled={isSubmittingFeedback === bd._id || !feedbackText[bd._id]?.trim()}
+                            {(bd.feedback && bd.feedback.length > 0) && (
+                              <ScrollArea className="h-[200px] w-full rounded-md border p-4 mb-3 bg-muted/20">
+                                {bd.feedback.map((f, i) => (
+                                  <div
+                                    key={i}
+                                    className={`mb-3 p-3 rounded-lg max-w-[85%] text-sm ${f.from?._id === user._id
+                                        ? 'ml-auto bg-primary text-primary-foreground'
+                                        : 'bg-muted text-foreground'
+                                      }`}
                                   >
-                                    {isSubmittingFeedback === bd._id ? '...' : 'Send'}
-                                  </button>
-                                </div>
-                              </>
-                            ) : null}
-                          </div>
-                        </div>
+                                    <div className="flex justify-between items-center gap-4 mb-1 text-xs opacity-70">
+                                      <span className="font-semibold">{f.from?.name || 'User'}{f.from?._id === user._id && ' (You)'}</span>
+                                      <span>{formatDateTime(f.timestamp)}</span>
+                                    </div>
+                                    <p className="whitespace-pre-wrap">{f.content}</p>
+                                  </div>
+                                ))}
+                              </ScrollArea>
+                            )}
 
-                        {/* Editor Message */}
-                        {hasUpload && work.editorMessage && (
-                          <div style={{ marginTop: '15px', padding: '12px 15px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #dbeafe', display: 'flex', gap: '10px' }}>
-                            <div style={{ fontSize: '1.2rem' }}>📝</div>
-                            <div>
-                              <strong style={{ display: 'block', fontSize: '0.85rem', color: '#1e40af', marginBottom: '4px' }}>Note from Editor:</strong>
-                              <p style={{ margin: 0, fontSize: '0.9rem', color: '#1e293b', lineHeight: '1.5' }}>{work.editorMessage}</p>
-                            </div>
-                          </div>
-                        )}
-
-                        {(() => {
-                          const allCorrections = getAllCorrections(bd._id);
-                          return allCorrections.length > 0 && (
-                            <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #e2e8f0' }}>
-                              <strong style={{ display: 'block', marginBottom: '10px', fontSize: '0.9rem', color: '#475569' }}>Technical Corrections & Requests:</strong>
-                              <FeedbackChat
-                                corrections={allCorrections}
-                                currentUser={user}
-                                canMarkFixed={true}
-                                markingId={markingFixId}
-                                onMarkFixed={(correctionId) => {
-                                  const corr = allCorrections.find(c => c._id === correctionId);
-                                  if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
-                                }}
+                            <div className="flex gap-2">
+                              <Input
+                                id={`feedback-input-${bd._id}`}
+                                placeholder="Write a comment..."
+                                value={feedbackText[bd._id] || ''}
+                                onChange={(e) => setFeedbackText(prev => ({ ...prev, [bd._id]: e.target.value }))}
+                                onKeyPress={(e) => e.key === 'Enter' && handleAddFeedback(bd._id)}
+                                className="rounded-full"
                               />
+                              <Button
+                                size="icon"
+                                className="rounded-full shrink-0"
+                                onClick={() => handleAddFeedback(bd._id)}
+                                disabled={isSubmittingFeedback === bd._id || !feedbackText[bd._id]?.trim()}
+                              >
+                                <Send className="h-4 w-4" />
+                              </Button>
                             </div>
-                          );
-                        })()}
-                      </div>
+                          </div>
+
+                        </CardContent>
+                      </Card>
                     </motion.div>
                   );
                 })}
@@ -628,77 +550,73 @@ const WorkView = ({ project, onBack, onUpdate }) => {
           )}
         </div>
 
-        <div className="details-section">
+        {/* Right Sidebar: Details & Info */}
+        <div className="space-y-6">
           <ProjectDetails project={project} onUpdate={onUpdate} />
         </div>
       </div>
 
-      {showCorrectionsModal && selectedWork && (
-        <div className="modal-overlay" onClick={() => setShowCorrectionsModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Request Changes / Feedback</h2>
-              <button className="modal-close" onClick={() => setShowCorrectionsModal(false)}>
-                ×
-              </button>
+      {/* Corrections Modal */}
+      <Dialog open={showCorrectionsModal} onOpenChange={setShowCorrectionsModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Request Changes / Feedback</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitCorrections} id="corrections-form" className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="correction-text">What would you like to change?</Label>
+              <Textarea
+                id="correction-text"
+                value={correctionText}
+                onChange={(e) => setCorrectionText(e.target.value)}
+                rows={5}
+                placeholder="E.g., Please adjust the timing of the transition..."
+              />
             </div>
-            <form onSubmit={handleSubmitCorrections} className="modal-body">
-              <div className="form-group">
-                <label className="form-label">What would you like to change?</label>
-                <textarea
-                  className="form-textarea"
-                  value={correctionText}
-                  onChange={(e) => setCorrectionText(e.target.value)}
-                  rows="4"
-                  placeholder="E.g., Please make the music start 2 seconds earlier..."
-                />
+
+            <div className="space-y-2">
+              <Label>Voice Note</Label>
+              <div className="flex items-center gap-3">
+                <Button type="button" variant="secondary" onClick={() => setShowVoiceRecorder(true)} className="gap-2">
+                  <Mic className="h-4 w-4" />
+                  {voiceFile ? 'Record New Voice Note' : 'Record Voice Note'}
+                </Button>
+                {voiceFile && <span className="text-sm text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> Voice recorded</span>}
               </div>
+            </div>
 
-              <div className="form-group">
-                <label className="form-label">Voice Note</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowVoiceRecorder(true)}>
-                    {voiceFile ? 'Record New Voice Note' : 'Record Voice Note'}
-                  </button>
-                  {voiceFile && <span style={{ color: 'green' }}>Voice recorded</span>}
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="media-files">Reference Files (Images, Videos)</Label>
+              <Input
+                id="media-files"
+                type="file"
+                multiple
+                onChange={handleMediaChange}
+                className="cursor-pointer"
+              />
+              {mediaFiles.length > 0 && <p className="text-xs text-muted-foreground">{mediaFiles.length} files selected</p>}
+            </div>
+          </form>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setShowCorrectionsModal(false)} disabled={submittingCorrection}>Cancel</Button>
+            <Button type="submit" form="corrections-form" disabled={submittingCorrection}>
+              {submittingCorrection ? 'Sending...' : 'Send Feedback'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-              <div className="form-group">
-                <label className="form-label">Reference Files (Images, Videos)</label>
-                <input type="file" multiple onChange={handleMediaChange} className="form-input" />
-                {mediaFiles.length > 0 && <p style={{ fontSize: '12px', marginTop: '5px' }}>{mediaFiles.length} files selected</p>}
-              </div>
+      {/* Voice Recorder Modal */}
+      <Dialog open={showVoiceRecorder} onOpenChange={setShowVoiceRecorder}>
+        <DialogContent className="sm:max-w-md">
+          <VoiceRecorder
+            onRecordingComplete={handleVoiceRecordingComplete}
+            onCancel={() => setShowVoiceRecorder(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  disabled={submittingCorrection}
-                  onClick={() => setShowCorrectionsModal(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-success" disabled={submittingCorrection}>
-                  {submittingCorrection ? 'Sending...' : 'Send Feedback'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showVoiceRecorder && (
-        <div className="modal-overlay" onClick={() => setShowVoiceRecorder(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <VoiceRecorder
-              onRecordingComplete={handleVoiceRecordingComplete}
-              onCancel={() => setShowVoiceRecorder(false)}
-            />
-          </div>
-        </div>
-      )}
-
+      {/* Work Type Details Modal */}
       {showWorkTypeDetails && selectedWorkTypeForDetails && (
         <WorkTypeDetailsModal
           workBreakdown={selectedWorkTypeForDetails}

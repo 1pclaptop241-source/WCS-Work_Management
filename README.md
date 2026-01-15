@@ -28,172 +28,119 @@ A comprehensive work management website for WiseCut Studios built with the MERN 
 
 ## Tech Stack
 
-### Backend
-- Node.js with Express.js
-- MongoDB with Mongoose
-- JWT Authentication
-- Multer for file uploads
-- bcryptjs for password hashing
+### Tech Stack
 
-### Frontend
-- React.js with React Router
-- Axios for API calls
-- Vite as build tool
-- CSS with blue/green color theme
+#### Backend
+- **Node.js** with **Express.js**
+- **MongoDB** with **Mongoose**
+- **JWT** Authentication
+- **Cloudinary** for scalable file storage
+- **Nodemailer** for notifications
+- **Web Push** for browser notifications
+
+#### Frontend
+- **React.js** with **Vite**
+- **Tailwind CSS** for styling
+- **Shadcn/UI** for modern, accessible components
+- **Lucide React** for icons
+- **Axios** for API calls
 
 ## Installation
 
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v16 or higher recommended)
+- [MongoDB Community Server](https://www.mongodb.com/try/download/community) (for local DB)
+
 ### Backend Setup
 
-1. Navigate to backend directory:
-```bash
-cd backend
-```
+1. **Navigate to backend directory:**
+   ```bash
+   cd backend
+   ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-3. Create a `.env` file in the backend directory:
-```
-NODE_ENV=development
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/wisecutstudios
-JWT_SECRET=your_super_secret_jwt_key_change_in_production
-```
+3. **Create a `.env` file:**
+   ```env
+   NODE_ENV=development
+   PORT=5000
+   
+   # MongoDB Connection
+   MONGODB_URI=mongodb://127.0.0.1:27017/wisecutstudios
+   
+   # Security
+   JWT_SECRET=your_super_secret_jwt_key
+   
+   # Cloudinary (Required for File Uploads)
+   CLOUDINARY_CLOUD_NAME=your_cloud_name
+   CLOUDINARY_API_KEY=your_api_key
+   CLOUDINARY_API_SECRET=your_api_secret
 
-4. Start the server:
-```bash
-npm start
-# or for development with nodemon
-npm run dev
-```
+   # Notifications (VAPID Keys for Web Push)
+   PUBLIC_VAPID_KEY=your_public_vapid_key
+   PRIVATE_VAPID_KEY=your_private_vapid_key
+   ```
+
+4. **Start the server:**
+   ```bash
+   npm run dev
+   ```
 
 ### Frontend Setup
 
-1. Navigate to frontend directory:
-```bash
-cd frontend
-```
+1. **Navigate to frontend directory:**
+   ```bash
+   cd frontend
+   ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-3. Start the development server:
-```bash
-npm run dev
-```
+3. **Create a `.env` file:**
+   ```env
+   VITE_API_BASE_URL=http://localhost:5000
+   VITE_VAPID_PUBLIC_KEY=your_public_vapid_key
+   ```
 
-4. Build for production:
-```bash
-npm run build
-```
+4. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+   The frontend typically runs on `http://localhost:5173`.
 
-## Default Setup
+## File Uploads & Media
+- All media files (work submissions, payment proofs) are uploaded to **Cloudinary**.
+- API credentials for Cloudinary must be set in the backend `.env`.
 
-### Create Admin Account
-
-You'll need to create an admin account. You can do this by:
-
-1. Starting the backend server
-2. Using a MongoDB client or API tool to create the first admin user
-3. Or create an admin account through the API endpoint (requires authentication)
-
-Example using MongoDB shell or MongoDB Compass:
-```javascript
-// First create a regular user, then manually update role to 'admin'
-// Or use the API after logging in as admin
-```
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/register` - Register new user (admin only)
-- `GET /api/auth/me` - Get current user
-
-### Projects
-- `GET /api/projects` - Get all projects (role-based filtering)
-- `GET /api/projects/:id` - Get single project
-- `POST /api/projects` - Create project (admin only)
-- `PUT /api/projects/:id` - Update project
-- `DELETE /api/projects/:id` - Delete project (admin only)
-- `PUT /api/projects/:id/assign` - Assign editor (admin only)
-- `PUT /api/projects/:id/share-details` - Share project details (admin only)
-
-### Works
-- `POST /api/works` - Upload work (editor only)
-- `GET /api/works/project/:projectId` - Get works for project
-- `GET /api/works/editor/:editorId` - Get works by editor
-- `PUT /api/works/:id/corrections` - Add corrections (client only)
-
-### Payments
-- `GET /api/payments/editor/:editorId` - Get payments for editor
-- `GET /api/payments/project/:projectId` - Get payment for project
-- `POST /api/payments/calculate` - Calculate/Recalculate payment
-
-### Users
-- `GET /api/users` - Get all users (admin only)
-- `POST /api/users` - Create user (admin only)
-- `GET /api/users/editors` - Get all editors
-- `GET /api/users/clients` - Get all clients (admin only)
-
-## Payment Penalty System
-
-The system automatically calculates payment penalties when deadlines are crossed:
-- **5% penalty per day late**
-- **Maximum 50% reduction**
-- Calculations are done automatically when viewing payment information
-
-## File Uploads
-
-- Files are stored in `backend/uploads/` directory
-- Maximum file size: 100MB
-- Files are served statically at `/uploads/:filename`
-
-## Color Theme
-
-The website uses a blue/green color scheme:
-- Primary Blue: #2E86AB
-- Primary Green: #06A77D
-- Secondary Blue: #1A5F7A
-- Secondary Green: #0D7A5C
+## Design System
+- **Framework**: Tailwind CSS + Shadcn/UI
+- **Icons**: Lucide React
+- **Theme**: Slate/Gray base with semantic colors for status (Green/Success, Yellow/Pending, Red/Error).
+- **Fonts**: Inter / Outfit
 
 ## Project Structure
 
 ```
 project-root/
 ├── backend/
-│   ├── models/          # MongoDB models
-│   ├── routes/          # API routes
-│   ├── controllers/     # Route controllers
-│   ├── middleware/      # Auth & upload middleware
-│   ├── config/          # Database configuration
-│   └── utils/           # Utility functions
+│   ├── models/          # Mongoose Schemas
+│   ├── routes/          # API Endpoints
+│   ├── controllers/     # Logic
+│   └── config/          # DB & Env Config
 ├── frontend/
 │   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── context/     # Context providers
-│   │   ├── services/    # API services
-│   │   └── styles/      # CSS files
-│   └── package.json
+│   │   ├── components/  # React Components (Admin, Client, Editor, Common)
+│   │   ├── services/    # API Integrations
+│   │   ├── context/     # Auth & UI Contexts
+│   │   └── lib/         # Utils & Shadcn configurations
 └── README.md
 ```
 
-## Development
-
-### Running in Development Mode
-
-1. Start MongoDB (if running locally)
-2. Start backend server: `cd backend && npm run dev`
-3. Start frontend dev server: `cd frontend && npm run dev`
-
-The frontend will run on `http://localhost:3000` and proxy API requests to `http://localhost:5000`
-
 ## License
-
-This project is proprietary software for WiseCut Studios.
+Proprietary software for WiseCut Studios.
 
