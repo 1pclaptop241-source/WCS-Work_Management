@@ -1,17 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api'; // Adjust path as needed
-import './NotificationDropdown.css'; // We'll need some styles
+import api from '../../services/api';
+import { Bell } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/utils/cn';
 
 const NotificationDropdown = () => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
-    const unreadCountRef = useRef(0); // Ref to track unreadCount for interval closure
+    const unreadCountRef = useRef(0);
     const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef(null);
     const navigate = useNavigate();
 
-    // Sync ref with state
     useEffect(() => {
         unreadCountRef.current = unreadCount;
     }, [unreadCount]);
@@ -22,12 +31,10 @@ const NotificationDropdown = () => {
             const newNotifications = res.data;
             const newUnreadCount = newNotifications.filter(n => !n.read).length;
 
-            // Play sound if new unread notification detected and it's not the initial load
-            // Use ref to compare against latest state, avoiding stale closure
             if (isPoll && newUnreadCount > unreadCountRef.current) {
                 const audio = new Audio('/sounds/notification.mp3');
                 audio.currentTime = 0;
-                audio.play().catch(e => console.warn('Notification sound blocked (user interaction required):', e));
+                audio.play().catch(e => console.warn('Notification sound blocked:', e));
             }
 
             setNotifications(newNotifications);
@@ -37,84 +44,11 @@ const NotificationDropdown = () => {
         }
     };
 
-    const publicVapidKey = 'BNkFJo9qLIl4SwPzr5UkvVE74joxfzlfvTvdPHTo_GyW8n34uVmbIvInLyvnu3ACDMdOYmEi_7YCXecH3yXJvAg';
-
-    const urlBase64ToUint8Array = (base64String) => {
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding)
-            .replace(/\-/g, '+')
-            .replace(/_/g, '/');
-
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-
-        for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-    };
-
     useEffect(() => {
         fetchNotifications();
-        // Poll every minute
         const interval = setInterval(() => fetchNotifications(true), 60000);
-
-        // Register Service Worker and Subscribe
-        if ('serviceWorker' in navigator && 'PushManager' in window) {
-            const registerPush = async () => {
-                try {
-                    const registration = await navigator.serviceWorker.register('/sw.js');
-                    console.log('Service Worker Registered');
-
-                    // Check if already subscribed
-                    let subscription = await registration.pushManager.getSubscription();
-
-                    if (!subscription) {
-                        const permission = await Notification.requestPermission();
-                        if (permission === 'granted') {
-                            subscription = await registration.pushManager.subscribe({
-                                userVisibleOnly: true,
-                                applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
-                            });
-                        }
-                    } else {
-                        console.log('Already subscribed to push');
-                    }
-
-                    if (subscription) {
-                        // Send subscription to backend (Upsert logic in backend handles duplicates)
-                        await api.post('/notifications/subscribe', subscription);
-                        console.log('Push subscription synced with backend');
-                    }
-                } catch (error) {
-                    console.error('Service Worker/Push Error:', error);
-                }
-            };
-
-            registerPush();
-        }
-
         return () => clearInterval(interval);
     }, []);
-
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const handleToggle = () => {
-        setIsOpen(!isOpen);
-        if (!isOpen) {
-            // Refresh on open
-            fetchNotifications();
-        }
-    };
 
     const handleMarkAsRead = async (id, relatedProject) => {
         try {
@@ -123,20 +57,14 @@ const NotificationDropdown = () => {
                 n._id === id ? { ...n, read: true } : n
             ));
             setUnreadCount(prev => Math.max(0, prev - 1));
-
-            if (relatedProject) {
-                // Navigate to related project if needed, check role to decide path
-                // For simplified navigation, maybe just go to dashboard or specific project page
-                // Assuming /projects/:id or /editor/projects/:id logic exists
-                // We'll just close for now or try to navigate
-                // navigate(`/projects/${relatedProject}`); // Example
-            }
+            // Navigation logic here if needed
         } catch (error) {
             console.error('Error marking as read:', error);
         }
     };
 
-    const handleMarkAllRead = async () => {
+    const handleMarkAllRead = async (e) => {
+        e.preventDefault();
         try {
             await api.put('/notifications/read-all');
             setNotifications(notifications.map(n => ({ ...n, read: true })));
@@ -146,45 +74,63 @@ const NotificationDropdown = () => {
         }
     };
 
-    const visibleNotifications = notifications.filter(n => !n.read);
+    const visibleNotifications = notifications; // Show all, maybe filter?
 
     return (
-        <div className="notification-dropdown-container" ref={dropdownRef}>
-            <button className="notification-bell-btn" onClick={handleToggle}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                </svg>
-                {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-            </button>
-
-            {isOpen && (
-                <div className="notification-dropdown-menu">
-                    <div className="notification-header">
-                        <h3>Notifications</h3>
-                        {unreadCount > 0 && (
-                            <button onClick={handleMarkAllRead} className="mark-all-read-btn">Mark all read</button>
-                        )}
-                    </div>
-                    <div className="notification-list">
-                        {visibleNotifications.length === 0 ? (
-                            <p className="no-notifications">No new notifications</p>
-                        ) : (
-                            visibleNotifications.map(notif => (
-                                <div key={notif._id} className="notification-item unread" onClick={() => handleMarkAsRead(notif._id, notif.relatedProject)}>
-                                    <div className="notification-content">
-                                        <p className="notification-title">{notif.title}</p>
-                                        <p className="notification-message">{notif.message}</p>
-                                        <span className="notification-time">{new Date(notif.createdAt).toLocaleString()}</span>
-                                    </div>
-                                    <div className="unread-dot"></div>
+        <DropdownMenu open={isOpen} onOpenChange={(open) => {
+            setIsOpen(open);
+            if (open) fetchNotifications();
+        }}>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-600 ring-2 ring-background" />
+                    )}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel className="flex justify-between items-center">
+                    <span>Notifications</span>
+                    {unreadCount > 0 && (
+                        <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleMarkAllRead}>
+                            Mark all read
+                        </Button>
+                    )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <ScrollArea className="h-80">
+                    {visibleNotifications.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                            No notifications
+                        </div>
+                    ) : (
+                        visibleNotifications.map(notif => (
+                            <DropdownMenuItem
+                                key={notif._id}
+                                className="cursor-pointer flex flex-col items-start gap-1 p-3"
+                                onClick={() => handleMarkAsRead(notif._id, notif.relatedProject)}
+                            >
+                                <div className="flex w-full justify-between items-start">
+                                    <span className={cn("font-medium text-sm", !notif.read && "text-primary")}>
+                                        {notif.title}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                                        {new Date(notif.createdAt).toLocaleDateString()}
+                                    </span>
                                 </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            )}
-        </div>
+                                <p className="text-xs text-muted-foreground line-clamp-2">
+                                    {notif.message}
+                                </p>
+                                {!notif.read && (
+                                    <span className="h-2 w-2 rounded-full bg-blue-500 mt-1 self-end" />
+                                )}
+                            </DropdownMenuItem>
+                        ))
+                    )}
+                </ScrollArea>
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 };
 

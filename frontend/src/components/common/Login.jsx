@@ -1,7 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import './Login.css';
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -38,53 +47,52 @@ const Login = () => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h1>WiseCut Studios</h1>
-          <p>Work Management System</p>
-        </div>
-        <form onSubmit={handleSubmit} className="login-form">
-          {error && <div className="alert alert-error">{error}</div>}
-          
-          <div className="form-group">
-            <label className="form-label" htmlFor="email">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              className="form-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="Enter your email"
-            />
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/20 to-secondary/20 p-4">
+      <Card className="w-full max-w-md shadow-lg animate-in fade-in zoom-in duration-500">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-bold text-primary">WiseCut Studios</CardTitle>
+          <CardDescription>Enter your credentials to access your workspace</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/20">
+                {error}
+              </div>
+            )}
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="password">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              className="form-input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Enter your password"
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                type="email"
+                id="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
 
-          <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                type="password"
+                id="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Logging in...' : 'Sign In'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
 export default Login;
-

@@ -1,6 +1,7 @@
 import React from 'react';
 import CountUp from 'react-countup';
-import './DashboardStats.css';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Flame, CheckCircle, Users, CircleDollarSign, CalendarDays } from 'lucide-react';
 
 const DashboardStats = ({ projects, clients, editors }) => {
     // 1. Project Counts
@@ -33,7 +34,7 @@ const DashboardStats = ({ projects, clients, editors }) => {
     const currentMonth = new Date().getMonth();
 
     const revenueThisMonth = calculateRevenue(projects.filter(p => {
-        const d = new Date(p.createdAt); // Or use closedAt/payment date if available, but createdAt is decent proxy for booking
+        const d = new Date(p.createdAt);
         return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
     }));
 
@@ -45,7 +46,7 @@ const DashboardStats = ({ projects, clients, editors }) => {
         return entries.map(([curr, amount], index) => {
             const symbol = curr === 'INR' ? '₹' : (curr === 'USD' ? '$' : (curr === 'EUR' ? '€' : curr + ' '));
             return (
-                <span key={curr} style={{ whiteSpace: 'nowrap' }}>
+                <span key={curr} className="whitespace-nowrap font-bold text-2xl">
                     <CountUp
                         end={amount}
                         duration={2.5}
@@ -53,68 +54,90 @@ const DashboardStats = ({ projects, clients, editors }) => {
                         separator=","
                         decimals={2}
                     />
-                    {index < entries.length - 1 && <span style={{ margin: '0 8px', color: '#ccc' }}>|</span>}
+                    {index < entries.length - 1 && <span className="mx-2 text-muted-foreground">|</span>}
                 </span>
             );
         });
     };
 
     return (
-        <div className="stats-grid">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Active Projects */}
-            <div className="stat-card blue">
-                <div className="stat-icon">🔥</div>
-                <div className="stat-info">
-                    <h3>Active Projects</h3>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                        <span className="stat-value"><CountUp end={activeProjects} duration={2} /></span>
-                        {urgentProjects > 0 && <span className="stat-subtext bad" style={{ color: '#ff6b6b', fontWeight: 'bold' }}>{urgentProjects} Urgent</span>}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+                    <Flame className="h-4 w-4 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">
+                        <CountUp end={activeProjects} duration={2} />
                     </div>
-                </div>
-            </div>
+                    {urgentProjects > 0 && (
+                        <p className="text-xs font-medium text-destructive mt-1">
+                            {urgentProjects} Urgent Deadlines
+                        </p>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Completed Projects */}
-            <div className="stat-card green">
-                <div className="stat-icon">✅</div>
-                <div className="stat-info">
-                    <h3>Completed</h3>
-                    <span className="stat-value"><CountUp end={completedProjects} duration={2} /></span>
-                </div>
-            </div>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">
+                        <CountUp end={completedProjects} duration={2} />
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Team Stats */}
-            <div className="stat-card purple">
-                <div className="stat-icon">👥</div>
-                <div className="stat-info">
-                    <h3>Team</h3>
-                    <div style={{ display: 'flex', gap: '15px' }}>
-                        <span className="stat-subtext"><strong><CountUp end={clients.length} duration={2} /></strong> Clients</span>
-                        <span className="stat-subtext"><strong><CountUp end={editors.length} duration={2} /></strong> Editors</span>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Team Total</CardTitle>
+                    <Users className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="flex justify-between text-sm mt-2">
+                        <div className="flex flex-col">
+                            <span className="font-bold text-2xl"><CountUp end={clients.length} duration={2} /></span>
+                            <span className="text-muted-foreground text-xs">Clients</span>
+                        </div>
+                        <div className="flex flex-col text-right">
+                            <span className="font-bold text-2xl"><CountUp end={editors.length} duration={2} /></span>
+                            <span className="text-muted-foreground text-xs">Editors</span>
+                        </div>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
-            {/* Total Revenue */}
-            <div className="stat-card gold">
-                <div className="stat-icon">💰</div>
-                <div className="stat-info">
-                    <h3>Total Revenue</h3>
-                    <div className="stat-value revenue-text" style={{ fontSize: '1.2rem', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                        {renderCurrencyValues(totalRevenue)}
-                    </div>
-                </div>
-            </div>
-
-            {/* Monthly Revenue - New Card */}
-            <div className="stat-card teal">
-                <div className="stat-icon">📅</div>
-                <div className="stat-info">
-                    <h3>This Month</h3>
-                    <div className="stat-value revenue-text" style={{ fontSize: '1.2rem', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {/* Monthly Revenue */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">This Month</CardTitle>
+                    <CalendarDays className="h-4 w-4 text-teal-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold truncate">
                         {renderCurrencyValues(revenueThisMonth)}
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
+
+            {/* Total Revenue - Spanning full width on mobile or specific layout if needed. For now standard card. */}
+            <Card className="col-span-full lg:col-span-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-yellow-200 dark:border-yellow-900">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-yellow-700 dark:text-yellow-500">Total Revenue</CardTitle>
+                    <CircleDollarSign className="h-4 w-4 text-yellow-600" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-400">
+                        {renderCurrencyValues(totalRevenue)}
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 };
