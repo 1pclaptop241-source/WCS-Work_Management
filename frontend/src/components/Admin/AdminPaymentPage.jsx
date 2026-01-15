@@ -1,13 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { paymentsAPI, usersAPI, projectsAPI, API_BASE_URL } from '../../services/api';
+import { paymentsAPI, usersAPI, projectsAPI } from '../../services/api';
 import { useDialog } from '../../context/DialogContext';
-import { formatDate, formatDateTime } from '../../utils/formatDate';
+import { formatDate } from '../../utils/formatDate';
 import confetti from 'canvas-confetti';
-import './AdminPaymentPage.css';
+import {
+  Download,
+  Filter,
+  CreditCard,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Plus,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox"; // We might need to check if we have this, or fallback to native input
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const AdminPaymentPage = () => {
   const { showAlert } = useDialog();
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'editor', 'client', 'history'
+  const [activeTab, setActiveTab] = useState('overview');
   const [editors, setEditors] = useState([]);
   const [clients, setClients] = useState([]);
   const [selectedEditor, setSelectedEditor] = useState('');
@@ -25,13 +55,14 @@ const AdminPaymentPage = () => {
   // Bulk Pay State
   const [showPayTotalModal, setShowPayTotalModal] = useState(false);
   const [paymentScreenshot, setPaymentScreenshot] = useState(null);
-  const [paymentsToPay, setPaymentsToPay] = useState([]); // Array of payment objects to pay
+  const [paymentsToPay, setPaymentsToPay] = useState([]);
   const [bonusAmount, setBonusAmount] = useState('');
   const [deductionAmount, setDeductionAmount] = useState('');
   const [bonusNote, setBonusNote] = useState('Bonus');
   const [deductionNote, setDeductionNote] = useState('Deduction');
+
+  // Manual Payment Modal
   const [showManualModal, setShowManualModal] = useState(false);
-  const [allProjects, setAllProjects] = useState([]);
   const [manualPaymentForm, setManualPaymentForm] = useState({
     paymentType: 'bonus',
     editorId: '',
@@ -42,38 +73,26 @@ const AdminPaymentPage = () => {
     markAsPaid: true
   });
 
-  // Editor Settlement State
   const [selectedPaymentIds, setSelectedPaymentIds] = useState([]);
 
   useEffect(() => {
     loadEditors();
-    if (activeTab === 'overview') {
-      loadStats();
-    } else if (activeTab === 'client') {
-      loadClients();
-      loadClientPayments();
-    } else if (activeTab === 'history') {
-      loadHistory();
-    }
-    loadAllProjects();
+    loadClients();
+    if (activeTab === 'overview') loadStats();
+    if (activeTab === 'client') loadClientPayments();
+    if (activeTab === 'history') loadHistory();
   }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab === 'history') {
-      loadHistory();
-    }
+    if (activeTab === 'history') loadHistory();
   }, [historyFilter]);
 
   useEffect(() => {
-    if (activeTab === 'overview') {
-      loadStats();
-    }
+    if (activeTab === 'overview') loadStats();
   }, [statsMonth, statsYear]);
 
   useEffect(() => {
-    if (selectedEditor && activeTab === 'editor') {
-      loadEditorPayments();
-    }
+    if (selectedEditor && activeTab === 'editor') loadEditorPayments();
   }, [selectedEditor, activeTab]);
 
   const loadStats = async () => {
@@ -105,9 +124,7 @@ const AdminPaymentPage = () => {
       const response = await usersAPI.getEditors();
       setEditors(response.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load editors');
-    } finally {
-      if (!selectedEditor && activeTab !== 'overview' && activeTab !== 'history') setLoading(false);
+      console.error(err);
     }
   };
 
@@ -116,16 +133,7 @@ const AdminPaymentPage = () => {
       const response = await usersAPI.getClients();
       setClients(response.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load clients');
-    }
-  };
-
-  const loadAllProjects = async () => {
-    try {
-      const response = await projectsAPI.getAccepted();
-      setAllProjects(response.data);
-    } catch (err) {
-      console.error('Failed to load projects:', err);
+      console.error(err);
     }
   };
 
@@ -134,7 +142,7 @@ const AdminPaymentPage = () => {
       setLoading(true);
       const response = await paymentsAPI.getByEditorForAdmin(selectedEditor);
       setEditorPayments(response.data);
-      setSelectedPaymentIds([]); // Reset selection on reload
+      setSelectedPaymentIds([]);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load payments');
     } finally {
@@ -154,9 +162,8 @@ const AdminPaymentPage = () => {
     }
   };
 
-  // Group Client Payments by Client
   const getFilteredClientPayments = () => {
-    let filtered = clientPayments.filter(p => !p.received); // Only Pending (Not Received)
+    let filtered = clientPayments.filter(p => !p.received);
     if (selectedClient !== 'all') {
       filtered = filtered.filter(p => p.client?._id === selectedClient);
     }
@@ -167,10 +174,7 @@ const AdminPaymentPage = () => {
     const clientId = payment.client?._id;
     if (!clientId) return acc;
     if (!acc[clientId]) {
-      acc[clientId] = {
-        client: payment.client,
-        payments: []
-      };
+      acc[clientId] = { client: payment.client, payments: [] };
     }
     acc[clientId].payments.push(payment);
     return acc;
@@ -181,36 +185,15 @@ const AdminPaymentPage = () => {
       const ids = paymentsToMark.map(p => p._id);
       await paymentsAPI.markBulkClientReceived(ids);
 
-      // Money Rain Animation
-      const duration = 3 * 1000;
-      const end = Date.now() + duration;
-
-      (function frame() {
-        confetti({
-          particleCount: 5,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          zIndex: 2100,
-          colors: ['#28a745', '#85bb65']
-        });
-        confetti({
-          particleCount: 5,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          zIndex: 2100,
-          colors: ['#28a745', '#85bb65']
-        });
-
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
-        }
-      }());
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#22c55e', '#85bb65']
+      });
 
       await loadClientPayments();
-      setError('');
-      await showAlert(`Marked ${ids.length} payments as received successfully`, 'Success');
+      await showAlert(`Marked ${ids.length} payments as received`, 'Success');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to mark payments received');
     }
@@ -218,9 +201,7 @@ const AdminPaymentPage = () => {
 
   const handlePayTotalEditor = async () => {
     try {
-      // paymentsToPay is set when clicking the button
       const ids = paymentsToPay.map(p => p._id);
-
       if (ids.length === 0) return;
 
       await paymentsAPI.markBulkPaid(ids, paymentScreenshot, {
@@ -231,12 +212,11 @@ const AdminPaymentPage = () => {
         editorId: paymentsToPay[0]?.editor?._id || paymentsToPay[0]?.editor
       });
 
-      // Flying Cash Animation (Money Flying Away)
       confetti({
         particleCount: 100,
         spread: 100,
         origin: { y: 0.9 },
-        colors: ['#d4edda', '#c3e6cb'], // Lighter greens
+        colors: ['#d4edda', '#c3e6cb'],
         startVelocity: 60,
         gravity: 0.5,
         scalar: 0.8,
@@ -245,11 +225,10 @@ const AdminPaymentPage = () => {
 
       setPaymentScreenshot(null);
       setShowPayTotalModal(false);
-      setPaymentsToPay([]); // Reset
+      setPaymentsToPay([]);
       setBonusAmount('');
       setDeductionAmount('');
       await loadEditorPayments();
-      setError('');
       await showAlert('Payment marked as paid successfully', 'Success');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to mark payments as paid');
@@ -280,368 +259,176 @@ const AdminPaymentPage = () => {
     }
   };
 
-
   const exportToCSV = () => {
     if (historyPayments.length === 0) return;
-
     const headers = ['Date', 'Type', 'Project', 'Party', 'Amount', 'Status'];
     const rows = historyPayments.map(p => {
       const date = p.paymentType === 'client_charge' ? p.receivedAt : p.paidAt;
       const type = p.paymentType === 'client_charge' ? 'Income' : 'Expense';
       const party = p.paymentType === 'client_charge' ? p.client?.name : p.editor?.name;
       const amount = (p.finalAmount || p.originalAmount || 0).toFixed(2);
-
-      return [
-        formatDate(date),
-        type,
-        p.project?.title || 'N/A',
-        party || 'N/A',
-        amount,
-        'Completed'
-      ];
+      return [formatDate(date), type, p.project?.title || 'N/A', party || 'N/A', amount, 'Completed'];
     });
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
       link.setAttribute('download', 'payment_history.csv');
-      link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
   };
 
+  const formatCurrency = (amount, currency = 'INR') => {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: currency }).format(amount);
+  };
+
   const calculateTotal = (payments) => {
     return payments.reduce((sum, p) => sum + (p.finalAmount || p.originalAmount || 0), 0);
   };
 
-  const formatCurrency = (amount, currency = 'INR') => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: currency,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
-
-  const formatINR = (amount) => formatCurrency(amount, 'INR');
-
-  // Use centralized date format helpers (dd/mm/yyyy)
-  // Delegates to `formatDate` / `formatDateTime` from utils
-
   if (loading && !selectedEditor && activeTab === 'editor') {
-    return <div className="spinner"></div>;
+    return <div className="flex h-[80vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>;
   }
 
-  const editorPendingPayments = editorPayments.filter(p => !p.paid);
-  const editorPendingTotal = calculateTotal(editorPendingPayments);
-
   return (
-    <div className="container">
-      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Payment Management</h1>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowManualModal(true)}
-        >
-          + Add Manual Adjustment/Bonus
-        </button>
+    <div className="container mx-auto p-4 md:p-8 pt-6 space-y-6 max-w-7xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold tracking-tight">Payment Management</h1>
+        <Button onClick={() => setShowManualModal(true)}>
+          <Plus className="mr-2 h-4 w-4" /> Manual Adjustment
+        </Button>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div className="p-4 text-destructive bg-destructive/10 rounded-md">{error}</div>}
 
-      {/* Tabs */}
-      <div className="tabs" style={{ marginBottom: '20px' }}>
-        <button
-          className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
-        >
-          Financial Overview
-        </button>
-        <button
-          className={`tab ${activeTab === 'editor' ? 'active' : ''}`}
-          onClick={() => setActiveTab('editor')}
-        >
-          Amount to Settle for Editor
-        </button>
-        <button
-          className={`tab ${activeTab === 'client' ? 'active' : ''}`}
-          onClick={() => setActiveTab('client')}
-        >
-          Amount to be Paid by Client
-        </button>
-        <button
-          className={`tab ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          Transaction History
-        </button>
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Financial Overview</TabsTrigger>
+          <TabsTrigger value="editor">Editor Settlements</TabsTrigger>
+          <TabsTrigger value="client">Client Invoices</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
 
-      {/* Overview Tab */}
-      {activeTab === 'overview' && (
-        <div className="overview-container">
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '15px' }}>
-            <select
-              className="form-select"
-              style={{ width: 'auto' }}
-              value={statsMonth}
-              onChange={(e) => setStatsMonth(parseInt(e.target.value))}
-            >
-              {Array.from({ length: 12 }, (_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {new Date(0, i).toLocaleString('en-US', { month: 'long' })}
-                </option>
-              ))}
-            </select>
-            <select
-              className="form-select"
-              style={{ width: 'auto' }}
-              value={statsYear}
-              onChange={(e) => setStatsYear(parseInt(e.target.value))}
-            >
-              {[2024, 2025, 2026, 2027].map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+        <TabsContent value="overview" className="space-y-6">
+          {/* Filters */}
+          <div className="flex justify-end gap-2">
+            <Select value={statsMonth.toString()} onValueChange={(v) => setStatsMonth(parseInt(v))}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <SelectItem key={i + 1} value={(i + 1).toString()}>{new Date(0, i).toLocaleString('en-US', { month: 'long' })}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statsYear.toString()} onValueChange={(v) => setStatsYear(parseInt(v))}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {[2024, 2025, 2026, 2027].map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
-          {loading ? (
-            <div className="spinner"></div>
-          ) : stats ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          {stats ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {Object.keys(stats.currencies || { INR: stats }).map(curr => {
                 const s = (stats.currencies && stats.currencies[curr]) || stats;
                 return (
                   <React.Fragment key={curr}>
-                    {/* Header for currency if multiple exist */}
-                    {Object.keys(stats.currencies || {}).length > 1 && (
-                      <h2 style={{ gridColumn: '1/-1', margin: '20px 0 10px', padding: '10px 0', borderBottom: '2px solid #eee' }}>{curr} Summary</h2>
-                    )}
+                    <h3 className="col-span-full text-lg font-semibold border-b pb-2 mt-4">{curr} Summary</h3>
 
-                    <div className="card overview-card" style={{ borderLeft: '5px solid #28a745' }}>
-                      <div className="card-body">
-                        <h3 style={{ color: '#28a745', marginTop: 0 }}>Revenue ({curr})</h3>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                          <span>Selected Month:</span>
-                          <strong>{formatCurrency(s.monthlyRevenue, curr)}</strong>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2em' }}>
-                          <span>Total All Time:</span>
-                          <strong>{formatCurrency(s.totalRevenue, curr)}</strong>
-                        </div>
-                      </div>
-                    </div>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-green-500" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(s.monthlyRevenue, curr)}</div>
+                        <p className="text-xs text-muted-foreground">Total: {formatCurrency(s.totalRevenue, curr)}</p>
+                      </CardContent>
+                    </Card>
 
-                    <div className="card overview-card" style={{ borderLeft: '5px solid #dc3545' }}>
-                      <div className="card-body">
-                        <h3 style={{ color: '#dc3545', marginTop: 0 }}>Expenses ({curr})</h3>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                          <span>Selected Month:</span>
-                          <strong>{formatCurrency(s.monthlyExpenses, curr)}</strong>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2em' }}>
-                          <span>Total All Time:</span>
-                          <strong>{formatCurrency(s.totalExpenses, curr)}</strong>
-                        </div>
-                      </div>
-                    </div>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Expenses</CardTitle>
+                        <TrendingDown className="h-4 w-4 text-red-500" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(s.monthlyExpenses, curr)}</div>
+                        <p className="text-xs text-muted-foreground">Total: {formatCurrency(s.totalExpenses, curr)}</p>
+                      </CardContent>
+                    </Card>
 
-                    <div className="card overview-card" style={{ borderLeft: '5px solid #007bff' }}>
-                      <div className="card-body">
-                        <h3 style={{ color: '#007bff', marginTop: 0 }}>Profit ({curr})</h3>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                          <span>Selected Month:</span>
-                          <strong style={{ color: s.monthlyNetProfit >= 0 ? '#28a745' : '#dc3545' }}>
-                            {formatCurrency(s.monthlyNetProfit, curr)}
-                          </strong>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+                        <Activity className="h-4 w-4 text-blue-500" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className={`text-2xl font-bold ${s.monthlyNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(s.monthlyNetProfit, curr)}
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2em' }}>
-                          <span>Total All Time:</span>
-                          <strong style={{ color: s.netProfit >= 0 ? '#28a745' : '#dc3545' }}>
-                            {formatCurrency(s.netProfit, curr)}
-                          </strong>
-                        </div>
-                      </div>
-                    </div>
+                        <p className="text-xs text-muted-foreground">Total: {formatCurrency(s.netProfit, curr)}</p>
+                      </CardContent>
+                    </Card>
 
-                    <div className="card overview-card" style={{ borderLeft: '5px solid #ffc107', gridColumn: '1 / -1' }}>
-                      <div className="card-body">
-                        <h3 style={{ color: '#ffc107', marginTop: 0 }}>Pending Settlements ({curr})</h3>
-                        <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap' }}>
-                          <div style={{ textAlign: 'center', padding: '10px' }}>
-                            <div style={{ fontSize: '0.9em', color: '#666' }}>Pending from Clients</div>
-                            <div style={{ fontSize: '1.5em', fontWeight: 'bold' }}>{formatCurrency(s.pendingClientIncome, curr)}</div>
-                          </div>
-                          <div style={{ textAlign: 'center', padding: '10px', borderLeft: '1px solid #eee' }}>
-                            <div style={{ fontSize: '0.9em', color: '#666' }}>Pending to Editors</div>
-                            <div style={{ fontSize: '1.5em', fontWeight: 'bold' }}>{formatCurrency(s.pendingEditorPayout, curr)}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                        <AlertCircle className="h-4 w-4 text-yellow-500" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-sm font-medium">In: {formatCurrency(s.pendingClientIncome, curr)}</div>
+                        <div className="text-sm font-medium text-destructive">Out: {formatCurrency(s.pendingEditorPayout, curr)}</div>
+                      </CardContent>
+                    </Card>
                   </React.Fragment>
                 );
               })}
             </div>
           ) : (
-            <p className="text-center">No statistics available.</p>
+            <div className="text-center py-10 text-muted-foreground">No statistics available.</div>
           )}
-        </div>
-      )}
+        </TabsContent>
 
-      {/* History Tab */}
-      {activeTab === 'history' && (
-        <div className="card">
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <h2 className="card-title">Transaction History</h2>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <select
-                className="form-select"
-                style={{ width: 'auto' }}
-                value={historyFilter.period}
-                onChange={(e) => setHistoryFilter({ ...historyFilter, period: e.target.value })}
-              >
-                <option value="all">All Time</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-                <option value="year">This Year</option>
-              </select>
-              <select
-                className="form-select"
-                style={{ width: 'auto' }}
-                value={historyFilter.type}
-                onChange={(e) => setHistoryFilter({ ...historyFilter, type: e.target.value })}
-              >
-                <option value="all">All Types</option>
-                <option value="income">Income Only</option>
-                <option value="expense">Expense Only</option>
-              </select>
-              <button className="btn btn-secondary" onClick={exportToCSV}>Export CSV</button>
-            </div>
-          </div>
-          <div className="card-body">
-            {loading ? (
-              <div className="spinner"></div>
-            ) : historyPayments.length === 0 ? (
-              <p className="text-center">No transactions found for these filters.</p>
-            ) : (
-              <div className="table-responsive">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Type</th>
-                      <th>Project</th>
-                      <th>Party</th>
-                      <th>Amount</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {historyPayments.map(payment => {
-                      const isIncome = payment.paymentType === 'client_charge';
-                      const date = isIncome ? payment.receivedAt : payment.paidAt;
+        <TabsContent value="editor" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Editor Settlements</CardTitle>
+              <CardDescription>Select an editor to view pending payments and settle balances.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Select value={selectedEditor} onValueChange={setSelectedEditor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Editor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Editors (Pending)</SelectItem>
+                  {editors.map(e => <SelectItem key={e._id} value={e._id}>{e.name} ({e.email})</SelectItem>)}
+                </SelectContent>
+              </Select>
 
-                      const rawAmount = payment.finalAmount || payment.originalAmount || 0;
-                      // Client charges are positive flow (+). Editor payments/bonuses/deductions are negative flow (-) relative to admin wallet.
-                      // Note: Deduction is stored as negative amount, so -( -200 ) = +200 (Flows back to admin).
-                      const netAmount = isIncome ? rawAmount : -rawAmount;
-
-                      return (
-                        <tr key={payment._id}>
-                          <td>{formatDate(date)}</td>
-                          <td>
-                            <span className={`badge badge-${netAmount >= 0 ? 'success' : 'danger'}`}>
-                              {payment.paymentType === 'client_charge' ? 'Income' :
-                                payment.paymentType === 'deduction' ? 'Adjustment' : 'Expense'}
-                            </span>
-                          </td>
-                          <td>{payment.project?.title || 'N/A'}</td>
-                          <td>
-                            {isIncome ? (
-                              <span>Client: {payment.client?.name}</span>
-                            ) : (
-                              <span>Editor: {payment.editor?.name}</span>
-                            )}
-                          </td>
-                          <td style={{ fontWeight: 'bold', color: netAmount >= 0 ? '#28a745' : '#dc3545' }}>
-                            {netAmount >= 0 ? '+' : '-'}{formatCurrency(Math.abs(netAmount), payment.project?.currency || 'INR')}
-                          </td>
-                          <td>
-                            {payment.paymentScreenshot ? (
-                              <a
-                                href={payment.paymentScreenshot}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`badge badge-${netAmount >= 0 ? 'success' : 'danger'}`}
-                                style={{ textDecoration: 'none', cursor: 'pointer' }}
-                                title="Click to view proof"
-                              >
-                                ✓ {payment.paymentType === 'client_charge' ? 'Received' : 'Paid'} (Proof)
-                              </a>
-                            ) : (
-                              <span style={{ color: '#666' }}>✓ Completed</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Editor Payments Tab */}
-      {activeTab === 'editor' && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Editor Payments (Monthly Settlements)</h2>
-          </div>
-          <div className="card-body">
-            <div className="form-group" style={{ marginBottom: '20px' }}>
-              <label className="form-label">Select Editor</label>
-              <select
-                className="form-select"
-                value={selectedEditor}
-                onChange={(e) => setSelectedEditor(e.target.value)}
-              >
-                <option value="">Select an Editor</option>
-                <option value="all">All Editors (Pending Payments)</option>
-                {editors.map((editor) => (
-                  <option key={editor._id} value={editor._id}>
-                    {editor.name} ({editor.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedEditor && (
-              <>
-                {loading ? (
-                  <div className="spinner"></div>
-                ) : (
-                  <>
-                    {editorPayments.filter(p => !p.paid).length === 0 ? (
-                      <p className="text-center">No pending payments for this editor.</p>
-                    ) : (
-                      <div className="settlement-container" style={{ marginTop: '20px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-                          <div>
-                            <span style={{ fontSize: '1.1em', fontWeight: 'bold' }}>
-                              Selected: {selectedPaymentIds.length} payments
-                            </span>
-                            <span style={{ marginLeft: '20px', fontSize: '1.2em', color: '#28a745', fontWeight: 'bold' }}>
+              {selectedEditor && (
+                <>
+                  {loading ? <div className="py-8 text-center">Loading...</div> : (
+                    <>
+                      {editorPayments.filter(p => !p.paid).length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">No pending payments found.</div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center bg-muted/50 p-4 rounded-lg">
+                            <div className="text-sm">
+                              Selected: <span className="font-bold">{selectedPaymentIds.length}</span>
+                            </div>
+                            <div className="text-lg font-bold text-green-600">
                               Total: {(() => {
                                 const selected = editorPayments.filter(p => selectedPaymentIds.includes(p._id));
                                 const totals = selected.reduce((acc, p) => {
@@ -649,501 +436,282 @@ const AdminPaymentPage = () => {
                                   acc[cur] = (acc[cur] || 0) + (p.finalAmount || p.originalAmount || 0);
                                   return acc;
                                 }, {});
-                                return Object.keys(totals).map(cur => formatCurrency(totals[cur], cur)).join(' + ');
+                                return Object.keys(totals).length > 0 ? Object.keys(totals).map(cur => formatCurrency(totals[cur], cur)).join(' + ') : '0.00';
                               })()}
-                            </span>
+                            </div>
+                            <Button
+                              onClick={() => {
+                                setPaymentsToPay(editorPayments.filter(p => selectedPaymentIds.includes(p._id)));
+                                setBonusAmount('');
+                                setDeductionAmount('');
+                                setShowPayTotalModal(true);
+                              }}
+                              disabled={selectedPaymentIds.length === 0}
+                            >
+                              Proceed to Settle
+                            </Button>
                           </div>
-                          <button
-                            className="btn btn-primary"
-                            disabled={selectedPaymentIds.length === 0}
-                            onClick={() => {
-                              const paymentsToSettlement = editorPayments.filter(p => selectedPaymentIds.includes(p._id));
-                              setPaymentsToPay(paymentsToSettlement);
-                              setBonusAmount('');
-                              setDeductionAmount('');
-                              setShowPayTotalModal(true);
-                            }}
-                          >
-                            Proceed to Settle
-                          </button>
-                        </div>
 
-                        <div className="table-responsive">
-                          <table className="table">
-                            <thead>
-                              <tr>
-                                <th style={{ width: '40px' }}>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-[50px]">
                                   <input
                                     type="checkbox"
+                                    className="translate-y-0.5"
                                     checked={selectedPaymentIds.length === editorPayments.filter(p => !p.paid).length && editorPayments.filter(p => !p.paid).length > 0}
                                     onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedPaymentIds(editorPayments.filter(p => !p.paid).map(p => p._id));
-                                      } else {
-                                        setSelectedPaymentIds([]);
-                                      }
+                                      if (e.target.checked) setSelectedPaymentIds(editorPayments.filter(p => !p.paid).map(p => p._id));
+                                      else setSelectedPaymentIds([]);
                                     }}
                                   />
-                                </th>
-                                <th>Project Title</th>
-                                {selectedEditor === 'all' && <th>Editor</th>}
-                                <th>Work Type</th>
-                                <th>Date</th>
-                                <th>Base Amount</th>
-                                <th>Penalty</th>
-                                <th>Final Amount</th>
-                                <th>Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {editorPayments.filter(p => !p.paid).map((payment) => (
-                                <tr
-                                  key={payment._id}
-                                  onClick={() => {
-                                    if (selectedPaymentIds.includes(payment._id)) {
-                                      setSelectedPaymentIds(selectedPaymentIds.filter(id => id !== payment._id));
-                                    } else {
-                                      setSelectedPaymentIds([...selectedPaymentIds, payment._id]);
-                                    }
-                                  }}
-                                  style={{ cursor: 'pointer', backgroundColor: selectedPaymentIds.includes(payment._id) ? '#f0f7ff' : 'transparent' }}
-                                >
-                                  <td onClick={(e) => e.stopPropagation()}>
+                                </TableHead>
+                                <TableHead>Project</TableHead>
+                                <TableHead>Work Type</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Amount</TableHead>
+                                <TableHead>Penalty</TableHead>
+                                <TableHead>Final</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {editorPayments.filter(p => !p.paid).map(payment => (
+                                <TableRow key={payment._id} className={selectedPaymentIds.includes(payment._id) ? "bg-muted/50" : ""}>
+                                  <TableCell>
                                     <input
                                       type="checkbox"
                                       checked={selectedPaymentIds.includes(payment._id)}
                                       onChange={(e) => {
-                                        if (e.target.checked) {
-                                          setSelectedPaymentIds([...selectedPaymentIds, payment._id]);
-                                        } else {
-                                          setSelectedPaymentIds(selectedPaymentIds.filter(id => id !== payment._id));
-                                        }
+                                        if (e.target.checked) setSelectedPaymentIds([...selectedPaymentIds, payment._id]);
+                                        else setSelectedPaymentIds(selectedPaymentIds.filter(id => id !== payment._id));
                                       }}
                                     />
-                                  </td>
-                                  <td>{payment.project?.title || 'N/A'}</td>
-                                  {selectedEditor === 'all' && <td>{payment.editor?.name}</td>}
-                                  <td>{payment.workType}</td>
-                                  <td>{new Date(payment.createdAt).toLocaleDateString()}</td>
-                                  <td>{formatCurrency(payment.originalAmount, payment.currency || payment.project?.currency || 'INR')}</td>
-                                  <td style={{ color: payment.penaltyAmount > 0 ? '#dc3545' : 'inherit', fontWeight: payment.penaltyAmount > 0 ? 'bold' : 'normal' }}>
-                                    {payment.penaltyAmount > 0 ? `-${formatCurrency(payment.penaltyAmount, payment.currency || payment.project?.currency || 'INR')}` : '-'}
-                                    {payment.deadlineCrossed && <div style={{ fontSize: '10px', color: '#dc3545' }}>Late: {payment.daysLate}d (20% penalty)</div>}
-                                  </td>
-                                  <td style={{ fontWeight: 'bold' }}>{formatCurrency(payment.finalAmount || payment.originalAmount, payment.currency || payment.project?.currency || 'INR')}</td>
-                                  <td><span className="badge badge-warning">Pending</span></td>
-                                </tr>
+                                  </TableCell>
+                                  <TableCell>{payment.project?.title || 'N/A'}</TableCell>
+                                  <TableCell>{payment.workType}</TableCell>
+                                  <TableCell>{new Date(payment.createdAt).toLocaleDateString()}</TableCell>
+                                  <TableCell>{formatCurrency(payment.originalAmount, payment.currency)}</TableCell>
+                                  <TableCell className={payment.penaltyAmount > 0 ? "text-destructive font-bold" : ""}>
+                                    {payment.penaltyAmount > 0 ? `-${formatCurrency(payment.penaltyAmount, payment.currency)}` : '-'}
+                                  </TableCell>
+                                  <TableCell className="font-bold">{formatCurrency(payment.finalAmount || payment.originalAmount, payment.currency)}</TableCell>
+                                </TableRow>
                               ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Client Payments Tab */}
-      {activeTab === 'client' && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Amount to be Paid by Client</h2>
-          </div>
-          <div className="card-body">
-            <div className="form-group" style={{ marginBottom: '20px' }}>
-              <label className="form-label">Select Client</label>
-              <select
-                className="form-select"
-                value={selectedClient}
-                onChange={(e) => setSelectedClient(e.target.value)}
-              >
-                <option value="all">All Pending Payments</option>
-                {clients.map((client) => (
-                  <option key={client._id} value={client._id}>
-                    {client.name} ({client.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {loading ? (
-              <div className="spinner"></div>
-            ) : (
-              <>
-                {Object.keys(groupedClientPayments).length === 0 ? (
-                  <p className="text-center">No pending payments found for this selection.</p>
-                ) : (
-                  Object.values(groupedClientPayments).map((group, index) => {
-                    const pendingReceiptPayments = group.payments.filter(p => p.paid && !p.received);
-                    const pendingReceiptTotal = calculateTotal(pendingReceiptPayments);
-
-                    return (
-                      <div key={group.client._id} className="client-payment-group" style={{ marginBottom: '30px', border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                          <h3>{group.client.name} <small style={{ color: '#777', fontSize: '0.8em' }}>({group.client.email})</small></h3>
-                          {pendingReceiptPayments.length > 0 && (
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={() => handleMarkBulkClientReceived(pendingReceiptPayments)}
-                            >
-                              Mark All Verified (Total: {(pendingReceiptTotal).toFixed(2)})
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="table-responsive">
-                          <table className="table">
-                            <thead>
-                              <tr>
-                                <th>Project</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Closed On</th>
-                                <th>Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {group.payments.map((payment) => (
-                                <tr key={payment._id}>
-                                  <td>{payment.project?.title || 'N/A'}</td>
-                                  <td>
-                                    {payment.project?.currency || 'INR'}{' '}
-                                    {(payment.finalAmount || payment.originalAmount || 0).toFixed(2)}
-                                  </td>
-                                  <td>
-                                    {payment.received ? (
-                                      <span className="badge badge-success">
-                                        ✓ Received
-                                      </span>
-                                    ) : payment.paid ? (
-                                      payment.paymentScreenshot ? (
-                                        <a
-                                          href={payment.paymentScreenshot}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="badge badge-primary"
-                                          style={{ textDecoration: 'none', cursor: 'pointer' }}
-                                          title="Click to view proof"
-                                        >
-                                          💰 Paid
-                                        </a>
-                                      ) : (
-                                        <span className="badge badge-primary">
-                                          💰 Paid by Client
-                                        </span>
-                                      )
-                                    ) : (
-                                      <span className="badge badge-danger">
-                                        ⏳ Pending
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td>
-                                    {payment.project?.closedAt ? formatDate(payment.project.closedAt) : '-'}
-                                  </td>
-                                  <td>
-                                    {payment.paid && !payment.received && (
-                                      <button
-                                        className="btn btn-xs btn-outline-success"
-                                        onClick={() => handleMarkBulkClientReceived([payment])}
-                                        title="Mark this specific payment as received"
-                                      >
-                                        Mark Received
-                                      </button>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Pay Modal for Editor */}
-      {showPayTotalModal && (
-        <div className="modal-overlay" onClick={() => setShowPayTotalModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Pay Amount to Editor</h2>
-              <button className="modal-close" onClick={() => setShowPayTotalModal(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              <p>You are about to mark <strong>{paymentsToPay.length}</strong> payments as paid.</p>
-
-              {(() => {
-                const penaltyTotals = paymentsToPay.reduce((acc, p) => {
-                  if (p.penaltyAmount > 0) {
-                    const cur = p.currency || p.project?.currency || 'INR';
-                    acc[cur] = (acc[cur] || 0) + p.penaltyAmount;
-                  }
-                  return acc;
-                }, {});
-
-                const currencies = Object.keys(penaltyTotals);
-                if (currencies.length === 0) return null;
-
-                return (
-                  <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#fff5f5', borderLeft: '4px solid #dc3545', borderRadius: '4px' }}>
-                    <div style={{ color: '#dc3545', fontWeight: 'bold', fontSize: '0.9em', marginBottom: '4px' }}>⚠️ Deadline Penalties Detected</div>
-                    {currencies.map(cur => (
-                      <div key={cur} style={{ fontSize: '0.85em', color: '#842029' }}>
-                        Total Penalty ({cur}): <strong>{formatCurrency(penaltyTotals[cur], cur)}</strong>
-                      </div>
-                    ))}
-                    <div style={{ fontSize: '0.8em', marginTop: '4px', fontStyle: 'italic' }}>* Penalties are pre-calculated based on submission delay (20% flat).</div>
-                  </div>
-                );
-              })()}
-
-              <p style={{ fontSize: '1.2em' }}>
-                Total to Settle: <strong>
-                  {(() => {
-                    const totals = paymentsToPay.reduce((acc, p) => {
-                      const cur = p.currency || p.project?.currency || 'INR';
-                      acc[cur] = (acc[cur] || 0) + (p.finalAmount || p.originalAmount || 0);
-                      return acc;
-                    }, {});
-                    return Object.keys(totals).map(cur => formatCurrency(totals[cur], cur)).join(' + ');
-                  })()}
-                </strong>
-              </p>
-
-              <div className="form-group">
-                <label className="form-label">Total Payment Screenshot (Optional)</label>
-                <input
-                  type="file"
-                  className="form-input"
-                  accept="image/*"
-                  onChange={(e) => setPaymentScreenshot(e.target.files[0])}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <div className="form-group">
-                  <label className="form-label">Bonus Amount (+)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={bonusAmount}
-                    onChange={(e) => setBonusAmount(e.target.value)}
-                    placeholder="0.00"
-                    min="0"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Deduction Amount (-)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={deductionAmount}
-                    onChange={(e) => setDeductionAmount(e.target.value)}
-                    placeholder="0.00"
-                    min="0"
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginTop: '10px', padding: '10px', background: '#f8f9fa', borderRadius: '5px' }}>
-                {(() => {
-                  const subTotals = paymentsToPay.reduce((acc, p) => {
-                    const cur = p.currency || p.project?.currency || 'INR';
-                    acc[cur] = (acc[cur] || 0) + (p.finalAmount || p.originalAmount || 0);
-                    return acc;
-                  }, {});
-
-                  const currencies = Object.keys(subTotals);
-                  const bonusVal = parseFloat(bonusAmount) || 0;
-                  const deductionVal = parseFloat(deductionAmount) || 0;
-                  const primaryCur = currencies[0] || 'INR';
-
-                  return (
-                    <>
-                      {currencies.map(cur => (
-                        <div key={cur} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span>Subtotal ({cur}):</span>
-                          <span>{formatCurrency(subTotals[cur], cur)}</span>
-                        </div>
-                      ))}
-
-                      {bonusVal > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#28a745' }}>
-                          <span>Bonus ({primaryCur}):</span>
-                          <span>+ {formatCurrency(bonusVal, primaryCur)}</span>
+                            </TableBody>
+                          </Table>
                         </div>
                       )}
-                      {deductionVal > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc3545' }}>
-                          <span>Deduction ({primaryCur}):</span>
-                          <span>- {formatCurrency(deductionVal, primaryCur)}</span>
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', borderTop: '1px solid #ddd', paddingTop: '5px', fontWeight: 'bold', fontSize: '1.2em' }}>
-                        <span>Final Total:</span>
-                        <div style={{ textAlign: 'right' }}>
-                          {currencies.map(cur => {
-                            let total = subTotals[cur];
-                            if (cur === primaryCur) {
-                              total += bonusVal - deductionVal;
-                            }
-                            return (
-                              <div key={cur}>{formatCurrency(total, cur)}</div>
-                            );
-                          })}
-                        </div>
-                      </div>
                     </>
-                  );
-                })()}
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="client" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Client Invoices</CardTitle>
+              <CardDescription>Track and mark payments received from clients.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Select value={selectedClient} onValueChange={setSelectedClient}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clients (Pending)</SelectItem>
+                  {clients.map(c => <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+
+              {loading ? <div className="spinner"></div> : (
+                <>
+                  {Object.keys(groupedClientPayments).length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No pending invoices found.</div>
+                  ) : (
+                    Object.values(groupedClientPayments).map((group) => {
+                      const pending = group.payments.filter(p => p.paid && !p.received);
+                      const total = calculateTotal(pending);
+                      if (pending.length === 0) return null;
+
+                      return (
+                        <Card key={group.client._id} className="border bg-muted/20">
+                          <CardHeader className="pb-2">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <CardTitle className="text-base">{group.client.name}</CardTitle>
+                                <CardDescription>{group.client.email}</CardDescription>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => handleMarkBulkClientReceived(pending)}
+                              >
+                                Mark Received ({total.toFixed(2)})
+                              </Button>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Project</TableHead>
+                                  <TableHead>Desc</TableHead>
+                                  <TableHead>Date</TableHead>
+                                  <TableHead>Amount</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {pending.map(p => (
+                                  <TableRow key={p._id}>
+                                    <TableCell>{p.project?.title}</TableCell>
+                                    <TableCell>{p.description || 'Client Payment'}</TableCell>
+                                    <TableCell>{formatDate(p.createdAt)}</TableCell>
+                                    <TableCell className="font-bold">{formatCurrency(p.finalAmount || p.originalAmount)}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Transaction History</CardTitle>
+              <div className="flex gap-2">
+                <Select value={historyFilter.period} onValueChange={(v) => setHistoryFilter({ ...historyFilter, period: v })}>
+                  <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                    <SelectItem value="year">This Year</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={exportToCSV}>
+                  <Download className="mr-2 h-4 w-4" /> Export CSV
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Party</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {historyPayments.map(p => {
+                    const isIncome = p.paymentType === 'client_charge';
+                    const netAmount = isIncome ? (p.finalAmount || p.originalAmount) : -(p.finalAmount || p.originalAmount);
+                    return (
+                      <TableRow key={p._id}>
+                        <TableCell>{formatDate(isIncome ? p.receivedAt : p.paidAt)}</TableCell>
+                        <TableCell>
+                          <Badge variant={isIncome ? "default" : "secondary"}>
+                            {p.paymentType === 'client_charge' ? "Income" : "Expense"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{isIncome ? p.client?.name : p.editor?.name}</TableCell>
+                        <TableCell className={netAmount >= 0 ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
+                          {netAmount >= 0 ? "+" : ""}{formatCurrency(netAmount, p.project?.currency || 'INR')}
+                        </TableCell>
+                        <TableCell><Badge variant="outline" className="border-green-500 text-green-600">Completed</Badge></TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Modal: Pay Editor */}
+      <Dialog open={showPayTotalModal} onOpenChange={setShowPayTotalModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Settle Payments</DialogTitle>
+            <DialogDescription>Review and settle selected payments for {paymentsToPay[0]?.editor?.name || 'Editor'}.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Bonus Amount</Label>
+                <Input type="number" value={bonusAmount} onChange={e => setBonusAmount(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Deduction Amount</Label>
+                <Input type="number" value={deductionAmount} onChange={e => setDeductionAmount(e.target.value)} />
               </div>
             </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setShowPayTotalModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-success"
-                onClick={handlePayTotalEditor}
-              >
-                Mark as Paid
-              </button>
+            <div className="space-y-2">
+              <Label>Upload Payment Screenshot</Label>
+              <Input type="file" onChange={e => setPaymentScreenshot(e.target.files[0])} />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setShowPayTotalModal(false)}>Cancel</Button>
+            <Button onClick={handlePayTotalEditor} className="bg-green-600 hover:bg-green-700">Confirm Settlement</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Manual Payment Modal */}
-      {showManualModal && (
-        <div className="modal-overlay" onClick={() => setShowManualModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Add Manual Adjustment</h2>
-              <button className="modal-close" onClick={() => setShowManualModal(false)}>×</button>
+      {/* Modal: Manual Payment */}
+      <Dialog open={showManualModal} onOpenChange={setShowManualModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Manual Adjustment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select value={manualPaymentForm.paymentType} onValueChange={v => setManualPaymentForm({ ...manualPaymentForm, paymentType: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bonus">Bonus (Expense)</SelectItem>
+                  <SelectItem value="deduction">Deduction (Refund/Inc)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <form onSubmit={handleCreateManualPayment}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Type</label>
-                  <select
-                    className="form-select"
-                    value={manualPaymentForm.paymentType}
-                    onChange={(e) => setManualPaymentForm({ ...manualPaymentForm, paymentType: e.target.value })}
-                    required
-                  >
-                    <option value="bonus">Bonus (+)</option>
-                    <option value="deduction">Deduction (-)</option>
-                    <option value="editor_payout">Editor Payout</option>
-                    <option value="client_charge">Client Charge</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Link to Project (for Currency context)</label>
-                  <select
-                    className="form-select"
-                    value={manualPaymentForm.projectId}
-                    onChange={(e) => setManualPaymentForm({ ...manualPaymentForm, projectId: e.target.value })}
-                    required
-                  >
-                    <option value="">Select Project</option>
-                    {allProjects.map(p => (
-                      <option key={p._id} value={p._id}>
-                        {p.title} ({p.currency})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {manualPaymentForm.paymentType === 'client_charge' ? (
-                  <div className="form-group">
-                    <label className="form-label">Client</label>
-                    <select
-                      className="form-select"
-                      value={manualPaymentForm.clientId}
-                      onChange={(e) => setManualPaymentForm({ ...manualPaymentForm, clientId: e.target.value })}
-                      required
-                    >
-                      <option value="">Select Client</option>
-                      {clients.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                ) : (
-                  <div className="form-group">
-                    <label className="form-label">Editor</label>
-                    <select
-                      className="form-select"
-                      value={manualPaymentForm.editorId}
-                      onChange={(e) => setManualPaymentForm({ ...manualPaymentForm, editorId: e.target.value })}
-                      required
-                    >
-                      <option value="">Select Editor</option>
-                      {editors.map(e => <option key={e._id} value={e._id}>{e.name}</option>)}
-                    </select>
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label className="form-label">Description / Note</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={manualPaymentForm.description}
-                    onChange={(e) => setManualPaymentForm({ ...manualPaymentForm, description: e.target.value })}
-                    placeholder="e.g. Festival Bonus, Late Penalty Recovery"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Amount</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={manualPaymentForm.amount}
-                    onChange={(e) => setManualPaymentForm({ ...manualPaymentForm, amount: e.target.value })}
-                    placeholder="0.00"
-                    required
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={manualPaymentForm.markAsPaid}
-                      onChange={(e) => setManualPaymentForm({ ...manualPaymentForm, markAsPaid: e.target.checked })}
-                    />
-                    Mark as Paid/Received immediately
-                  </label>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowManualModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Add adjustment</button>
-              </div>
-            </form>
+            <div className="space-y-2">
+              <Label>Editor</Label>
+              <Select value={manualPaymentForm.editorId} onValueChange={v => setManualPaymentForm({ ...manualPaymentForm, editorId: v })}>
+                <SelectTrigger><SelectValue placeholder="Select Editor" /></SelectTrigger>
+                <SelectContent>
+                  {editors.map(e => <SelectItem key={e._id} value={e._id}>{e.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Amount</Label>
+              <Input type="number" value={manualPaymentForm.amount} onChange={e => setManualPaymentForm({ ...manualPaymentForm, amount: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea value={manualPaymentForm.description} onChange={e => setManualPaymentForm({ ...manualPaymentForm, description: e.target.value })} />
+            </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setShowManualModal(false)}>Cancel</Button>
+            <Button onClick={handleCreateManualPayment}>Create Adjustment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

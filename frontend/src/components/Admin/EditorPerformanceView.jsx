@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { usersAPI } from '../../services/api';
-import { FaUserCircle, FaCheckCircle, FaExclamationCircle, FaChartLine } from 'react-icons/fa';
-import './EditorPerformanceView.css';
+import { ChartLine, User } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const EditorPerformanceView = () => {
     const [stats, setStats] = useState([]);
@@ -24,30 +28,29 @@ const EditorPerformanceView = () => {
         }
     };
 
-    if (loading) return <div className="loading-spinner">Loading editor stats...</div>;
-    if (error) return <div className="error-message">{error}</div>;
+    if (loading) return <div className="p-8 text-center text-muted-foreground">Loading editor stats...</div>;
+    if (error) return <div className="p-4 text-destructive bg-destructive/10 rounded-md">{error}</div>;
 
     return (
-        <div className="performance-view">
-            <div className="view-header">
-                <h2>Editor Performance Overview</h2>
-                <button className="btn btn-secondary btn-sm" onClick={loadStats}>Refresh Data</button>
-            </div>
-
-            <div className="stats-table-container">
-                <table className="performance-table">
-                    <thead>
-                        <tr>
-                            <th>Editor</th>
-                            <th>Active Tasks</th>
-                            <th>Completed</th>
-                            <th>On-Time Rate</th>
-                            <th>Avg. Revisions</th>
-                            <th>Workload</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
+                <CardTitle className="text-xl font-bold">Editor Performance Overview</CardTitle>
+                <Button variant="outline" size="sm" onClick={loadStats}>Refresh Data</Button>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Editor</TableHead>
+                            <TableHead>Active Tasks</TableHead>
+                            <TableHead>Completed</TableHead>
+                            <TableHead>On-Time Rate</TableHead>
+                            <TableHead>Avg. Revisions</TableHead>
+                            <TableHead>Workload</TableHead>
+                            <TableHead>Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
                         {stats.map(editor => {
                             const completedTotal = editor.completedTasks || 0;
                             const totalFinished = completedTotal + (editor.lateSubmissions || 0);
@@ -55,59 +58,68 @@ const EditorPerformanceView = () => {
                                 ? Math.round((completedTotal / totalFinished) * 100)
                                 : 100;
 
-                            const workloadColor = editor.activeTasks > 5 ? '#ef4444' : editor.activeTasks > 3 ? '#f59e0b' : '#10b981';
+                            const workloadColor = editor.activeTasks > 5 ? 'bg-red-500' : editor.activeTasks > 3 ? 'bg-amber-500' : 'bg-emerald-500';
 
                             return (
-                                <tr key={editor._id}>
-                                    <td>
-                                        <div className="editor-cell">
-                                            <FaUserCircle size={24} color="#64748b" />
-                                            <div>
-                                                <div className="editor-name">{editor.name}</div>
-                                                <div className="editor-email">{editor.email}</div>
+                                <TableRow key={editor._id}>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar>
+                                                <AvatarFallback>{editor.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">{editor.name}</span>
+                                                <span className="text-xs text-muted-foreground">{editor.email}</span>
                                             </div>
                                         </div>
-                                    </td>
-                                    <td><span className="count-badge blue">{editor.activeTasks}</span></td>
-                                    <td><span className="count-badge green">{editor.completedTasks}</span></td>
-                                    <td>
-                                        <div className="rate-cell">
-                                            <div className="rate-bar-bg">
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="secondary" className="font-mono text-blue-600 bg-blue-100 dark:bg-blue-900 dark:text-blue-300">
+                                            {editor.activeTasks}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="secondary" className="font-mono text-green-600 bg-green-100 dark:bg-green-900 dark:text-green-300">
+                                            {editor.completedTasks}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-2 w-16 bg-secondary rounded-full overflow-hidden">
                                                 <div
-                                                    className="rate-bar-fill"
-                                                    style={{
-                                                        width: `${onTimeRate}%`,
-                                                        backgroundColor: onTimeRate > 80 ? '#10b981' : onTimeRate > 60 ? '#f59e0b' : '#ef4444'
-                                                    }}
+                                                    className={`h-full ${onTimeRate > 80 ? 'bg-green-500' : onTimeRate > 60 ? 'bg-amber-500' : 'bg-red-500'}`}
+                                                    style={{ width: `${onTimeRate}%` }}
                                                 />
                                             </div>
-                                            <span>{onTimeRate}%</span>
+                                            <span className="text-xs font-medium">{onTimeRate}%</span>
                                         </div>
-                                    </td>
-                                    <td>
-                                        <div className="revision-cell">
-                                            <FaChartLine size={14} color="#64748b" />
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-1 text-muted-foreground">
+                                            <ChartLine className="h-3 w-3" />
                                             <span>{editor.avgVersions}x / task</span>
                                         </div>
-                                    </td>
-                                    <td>
-                                        <span className="workload-dot" style={{ backgroundColor: workloadColor }} />
-                                        {editor.activeTasks > 5 ? 'High' : editor.activeTasks > 3 ? 'Medium' : 'Low'}
-                                    </td>
-                                    <td>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`h-2.5 w-2.5 rounded-full ${workloadColor}`} />
+                                            <span>{editor.activeTasks > 5 ? 'High' : editor.activeTasks > 3 ? 'Medium' : 'Low'}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
                                         {editor.activeTasks === 0 ? (
-                                            <span className="status-badge available">Available</span>
+                                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900 dark:text-emerald-300">Available</Badge>
                                         ) : (
-                                            <span className="status-badge busy">Busy</span>
+                                            <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900 dark:text-amber-300">Busy</Badge>
                                         )}
-                                    </td>
-                                </tr>
+                                    </TableCell>
+                                </TableRow>
                             );
                         })}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
     );
 };
 

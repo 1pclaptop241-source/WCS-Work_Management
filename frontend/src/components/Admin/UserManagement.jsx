@@ -1,12 +1,55 @@
 import { useState, useEffect } from 'react';
 import { usersAPI } from '../../services/api';
 import { formatDate } from '../../utils/formatDate';
-import './UserManagement.css';
+import {
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  UserPlus,
+  Lock,
+  Unlock
+} from 'lucide-react';
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Dialog States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -39,7 +82,7 @@ const UserManagement = () => {
       if (selectedUser) {
         // Edit Mode
         const { _id, ...updateData } = { ...userForm };
-        if (!updateData.password) delete updateData.password; // Don't send empty password
+        if (!updateData.password) delete updateData.password;
 
         await usersAPI.update(selectedUser._id, updateData);
       } else {
@@ -48,8 +91,7 @@ const UserManagement = () => {
       }
 
       setShowCreateModal(false);
-      setSelectedUser(null);
-      setUserForm({ name: '', email: '', password: '', role: 'editor' });
+      resetForm();
       await loadUsers();
       setError('');
     } catch (err) {
@@ -62,306 +104,222 @@ const UserManagement = () => {
     setUserForm({
       name: user.name,
       email: user.email,
-      password: '', // Leave empty to keep unchanged
+      password: '',
       role: user.role,
     });
     setShowCreateModal(true);
   };
 
-  const closeModal = () => {
-    setShowCreateModal(false);
+  const resetForm = () => {
     setSelectedUser(null);
     setUserForm({ name: '', email: '', password: '', role: 'editor' });
   };
 
   const handleDeleteUser = async () => {
     try {
-      await usersAPI.delete(selectedUser._id);
-      setShowDeleteConfirm(false);
-      setSelectedUser(null);
-      await loadUsers();
-      setError('');
+      if (selectedUser) {
+        await usersAPI.delete(selectedUser._id);
+        setShowDeleteConfirm(false);
+        resetForm();
+        await loadUsers();
+        setError('');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete user');
     }
   };
 
-  const getRoleBadge = (role) => {
-    const roleMap = {
-      admin: 'badge-danger',
-      editor: 'badge-primary',
-      client: 'badge-success',
-    };
-    return roleMap[role] || 'badge-secondary';
+  const handleToggleBlock = async (user) => {
+    try {
+      await usersAPI.toggleBlock(user._id);
+      await loadUsers();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to toggle block status');
+    }
+  };
+
+  const getRoleBadgeVariant = (role) => {
+    switch (role) {
+      case 'admin': return 'destructive'; // Or a custom red/purple
+      case 'editor': return 'default'; // primary/blue
+      case 'client': return 'secondary'; // green-ish usually but secondary works
+      default: return 'outline';
+    }
   };
 
   if (loading) {
-    return <div className="spinner"></div>;
+    return <div className="flex h-[50vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>;
   }
 
   return (
-    <div className="container">
-      <div className="dashboard-header">
-        <h1>User Management</h1>
-        <button className="btn btn-primary" onClick={() => {
-          setSelectedUser(null);
-          setUserForm({ name: '', email: '', password: '', role: 'editor' });
-          setShowCreateModal(true);
-        }}>
-          Add User
-        </button>
+    <div className="container mx-auto p-4 md:p-8 pt-6 space-y-6 max-w-7xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+          <p className="text-muted-foreground">Manage system access and roles.</p>
+        </div>
+        <Button onClick={() => { resetForm(); setShowCreateModal(true); }}>
+          <UserPlus className="mr-2 h-4 w-4" /> Add User
+        </Button>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div className="p-4 text-destructive bg-destructive/10 rounded-md border border-destructive/20">{error}</div>}
 
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">All Users</h2>
-        </div>
-        <div className="table-responsive">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Created At</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="text-center">
-                    No users found
-                  </td>
-                </tr>
-              ) : (
-                users.map((user) => (
-                  <tr key={user._id}>
-                    <td>{user.name}</td>
-                    <td>{user.email}</td>
-                    <td>
-                      <span className={`badge ${getRoleBadge(user.role)}`} style={user.isBlocked ? { opacity: 0.5, textDecoration: 'line-through' } : {}}>
-                        {user.role}
-                      </span>
-                      {user.isBlocked && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#dc3545', fontWeight: 'bold' }}>BLOCKED</span>}
-                    </td>
-                    <td>{formatDate(user.createdAt)}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          title="Edit User"
-                          style={{
-                            padding: '6px',
-                            backgroundColor: 'rgba(46, 134, 171, 0.1)',
-                            color: 'var(--primary-blue)',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = 'var(--primary-blue)';
-                            e.currentTarget.style.color = 'white';
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(46, 134, 171, 0.1)';
-                            e.currentTarget.style.color = 'var(--primary-blue)';
-                          }}
-                          onClick={() => handleEditClick(user)}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z"></path>
-                          </svg>
-                        </button>
-                        {user.email !== 'admin@wisecutstudios.com' && (
-                          <>
-                            <button
-                              title={user.isBlocked ? "Unblock User" : "Block User"}
-                              style={{
-                                padding: '6px',
-                                backgroundColor: user.isBlocked ? 'rgba(40, 167, 69, 0.1)' : 'rgba(255, 193, 7, 0.1)',
-                                color: user.isBlocked ? '#28a745' : '#ffc107',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.2s ease'
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.backgroundColor = user.isBlocked ? '#28a745' : '#ffc107';
-                                e.currentTarget.style.color = 'white';
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.backgroundColor = user.isBlocked ? 'rgba(40, 167, 69, 0.1)' : 'rgba(255, 193, 7, 0.1)';
-                                e.currentTarget.style.color = user.isBlocked ? '#28a745' : '#ffc107';
-                              }}
-                              onClick={async () => {
-                                try {
-                                  await usersAPI.toggleBlock(user._id);
-                                  await loadUsers();
-                                } catch (err) {
-                                  setError(err.response?.data?.message || 'Failed to toggle block status');
-                                }
-                              }}
-                            >
-                              {user.isBlocked ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                              ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-                              )}
-                            </button>
-                            <button
-                              title="Delete User"
-                              style={{
-                                padding: '6px',
-                                backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                                color: '#dc3545',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.2s ease'
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.backgroundColor = '#dc3545';
-                                e.currentTarget.style.color = 'white';
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.backgroundColor = 'rgba(220, 53, 69, 0.1)';
-                                e.currentTarget.style.color = '#dc3545';
-                              }}
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setShowDeleteConfirm(true);
-                              }}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                              </svg>
-                            </button>
-                          </>
+      <Card>
+        <CardHeader>
+          <CardTitle>All Users</CardTitle>
+          <CardDescription>A list of all registered users including admins, editors, and clients.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created At</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      No users found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  users.map((user) => (
+                    <TableRow key={user._id}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleBadgeVariant(user.role)}>
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {user.isBlocked ? (
+                          <Badge variant="destructive" className="flex w-fit items-center gap-1"><Lock className="h-3 w-3" /> Blocked</Badge>
+                        ) : (
+                          <Badge variant="outline" className="flex w-fit items-center gap-1 text-green-600 border-green-600"><ShieldCheck className="h-3 w-3" /> Active</Badge>
                         )}
-                        {user.email === 'admin@wisecutstudios.com' && (
-                          <span style={{ color: '#999', fontSize: '14px', alignSelf: 'center' }}>Protected</span>
+                      </TableCell>
+                      <TableCell>{formatDate(user.createdAt)}</TableCell>
+                      <TableCell className="text-right">
+                        {user.email !== 'admin@wisecutstudios.com' ? (
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditClick(user)}>
+                              <Pencil className="h-4 w-4 text-blue-500" />
+                            </Button>
+
+                            <Button variant="ghost" size="icon" onClick={() => handleToggleBlock(user)}>
+                              {user.isBlocked ? <Unlock className="h-4 w-4 text-green-500" /> : <Lock className="h-4 w-4 text-yellow-500" />}
+                            </Button>
+
+                            <Button variant="ghost" size="icon" onClick={() => { setSelectedUser(user); setShowDeleteConfirm(true); }}>
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm italic">Protected</span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Create/Edit User Modal */}
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{selectedUser ? 'Edit User' : 'Create User'}</h2>
-              <button className="modal-close" onClick={closeModal}>
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleCreateUser} className="modal-body">
-              <div className="form-group">
-                <label className="form-label">Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={userForm.name}
-                  onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  value={userForm.email}
-                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Password {selectedUser && '(Leave blank to keep current)'}</label>
-                <input
-                  type="password"
-                  className="form-input"
-                  value={userForm.password}
-                  onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                  minLength={6}
-                  required={!selectedUser}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Role</label>
-                <select
-                  className="form-select"
-                  value={userForm.role}
-                  onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
-                  required
-                  disabled={selectedUser && selectedUser.role === 'admin'}
-                >
-                  <option value="editor">Editor</option>
-                  <option value="client">Client</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  {selectedUser ? 'Update User' : 'Create User'}
-                </button>
-              </div>
-            </form>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && selectedUser && (
-        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Confirm Delete</h2>
-              <button className="modal-close" onClick={() => setShowDeleteConfirm(false)}>
-                ×
-              </button>
+      {/* Create/Edit User Dialog */}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{selectedUser ? 'Edit User' : 'Create User'}</DialogTitle>
+            <DialogDescription>
+              {selectedUser ? "Update user details below." : "Add a new user to the system."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateUser} className="space-y-4">
+            <div className="grid w-full items-center gap-1.5">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={userForm.name}
+                onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                required
+              />
             </div>
-            <div className="modal-body">
-              <p>Are you sure you want to delete user <strong>{selectedUser.name}</strong> ({selectedUser.email})?</p>
-              <p style={{ color: '#dc3545', marginTop: '10px' }}>This action cannot be undone.</p>
+            <div className="grid w-full items-center gap-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={userForm.email}
+                onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                required
+              />
             </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowDeleteConfirm(false)}>
-                Cancel
-              </button>
-              <button type="button" className="btn btn-danger" onClick={handleDeleteUser}>
-                Delete
-              </button>
+            <div className="grid w-full items-center gap-1.5">
+              <Label htmlFor="password">Password {selectedUser && '(Leave blank to keep current)'}</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder={selectedUser ? "Example: ******" : "Secure Password"}
+                value={userForm.password}
+                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                minLength={6}
+                required={!selectedUser}
+              />
             </div>
-          </div>
-        </div>
-      )}
+            <div className="grid w-full items-center gap-1.5">
+              <Label htmlFor="role">Role</Label>
+              <Select
+                value={userForm.role}
+                onValueChange={(val) => setUserForm({ ...userForm, role: val })}
+                disabled={selectedUser && selectedUser.role === 'admin' && selectedUser.email === 'admin@wisecutstudios.com'}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="editor">Editor</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+              <Button type="submit">{selectedUser ? 'Update' : 'Create'}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Account Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete user <strong>{selectedUser?.name}</strong>?
+              This action cannot be undone and will permanently remove their access.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteUser}>Delete Account</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default UserManagement;
-

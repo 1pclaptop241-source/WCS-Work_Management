@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import api from '../../services/api'; // Use default api instance with interceptors
+import api from '../../services/api';
 import { formatDateTime } from '../../utils/formatDate';
-import './ActivityLogPage.css';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ActivityLogPage = () => {
     const [logs, setLogs] = useState([]);
@@ -29,84 +33,90 @@ const ActivityLogPage = () => {
     };
 
     const getActionBadge = (action) => {
-        if (action.includes('CREATE')) return 'badge-success';
-        if (action.includes('DELETE')) return 'badge-danger';
-        if (action.includes('LOGIN')) return 'badge-primary';
-        if (action.includes('PAYMENT')) return 'badge-warning';
-        if (action.includes('ASSIGN')) return 'badge-info';
-        if (action.includes('ACCEPT')) return 'badge-success';
-        if (action.includes('APPROVE')) return 'badge-success';
-        if (action.includes('CLOSE')) return 'badge-secondary';
-        return 'badge-secondary';
+        let variant = 'secondary';
+        if (action.includes('CREATE')) variant = 'success'; // You might need to define 'success' variant in badge.jsx or use default colors
+        if (action.includes('DELETE')) variant = 'destructive';
+        if (action.includes('LOGIN')) variant = 'default';
+        if (action.includes('PAYMENT')) variant = 'warning'; // Custom warning variant
+
+        // Mapping standard variants for simplicity if custom ones aren't available yet
+        if (action.includes('CREATE') || action.includes('ACCEPT') || action.includes('APPROVE')) return <Badge className="bg-green-600 hover:bg-green-700">{action.replace('_', ' ')}</Badge>;
+        if (action.includes('DELETE')) return <Badge variant="destructive">{action.replace('_', ' ')}</Badge>;
+        if (action.includes('LOGIN')) return <Badge variant="default">{action.replace('_', ' ')}</Badge>;
+        if (action.includes('PAYMENT')) return <Badge className="bg-yellow-500 hover:bg-yellow-600">{action.replace('_', ' ')}</Badge>;
+
+        return <Badge variant="secondary">{action.replace('_', ' ')}</Badge>;
     };
 
     return (
-        <div className="container activity-log-page">
-            <h1 className="page-title">System Activity Logs</h1>
+        <div className="container mx-auto p-4 md:p-8 pt-6 space-y-6">
+            <h1 className="text-3xl font-bold tracking-tight">System Activity Logs</h1>
 
-            {error && <div className="alert alert-error">{error}</div>}
+            {error && <div className="p-4 text-destructive bg-destructive/10 rounded-md">{error}</div>}
 
-            <div className="card">
-                <div className="table-responsive">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Action</th>
-                                <th>Description</th>
-                                <th>Time</th>
-                                <th className="hide-mobile">IP Address</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+            <Card>
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[200px]">User</TableHead>
+                                <TableHead>Action</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead>Time</TableHead>
+                                <TableHead className="hidden md:table-cell">IP Address</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
                             {loading ? (
-                                <tr><td colSpan="5" className="text-center">Loading...</td></tr>
+                                <TableRow><TableCell colSpan={5} className="text-center h-24">Loading...</TableCell></TableRow>
                             ) : logs.length === 0 ? (
-                                <tr><td colSpan="5" className="text-center">No activity recorded yet.</td></tr>
+                                <TableRow><TableCell colSpan={5} className="text-center h-24">No activity recorded yet.</TableCell></TableRow>
                             ) : (
                                 logs.map(log => (
-                                    <tr key={log._id}>
-                                        <td>
-                                            <div style={{ fontWeight: 'bold' }}>{log.user?.name || 'Unknown'}</div>
-                                            <div style={{ fontSize: '11px', color: '#666' }}>{log.user?.role}</div>
-                                        </td>
-                                        <td>
-                                            <span className={`badge ${getActionBadge(log.action)}`}>
-                                                {log.action.replace('_', ' ')}
-                                            </span>
-                                        </td>
-                                        <td>{log.description}</td>
-                                        <td>{formatDateTime(log.createdAt)}</td>
-                                        <td className="hide-mobile" style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+                                    <TableRow key={log._id}>
+                                        <TableCell>
+                                            <div className="font-medium">{log.user?.name || 'Unknown'}</div>
+                                            <div className="text-xs text-muted-foreground">{log.user?.role}</div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {getActionBadge(log.action)}
+                                        </TableCell>
+                                        <TableCell className="max-w-md truncate" title={log.description}>{log.description}</TableCell>
+                                        <TableCell className="whitespace-nowrap">{formatDateTime(log.createdAt)}</TableCell>
+                                        <TableCell className="hidden md:table-cell font-mono text-xs text-muted-foreground">
                                             {log.ipAddress}
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 ))
                             )}
-                        </tbody>
-                    </table>
-                </div>
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
 
-                {/* Pagination */}
-                <div className="pagination">
-                    <button
-                        disabled={page === 1}
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        className="btn btn-secondary btn-sm"
-                    >
-                        Previous
-                    </button>
-                    <span style={{ margin: '0 10px' }}>
-                        Page {page} of {totalPages}
-                    </span>
-                    <button
-                        disabled={page === totalPages}
-                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        className="btn btn-secondary btn-sm"
-                    >
-                        Next
-                    </button>
+            {/* Pagination */}
+            <div className="flex items-center justify-end space-x-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                </Button>
+                <div className="text-sm font-medium">
+                    Page {page} of {totalPages}
                 </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
             </div>
         </div>
     );

@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { projectsAPI, usersAPI, workBreakdownAPI, API_BASE_URL } from '../../services/api';
+import { projectsAPI, usersAPI, API_BASE_URL } from '../../services/api';
 import { formatDate, formatDateTime } from '../../utils/formatDate';
 import { useDialog } from '../../context/DialogContext';
 import confetti from 'canvas-confetti';
-import './AdminDashboard.css';
+import { ArrowLeft, Trash2, Plus, ExternalLink, Download } from 'lucide-react';
+
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 const AcceptProjectPage = () => {
     const { projectId } = useParams();
@@ -17,6 +27,7 @@ const AcceptProjectPage = () => {
     const [workMode, setWorkMode] = useState('default');
     const [totalAmount, setTotalAmount] = useState('');
     const [workBreakdown, setWorkBreakdown] = useState([]);
+    const [isAccepting, setIsAccepting] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -104,8 +115,6 @@ const AcceptProjectPage = () => {
         setWorkBreakdown(workBreakdown.filter((_, i) => i !== index));
     };
 
-    const [isAccepting, setIsAccepting] = useState(false);
-
     const handleAcceptProject = async (e) => {
         e.preventDefault();
         try {
@@ -115,21 +124,13 @@ const AcceptProjectPage = () => {
                 return;
             }
 
-            // Confirmation dialog
             const confirmed = await confirm({
                 title: 'Accept Project',
-                message: `Are you sure you want to accept this project?\n\n` +
-                    `Project: ${project.title}\n` +
-                    `Client: ${project.client?.name}\n` +
-                    `Total Work Items: ${workBreakdown.length}\n` +
-                    `Allocated Budget: ${project.currency} ${parseFloat(totalAmount).toLocaleString()}\n\n` +
-                    `This will notify the client and all assigned editors.`,
+                message: `Are you sure you want to accept this project?\nAllocated Budget: ${project.currency} ${parseFloat(totalAmount).toLocaleString()}`,
                 confirmText: 'Accept Project'
             });
 
-            if (!confirmed) {
-                return;
-            }
+            if (!confirmed) return;
 
             setIsAccepting(true);
             setError('');
@@ -138,13 +139,11 @@ const AcceptProjectPage = () => {
                     ...w,
                     amount: parseFloat(w.amount),
                     percentage: parseFloat(w.percentage),
-                    // Conversion: ensure deadline is transmitted as ISO string to prevent timezone offset issues
                     deadline: w.deadline ? new Date(w.deadline).toISOString() : w.deadline
                 })),
                 parseFloat(totalAmount)
             );
 
-            // Celebration
             confetti({
                 particleCount: 200,
                 spread: 120,
@@ -163,345 +162,228 @@ const AcceptProjectPage = () => {
         }
     };
 
-    if (loading) {
-        return <div className="spinner"></div>;
-    }
-
-    if (!project) {
-        return <div className="container"><div className="alert alert-error">Project not found</div></div>;
-    }
+    if (loading) return <div className="flex h-[80vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>;
+    if (!project) return <div className="container p-8"><div className="p-4 rounded bg-destructive/10 text-destructive">Project not found</div></div>;
 
     return (
-        <div className="container" style={{ maxWidth: '1400px', padding: '20px' }}>
-            <div className="card">
-                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h1 style={{ margin: 0 }}>Accept Project - {project.title}</h1>
-                    <button className="btn btn-secondary" onClick={() => navigate('/admin/dashboard')}>
-                        ← Back to Dashboard
-                    </button>
-                </div>
+        <div className="container mx-auto p-4 md:p-8 pt-6 max-w-7xl">
+            <div className="flex items-center gap-4 mb-6">
+                <Button variant="outline" size="icon" onClick={() => navigate('/admin/dashboard')}>
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <h1 className="text-2xl font-bold tracking-tight">Accept Project: {project.title}</h1>
+            </div>
 
-                {error && <div className="alert alert-error">{error}</div>}
+            {error && <div className="mb-6 p-4 rounded bg-destructive/10 text-destructive border border-destructive/20">{error}</div>}
 
-                <form onSubmit={handleAcceptProject} className="card-body">
-                    {/* Project Information */}
-                    <div style={{ marginBottom: '30px', padding: '20px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-                        <h2 style={{ marginTop: 0, marginBottom: '15px' }}>Project Information</h2>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+            <form onSubmit={handleAcceptProject} className="space-y-8">
+                {/* Project Info Card */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Project Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-6 md:grid-cols-2">
+                        <div className="space-y-4">
                             <div>
-                                <p><strong>Title:</strong> {project.title}</p>
-                                <p><strong>Client:</strong> {project.client?.name}</p>
-                                <p><strong>Deadline:</strong> {formatDateTime(project.deadline)}</p>
+                                <Label className="text-muted-foreground">Client</Label>
+                                <div className="font-medium">{project.client?.name}</div>
                             </div>
                             <div>
-                                <p><strong>Description:</strong> {project.description}</p>
-                                <p><strong>Project Details:</strong> {project.projectDetails || 'N/A'}</p>
+                                <Label className="text-muted-foreground">Deadline</Label>
+                                <div className="font-medium">{formatDateTime(project.deadline)}</div>
+                            </div>
+                            <div>
+                                <Label className="text-muted-foreground">Description</Label>
+                                <p className="text-sm mt-1">{project.description}</p>
                             </div>
                         </div>
-
-                        {project.rawFootageLinks && project.rawFootageLinks.length > 0 && (
-                            <div style={{ marginTop: '15px' }}>
-                                <strong>Raw Footage Links:</strong>
-                                <ul style={{ marginTop: '5px' }}>
-                                    {project.rawFootageLinks.map((link, idx) => {
-                                        let url = link.url;
-                                        if (!/^https?:\/\//i.test(url)) {
-                                            url = 'https://' + url;
-                                        }
-                                        return (
+                        <div className="space-y-4">
+                            {project.rawFootageLinks?.length > 0 && (
+                                <div>
+                                    <Label className="text-muted-foreground mb-2 block">Raw Footage</Label>
+                                    <ul className="text-sm space-y-1">
+                                        {project.rawFootageLinks.map((link, idx) => (
                                             <li key={idx}>
-                                                <a href={url} target="_blank" rel="noopener noreferrer">{link.title}</a>
+                                                <a href={link.url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                                                    {link.title || link.url} <ExternalLink className="h-3 w-3" />
+                                                </a>
                                             </li>
-                                        );
-                                    })}
-                                </ul>
-                            </div>
-                        )}
-
-                        {project.scriptFile && (
-                            <p style={{ marginTop: '15px' }}>
-                                <strong>Script:</strong> <a
-                                    href={project.scriptFile.match(/^https?:\/\//) ? project.scriptFile : (project.scriptFile.startsWith('/') || project.scriptFile.startsWith('uploads') ? `${API_BASE_URL}${project.scriptFile}` : `https://${project.scriptFile}`)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Download Script
-                                </a>
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Work Mode Selection */}
-                    <div className="form-group">
-                        <label className="form-label">Work Type Mode</label>
-                        <select
-                            className="form-select"
-                            value={workMode}
-                            onChange={(e) => {
-                                setWorkMode(e.target.value);
-                                if (e.target.value === 'default') {
-                                    initializeAcceptModal(project);
-                                }
-                            }}
-                            style={{ maxWidth: '300px' }}
-                        >
-                            <option value="default">Default</option>
-                            <option value="custom">Custom</option>
-                        </select>
-                    </div>
-
-                    {/* Client Amount */}
-                    <div className="form-group">
-                        <label className="form-label">Client Amount ({project.currency || 'INR'}) - To be collected</label>
-                        <input
-                            type="number"
-                            className="form-input"
-                            value={project.clientAmount || project.amount || ''}
-                            disabled
-                            style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed', maxWidth: '300px' }}
-                        />
-                    </div>
-
-                    {/* Allocated Amount */}
-                    <div className="form-group">
-                        <label className="form-label">Allocated Amount - Budget for Editors ({project.currency || 'INR'})</label>
-                        <input
-                            type="number"
-                            className="form-input"
-                            value={totalAmount}
-                            onChange={(e) => {
-                                setTotalAmount(e.target.value);
-                                const total = parseFloat(e.target.value) || 0;
-                                setWorkBreakdown(workBreakdown.map(work => ({
-                                    ...work,
-                                    amount: (total * parseFloat(work.percentage)) / 100,
-                                })));
-                            }}
-                            required
-                            min="0"
-                            step="0.01"
-                            style={{ maxWidth: '300px' }}
-                        />
-                    </div>
-
-                    {/* Work Breakdown */}
-                    <div className="form-group">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                            <label className="form-label" style={{ margin: 0 }}>Work Breakdown</label>
-                            {workMode === 'custom' && (
-                                <button
-                                    type="button"
-                                    className="btn btn-primary btn-sm"
-                                    onClick={addCustomWorkType}
-                                >
-                                    Add Work Type
-                                </button>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            {project.scriptFile && (
+                                <div>
+                                    <Label className="text-muted-foreground mb-2 block">Script</Label>
+                                    <Button variant="outline" size="sm" asChild>
+                                        <a href={project.scriptFile} target="_blank" rel="noreferrer">
+                                            <Download className="mr-2 h-4 w-4" /> Download Script
+                                        </a>
+                                    </Button>
+                                </div>
                             )}
                         </div>
+                    </CardContent>
+                </Card>
 
-                        <div className="table-responsive">
-                            <table className="table" style={{ fontSize: '14px' }}>
-                                <thead>
-                                    <tr>
-                                        <th style={{ minWidth: '130px' }}>Work Type</th>
-                                        <th style={{ minWidth: '120px' }}>Assigned Editor</th>
-                                        <th style={{ minWidth: '140px' }}>Deadline</th>
-                                        <th style={{ width: '80px' }}>Percentage</th>
-                                        <th style={{ width: '100px' }}>Amount</th>
-                                        <th style={{ minWidth: '180px' }}>Share Details (Optional)</th>
-                                        <th style={{ minWidth: '200px' }}>Links (Optional)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                {/* Financials Card */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Financials & Configuration</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-6 md:grid-cols-3">
+                        <div className="space-y-2">
+                            <Label>Work Mode</Label>
+                            <Select value={workMode} onValueChange={(val) => {
+                                setWorkMode(val);
+                                if (val === 'default') initializeAcceptModal(project);
+                            }}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="default">Default Template</SelectItem>
+                                    <SelectItem value="custom">Custom Breakdown</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Client Amount ({project.currency})</Label>
+                            <Input value={project.clientAmount || project.amount || ''} disabled className="bg-muted" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Allocated Budget ({project.currency})</Label>
+                            <Input
+                                type="number"
+                                value={totalAmount}
+                                onChange={(e) => {
+                                    setTotalAmount(e.target.value);
+                                    const total = parseFloat(e.target.value) || 0;
+                                    setWorkBreakdown(workBreakdown.map(work => ({
+                                        ...work,
+                                        amount: (total * parseFloat(work.percentage)) / 100,
+                                    })));
+                                }}
+                                required
+                                min="0"
+                                step="0.01"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Work Breakdown Card */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle>Work Breakdown Analysis</CardTitle>
+                        {workMode === 'custom' && (
+                            <Button type="button" size="sm" onClick={addCustomWorkType}>
+                                <Plus className="mr-2 h-4 w-4" /> Add Work Type
+                            </Button>
+                        )}
+                    </CardHeader>
+                    <CardContent>
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[200px]">Work Type</TableHead>
+                                        <TableHead className="w-[200px]">Assign Editor</TableHead>
+                                        <TableHead className="w-[180px]">Deadline</TableHead>
+                                        <TableHead className="w-[100px]">%</TableHead>
+                                        <TableHead className="w-[120px]">Amount</TableHead>
+                                        <TableHead>Details / Links</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
                                     {workBreakdown.map((work, index) => (
-                                        <tr key={index}>
-                                            <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        {workMode === 'default' ? (
-                                                            <span>{work.workType}</span>
-                                                        ) : (
-                                                            <input
-                                                                type="text"
-                                                                className="form-input"
-                                                                value={work.workType}
-                                                                onChange={(e) => handleWorkBreakdownChange(index, 'workType', e.target.value)}
-                                                                required
-                                                                disabled={work.workType === 'Final Render'}
-                                                                style={{ width: '100%', fontSize: '12px' }}
-                                                            />
+                                        <TableRow key={index}>
+                                            <TableCell>
+                                                {workMode === 'default' ? (
+                                                    <span className="font-medium">{work.workType}</span>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <Input
+                                                            value={work.workType}
+                                                            onChange={(e) => handleWorkBreakdownChange(index, 'workType', e.target.value)}
+                                                            disabled={work.workType === 'Final Render'}
+                                                            className="h-8"
+                                                        />
+                                                        {work.workType !== 'Final Render' && (
+                                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeWorkType(index)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
                                                         )}
                                                     </div>
-                                                    {workMode === 'custom' && work.workType !== 'Final Render' && (
-                                                        <button
-                                                            type="button"
-                                                            title="Remove this work type"
-                                                            onClick={() => removeWorkType(index)}
-                                                            style={{
-                                                                background: '#dc3545',
-                                                                border: 'none',
-                                                                color: 'white',
-                                                                cursor: 'pointer',
-                                                                padding: '5px 10px',
-                                                                borderRadius: '4px',
-                                                                fontSize: '12px',
-                                                                fontWeight: '500',
-                                                                transition: 'all 0.2s ease',
-                                                                flexShrink: 0,
-                                                                minWidth: 'fit-content',
-                                                                opacity: 0.9
-                                                            }}
-                                                            onMouseOver={(e) => {
-                                                                e.target.style.background = '#c82333';
-                                                                e.target.style.opacity = '1';
-                                                            }}
-                                                            onMouseOut={(e) => {
-                                                                e.target.style.background = '#dc3545';
-                                                                e.target.style.opacity = '0.9';
-                                                            }}
-                                                        >
-                                                            ✕ Remove
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <select
-                                                    className="form-select"
-                                                    value={work.assignedEditor}
-                                                    onChange={(e) => handleWorkBreakdownChange(index, 'assignedEditor', e.target.value)}
-                                                    required
-                                                    style={{ fontSize: '12px', width: '100%' }}
-                                                >
-                                                    <option value="">Select Editor</option>
-                                                    {editors.map((editor) => (
-                                                        <option key={editor._id} value={editor._id}>
-                                                            {editor.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <input
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Select value={work.assignedEditor} onValueChange={(val) => handleWorkBreakdownChange(index, 'assignedEditor', val)}>
+                                                    <SelectTrigger className="h-8">
+                                                        <SelectValue placeholder="Select..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {editors.map(e => <SelectItem key={e._id} value={e._id}>{e.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input
                                                     type="datetime-local"
-                                                    className="form-input"
                                                     value={work.deadline}
                                                     onChange={(e) => handleWorkBreakdownChange(index, 'deadline', e.target.value)}
+                                                    className="h-8 text-xs"
                                                     required
-                                                    style={{ fontSize: '12px', width: '100%' }}
                                                 />
-                                            </td>
-                                            <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    <input
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="relative">
+                                                    <Input
                                                         type="number"
-                                                        className="form-input"
                                                         value={work.percentage}
                                                         onChange={(e) => {
-                                                            const newPercentage = parseFloat(e.target.value) || 0;
-                                                            handleWorkBreakdownChange(index, 'percentage', newPercentage);
-                                                            const total = parseFloat(totalAmount) || 0;
-                                                            handleWorkBreakdownChange(index, 'amount', (total * newPercentage) / 100);
+                                                            const val = parseFloat(e.target.value) || 0;
+                                                            handleWorkBreakdownChange(index, 'percentage', val);
                                                         }}
-                                                        required
-                                                        min="0"
-                                                        max="100"
-                                                        step="0.01"
-                                                        style={{ width: '70px', fontSize: '12px' }}
+                                                        className="h-8 pr-6"
+                                                        min="0" max="100"
                                                     />
-                                                    <span>%</span>
+                                                    <span className="absolute right-2 top-2 text-xs text-muted-foreground">%</span>
                                                 </div>
-                                            </td>
-                                            <td>
-                                                {project.currency || 'INR'} {work.amount.toFixed(2)}
-                                            </td>
-                                            <td>
-                                                <textarea
-                                                    className="form-textarea"
-                                                    value={work.shareDetails || ''}
-                                                    onChange={(e) => handleWorkBreakdownChange(index, 'shareDetails', e.target.value)}
-                                                    placeholder="Optional details for editor..."
-                                                    style={{ fontSize: '12px', minHeight: '60px', width: '100%' }}
-                                                />
-                                            </td>
-                                            <td>
-                                                <div style={{ width: '100%' }}>
-                                                    {(work.links || []).map((link, linkIndex) => (
-                                                        <div key={linkIndex} style={{ display: 'flex', gap: '4px', marginBottom: '4px', alignItems: 'center' }}>
-                                                            <input
-                                                                type="text"
-                                                                className="form-input"
-                                                                placeholder="Title"
-                                                                value={link.title}
-                                                                onChange={(e) => {
-                                                                    const newLinks = [...(work.links || [])];
-                                                                    newLinks[linkIndex].title = e.target.value;
-                                                                    handleWorkBreakdownChange(index, 'links', newLinks);
-                                                                }}
-                                                                style={{ fontSize: '11px', flex: 1 }}
-                                                            />
-                                                            <input
-                                                                type="url"
-                                                                className="form-input"
-                                                                placeholder="URL"
-                                                                value={link.url}
-                                                                onChange={(e) => {
-                                                                    const newLinks = [...(work.links || [])];
-                                                                    newLinks[linkIndex].url = e.target.value;
-                                                                    handleWorkBreakdownChange(index, 'links', newLinks);
-                                                                }}
-                                                                style={{ fontSize: '11px', flex: 2 }}
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                className="btn btn-danger btn-sm"
-                                                                onClick={() => {
-                                                                    const newLinks = (work.links || []).filter((_, i) => i !== linkIndex);
-                                                                    handleWorkBreakdownChange(index, 'links', newLinks);
-                                                                }}
-                                                                style={{ fontSize: '10px', padding: '2px 6px' }}
-                                                            >
-                                                                ×
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-primary btn-sm"
-                                                        onClick={() => {
-                                                            const newLinks = [...(work.links || []), { title: '', url: '' }];
-                                                            handleWorkBreakdownChange(index, 'links', newLinks);
-                                                        }}
-                                                        style={{ fontSize: '11px', marginTop: '4px' }}
-                                                    >
-                                                        + Add Link
-                                                    </button>
+                                            </TableCell>
+                                            <TableCell className="font-mono text-sm">
+                                                {project.currency} {work.amount.toFixed(2)}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="space-y-2">
+                                                    <Textarea
+                                                        placeholder="Instructions for editor..."
+                                                        value={work.shareDetails || ''}
+                                                        onChange={(e) => handleWorkBreakdownChange(index, 'shareDetails', e.target.value)}
+                                                        className="h-16 text-xs resize-none"
+                                                    />
+                                                    {/* Simplified links for now */}
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     ))}
-                                </tbody>
-                            </table>
+                                </TableBody>
+                            </Table>
                         </div>
-
-                        <div style={{ marginTop: '15px', textAlign: 'right', fontSize: '16px' }}>
-                            <strong>Total Percentage: {
-                                workBreakdown.reduce((sum, w) => sum + parseFloat(w.percentage || 0), 0).toFixed(2)
-                            }%</strong>
+                        <div className="mt-4 flex justify-end">
+                            <div className="text-lg font-bold">
+                                Total: {workBreakdown.reduce((sum, w) => sum + parseFloat(w.percentage || 0), 0).toFixed(0)}%
+                            </div>
                         </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #ddd' }}>
-                        <button type="button" className="btn btn-secondary" disabled={isAccepting} onClick={() => navigate('/admin/dashboard')}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-success" disabled={isAccepting} style={{ minWidth: '150px' }}>
-                            {isAccepting ? 'Accepting...' : 'Accept Project'}
-                        </button>
-                    </div>
-                </form>
-            </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-end gap-2 border-t pt-6">
+                        <Button type="button" variant="secondary" onClick={() => navigate('/admin/dashboard')}>Cancel</Button>
+                        <Button type="submit" className="bg-green-600 hover:bg-green-700 w-40" disabled={isAccepting}>
+                            {isAccepting ? 'Processing...' : 'Accept Project'}
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </form>
         </div>
     );
 };
