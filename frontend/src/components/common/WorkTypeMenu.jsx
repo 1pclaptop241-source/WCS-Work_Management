@@ -1,51 +1,28 @@
-import { useState, useRef, useEffect } from 'react';
-import './WorkTypeMenu.css';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const WorkTypeMenu = ({ workBreakdown, onViewDetails }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const menuRef = useRef(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isOpen]);
-
-    const handleViewDetails = () => {
-        setIsOpen(false);
-        onViewDetails(workBreakdown);
-    };
-
     return (
-        <div className="work-type-menu" ref={menuRef}>
-            <button
-                className="menu-trigger"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setIsOpen(!isOpen);
-                }}
-                title="More options"
-            >
-                ⋮
-            </button>
-            {isOpen && (
-                <div className="menu-dropdown">
-                    <button className="menu-item" onClick={handleViewDetails}>
-                        📋 View Details
-                    </button>
-                </div>
-            )}
-        </div>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                    <MoreVertical className="h-4 w-4" />
+                    <span className="sr-only">Open menu</span>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onViewDetails(workBreakdown)}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    View Details
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 };
 

@@ -1,173 +1,152 @@
 import { useState } from 'react';
-import './SupportPage.css';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Mail, HelpCircle, Phone, Info } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const SupportPage = ({ onClose, userRole }) => {
+    // Keep internal state for potential future logic, though currently unused as we use mailto
+    // eslint-disable-next-line no-unused-vars
     const [formData, setFormData] = useState({
         subject: '',
         message: '',
         email: ''
     });
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        // Create mailto link with pre-filled data
-        const mailtoLink = `mailto:support@wcsmanagement.com?subject=${encodeURIComponent(formData.subject)}&body=${encodeURIComponent(
-            `From: ${formData.email}\n\n${formData.message}`
-        )}`;
-        window.location.href = mailtoLink;
+    const contactEmails = {
+        general: "wisecutstudios@gmail.com",
+        tech: "wisecutstudios@gmail.com",
+        billing: "wisecutstudios@gmail.com"
     };
 
     return (
-        <div className="support-modal-overlay" onClick={onClose}>
-            <div className="support-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="support-modal-header">
-                    <h2>Support & Help</h2>
-                    <button className="support-close-btn" onClick={onClose}>×</button>
-                </div>
+        <Dialog open={true} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 gap-0">
+                <DialogHeader className="p-6 pb-4 bg-muted/20">
+                    <DialogTitle className="flex items-center gap-2 text-2xl">
+                        <HelpCircle className="h-6 w-6 text-primary" />
+                        Support & Help
+                    </DialogTitle>
+                    <DialogDescription>
+                        Get help with your projects, payments, or technical issues.
+                    </DialogDescription>
+                </DialogHeader>
 
-                <div className="support-modal-body">
-                    {/* Contact Information Section */}
-                    <div className="support-section">
-                        <div className="support-icon-header">
-                            <span className="support-emoji">📧</span>
-                            <h3>Contact Information</h3>
-                        </div>
-                        <div className="contact-info">
-                            <div className="contact-item">
-                                <span className="contact-label">General Support:</span>
-                                <a href="" className="contact-link">
-                                    wisecutstudios@gmail.com
-                                </a>
+                <ScrollArea className="flex-1 px-6 py-4">
+                    <div className="space-y-8">
+                        {/* Contact Information Section */}
+                        <section className="space-y-4">
+                            <h3 className="flex items-center gap-2 font-semibold text-lg text-primary">
+                                <Mail className="h-5 w-5" />
+                                Contact Information
+                            </h3>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm font-medium text-muted-foreground">General Support</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <a href={`mailto:${contactEmails.general}`} className="text-primary font-medium hover:underline text-sm md:text-base">
+                                            {contactEmails.general}
+                                        </a>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-sm font-medium text-muted-foreground">Technical & Billing</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-1">
+                                            <a href={`mailto:${contactEmails.tech}`} className="text-primary font-medium hover:underline text-sm md:text-base block">
+                                                {contactEmails.tech}
+                                            </a>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </div>
-                            <div className="contact-item">
-                                <span className="contact-label">Technical Issues:</span>
-                                <a href="" className="contact-link">
-                                    wisecutstudios@gmail.com
-                                </a>
+                        </section>
+
+                        <Separator />
+
+                        {/* FAQ Section */}
+                        <section className="space-y-4">
+                            <h3 className="flex items-center gap-2 font-semibold text-lg text-primary">
+                                <Info className="h-5 w-5" />
+                                Frequently Asked Questions
+                            </h3>
+
+                            <div className="space-y-4">
+                                {userRole === 'client' ? (
+                                    <>
+                                        <FAQItem
+                                            question="How do I create a new project?"
+                                            answer="Click the 'Create Project' button on your dashboard, fill in the project details, and submit. An admin will review and accept your project."
+                                        />
+                                        <FAQItem
+                                            question="How can I track my project progress?"
+                                            answer="Navigate to 'Ongoing Projects' to view all your active projects. Click on any project to see detailed work breakdowns and status updates."
+                                        />
+                                        <FAQItem
+                                            question="When will I receive my completed work?"
+                                            answer="You can view submitted work in the project details. Once you approve the work, it will be marked as completed."
+                                        />
+                                        <FAQItem
+                                            question="How do I make payments?"
+                                            answer="Go to the Payments section to view pending payments and make transactions. All payment records are tracked in your dashboard."
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <FAQItem
+                                            question="How do I view my assigned tasks?"
+                                            answer="All your assigned work items are displayed on the 'Assigned Works' tab. Click on any work card to upload or manage your submissions."
+                                        />
+                                        <FAQItem
+                                            question="How do I upload my work?"
+                                            answer="Click on a work card, then use the upload section to submit your files. You can upload images, videos, or other required formats."
+                                        />
+                                        <FAQItem
+                                            question="What if corrections are requested?"
+                                            answer="If corrections are needed, you'll see a 'Corrections Needed' status. Review the feedback and upload the corrected version."
+                                        />
+                                        <FAQItem
+                                            question="When will I receive payment?"
+                                            answer="Check the 'Payment Information' tab to view your payment status. Payments are processed after your work is approved by both client and admin."
+                                        />
+                                    </>
+                                )}
                             </div>
-                            <div className="contact-item">
-                                <span className="contact-label">Billing & Payments:</span>
-                                <a href="" className="contact-link">
-                                    wisecutstudios@gmail.com
-                                </a>
+                        </section>
+
+                        <div className="bg-muted p-4 rounded-lg flex items-start gap-3 text-sm text-muted-foreground">
+                            <Phone className="h-5 w-5 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-semibold text-foreground mb-1">Support Hours</p>
+                                <p>Mon - Fri: 9:00 AM - 6:00 PM (IST)</p>
+                                <p>Sat: 10:00 AM - 4:00 PM (IST)</p>
+                                <p className="mt-2 text-xs italic">We aim to respond to all inquiries within 24 business hours.</p>
                             </div>
                         </div>
                     </div>
-
-                    {/* Quick Contact Form */}
-                    {/* <div className="support-section">
-                        <div className="support-icon-header">
-                            <span className="support-emoji">✉️</span>
-                            <h3>Quick Contact</h3>
-                        </div>
-                        <form onSubmit={handleSubmit} className="support-form">
-                            <div className="form-group">
-                                <label className="form-label">Your Email</label>
-                                <input
-                                    type="email"
-                                    className="form-input"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    placeholder="your.email@example.com"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Subject</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    value={formData.subject}
-                                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                                    placeholder="Brief description of your issue"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Message</label>
-                                <textarea
-                                    className="form-textarea"
-                                    value={formData.message}
-                                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                                    placeholder="Describe your issue or question in detail..."
-                                    rows="5"
-                                    required
-                                />
-                            </div>
-                            <button type="submit" className="btn btn-primary support-submit-btn">
-                                Send Email
-                            </button>
-                        </form>
-                    </div> */}
-
-                    {/* FAQ Section */}
-                    <div className="support-section">
-                        <div className="support-icon-header">
-                            <span className="support-emoji">❓</span>
-                            <h3>Frequently Asked Questions</h3>
-                        </div>
-                        <div className="faq-list">
-                            {userRole === 'client' ? (
-                                <>
-                                    <div className="faq-item">
-                                        <h4>How do I create a new project?</h4>
-                                        <p>Click the "Create Project" button on your dashboard, fill in the project details, and submit. An admin will review and accept your project.</p>
-                                    </div>
-                                    <div className="faq-item">
-                                        <h4>How can I track my project progress?</h4>
-                                        <p>Navigate to "Ongoing Projects" to view all your active projects. Click on any project to see detailed work breakdowns and status updates.</p>
-                                    </div>
-                                    <div className="faq-item">
-                                        <h4>When will I receive my completed work?</h4>
-                                        <p>You can view submitted work in the project details. Once you approve the work, it will be marked as completed.</p>
-                                    </div>
-                                    <div className="faq-item">
-                                        <h4>How do I make payments?</h4>
-                                        <p>Go to the Payments section to view pending payments and make transactions. All payment records are tracked in your dashboard.</p>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="faq-item">
-                                        <h4>How do I view my assigned tasks?</h4>
-                                        <p>All your assigned work items are displayed on the "Assigned Works" tab. Click on any work card to upload or manage your submissions.</p>
-                                    </div>
-                                    <div className="faq-item">
-                                        <h4>How do I upload my work?</h4>
-                                        <p>Click on a work card, then use the upload section to submit your files. You can upload images, videos, or other required formats.</p>
-                                    </div>
-                                    <div className="faq-item">
-                                        <h4>What if corrections are requested?</h4>
-                                        <p>If corrections are needed, you'll see a "Corrections Needed" status. Review the feedback and upload the corrected version.</p>
-                                    </div>
-                                    <div className="faq-item">
-                                        <h4>When will I receive payment?</h4>
-                                        <p>Check the "Payment Information" tab to view your payment status. Payments are processed after your work is approved by both client and admin.</p>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Working Hours */}
-                    {/* <div className="support-section">
-                        <div className="support-icon-header">
-                            <span className="support-emoji">🕐</span>
-                            <h3>Support Hours</h3>
-                        </div>
-                        <div className="support-hours">
-                            <p><strong>Monday - Friday:</strong> 9:00 AM - 6:00 PM (IST)</p>
-                            <p><strong>Saturday:</strong> 10:00 AM - 4:00 PM (IST)</p>
-                            <p><strong>Sunday:</strong> Closed</p>
-                            <p className="support-note">
-                                <em>We aim to respond to all inquiries within 24 business hours.</em>
-                            </p>
-                        </div>
-                    </div> */}
-                </div>
-            </div>
-        </div>
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
     );
 };
+
+const FAQItem = ({ question, answer }) => (
+    <div className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
+        <h4 className="font-semibold text-sm mb-2 text-foreground">{question}</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">{answer}</p>
+    </div>
+);
 
 export default SupportPage;

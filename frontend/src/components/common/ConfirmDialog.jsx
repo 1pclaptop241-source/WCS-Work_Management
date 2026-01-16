@@ -1,52 +1,53 @@
 import React from 'react';
-import './ConfirmDialog.css';
+import {
+    AlertDialog as ShadcnAlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const ConfirmDialog = ({ isOpen, title, message, onConfirm, onCancel, confirmText = 'Confirm', cancelText = 'Cancel', isDanger = false }) => {
-    if (!isOpen) return null;
-
     return (
-        <div className="confirm-dialog-overlay" onClick={onCancel}>
-            <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
-                <div className="confirm-dialog-header">
-                    <h3 className="confirm-dialog-title">{title}</h3>
-                </div>
-                <div className="confirm-dialog-body">
-                    <p>{message}</p>
-                </div>
-                <div className="confirm-dialog-footer">
-                    <button className="confirm-btn confirm-btn-cancel" onClick={onCancel}>
-                        {cancelText}
-                    </button>
-                    <button
-                        className={`confirm-btn confirm-btn-confirm ${isDanger ? 'danger' : ''}`}
+        <ShadcnAlertDialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{title}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {message}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={onCancel}>{cancelText}</AlertDialogCancel>
+                    <AlertDialogAction
                         onClick={onConfirm}
+                        className={isDanger ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
                     >
                         {confirmText}
-                    </button>
-                </div>
-            </div>
-        </div>
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </ShadcnAlertDialog>
     );
 };
 
 export const AlertDialog = ({ isOpen, title, message, onOk, okText = 'OK' }) => {
-    if (!isOpen) return null;
-
     return (
-        <div className="confirm-dialog-overlay" onClick={onOk}>
-            <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
-                <div className="confirm-dialog-header">
-                    <h3 className="confirm-dialog-title">{title}</h3>
-                </div>
-                <div className="confirm-dialog-body">
-                    <p>{message}</p>
-                </div>
-                <div className="confirm-dialog-footer">
-                    <button className="confirm-btn confirm-btn-ok" onClick={onOk}>
-                        {okText}
-                    </button>
-                </div>
-            </div>
-        </div>
+        <ShadcnAlertDialog open={isOpen} onOpenChange={(open) => !open && onOk()}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{title}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {message}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={onOk}>{okText}</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </ShadcnAlertDialog>
     );
 };

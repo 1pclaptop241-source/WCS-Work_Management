@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import './ProjectRoadmap.css';
-import { FaCheck, FaClock, FaCircle, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCheck, FaSpinner, FaCircle } from 'react-icons/fa';
 import { workBreakdownAPI } from '../../services/api';
-import { formatDateTime } from '../../utils/formatDate';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/utils/cn";
 
 const ProjectRoadmap = ({ projectId, currentWorkType, projectTitle }) => {
     const [stages, setStages] = useState([]);
@@ -19,9 +19,6 @@ const ProjectRoadmap = ({ projectId, currentWorkType, projectTitle }) => {
         try {
             setLoading(true);
             const response = await workBreakdownAPI.getByProject(projectId);
-            // The API returns the work breakdown items. We should respect their order.
-            // If the API doesn't guarantee order, we might need to sort by deadline or insertion order.
-            // For now assuming API returns logical order or insertion order.
             setStages(response.data || []);
         } catch (err) {
             console.error("Failed to load project roadmap:", err);
@@ -31,96 +28,80 @@ const ProjectRoadmap = ({ projectId, currentWorkType, projectTitle }) => {
         }
     };
 
-    if (loading) return <div className="roadmap-loading"><FaSpinner className="spin" /> Loading Roadmap...</div>;
-    if (error) return null; // Or show error elegantly
-    if (!stages || stages.length === 0) return null;
+    if (loading) return <div className="p-4 text-center text-muted-foreground flex items-center justify-center gap-2"><FaSpinner className="animate-spin" /> Loading Roadmap...</div>;
+    if (error || !stages || stages.length === 0) return null;
 
-    // Helper to determine step status based on WorkBreakdown object
     const getStepStatus = (stage) => {
         if (stage.approved) return 'done';
-
-        // If it's not approved, check if there are submissions or if it matches current work context
-        // We might want to mark it 'active' if it's the current context
         const isCurrentContext = currentWorkType &&
             currentWorkType.toLowerCase().replace(/[^a-z]/g, '') === stage.workType.toLowerCase().replace(/[^a-z]/g, '');
-
         if (isCurrentContext) return 'active';
-
-        // You could also check stage.status from backend if available (e.g. 'in_progress' vs 'pending')
         if (stage.status === 'in_progress' || stage.status === 'under_review') return 'active';
-
         return 'pending';
     };
 
-    // Calculate progress: find the index of the last 'done' step
-    // Actually, progress line should extend through all 'done' steps and land on 'active'
     let lastDoneIndex = -1;
     stages.forEach((stage, index) => {
-        const s = getStepStatus(stage);
-        if (s === 'done') {
-            lastDoneIndex = index;
-        }
+        if (getStepStatus(stage) === 'done') lastDoneIndex = index;
     });
 
-    // Add 1 to include the partial progress to the next step if active? 
-    // Or just simple percentage based on completed steps.
-    // Let's stick to the visual style: percentage of total steps.
-    // referencing the last DONE index means the line goes up to that point. 
-    // If we want it to go to the current active one, use that.
-
     let activeIndex = lastDoneIndex;
-    // Find first active after done
     const firstActiveIndex = stages.findIndex((s, i) => i > lastDoneIndex && getStepStatus(s) === 'active');
     if (firstActiveIndex !== -1) activeIndex = firstActiveIndex;
 
     const progressPercentage = stages.length <= 1 ? 0 : (activeIndex / (stages.length - 1)) * 100;
 
     return (
-        <div className="project-roadmap">
-            <div className="roadmap-header">
-                <h3 style={{ margin: 0 }}>🚀 Roadmap: {projectTitle || 'Project'}</h3>
-            </div>
+        <Card className="mb-6">
+            <CardHeader className="pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                    🚀 Roadmap: {projectTitle || 'Project'}
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="relative flex justify-between px-4">
+                    {/* Progress Track */}
+                    <div className="absolute top-[15px] left-[20px] right-[20px] h-0.5 bg-secondary z-0"></div>
 
-            <div className="roadmap-stepper">
-                {/* Active Progress Line */}
-                <div
-                    className="roadmap-progress-line"
-                    style={{ width: `${Math.max(0, Math.min(100, progressPercentage))}%` }}
-                />
+                    {/* Progress Fill */}
+                    <div
+                        className="absolute top-[15px] left-[20px] h-0.5 bg-green-500 z-0 transition-all duration-500"
+                        style={{ width: `calc(${progressPercentage}% - 40px)` }}
+                    ></div>
+                    {/* Note: The width calc is approximate, typically dynamic widths need careful logic or just relying on flex. 
+                        Let's simplify: Use a container for the line that matches the flex distribution. 
+                        Actually, flex distribution for stepped progress is hard to absolute position simply.
+                        Alternative: Tailwind steps.
+                    */}
 
-                {stages.map((stage, index) => {
-                    const status = getStepStatus(stage);
+                    {stages.map((stage, index) => {
+                        const status = getStepStatus(stage);
+                        const isDone = status === 'done';
+                        const isActive = status === 'active';
 
-                    return (
-                        <div
-                            key={stage._id || index}
-                            className={`roadmap-step ${status}`}
-                        >
-                            <div className="step-circle">
-                                {status === 'done' ? (
-                                    <FaCheck className="step-icon" />
-                                ) : status === 'active' ? (
-                                    <FaSpinner className="step-icon spin" />
-                                ) : (
-                                    <FaCircle className="step-icon" style={{ fontSize: '8px' }} />
-                                )}
+                        return (
+                            <div key={stage._id || index} className="relative z-10 flex flex-col items-center flex-1">
+                                <div className={cn(
+                                    "w-8 h-8 rounded-full border-2 flex items-center justify-center bg-background transition-all",
+                                    isDone ? "border-green-500 bg-green-500 text-white" :
+                                        isActive ? "border-blue-500 text-blue-500 ring-4 ring-blue-100" : "border-muted-foreground/30 text-muted-foreground/30"
+                                )}>
+                                    {isDone ? <FaCheck className="h-3 w-3" /> :
+                                        isActive ? <FaSpinner className="h-3 w-3 animate-spin" /> :
+                                            <FaCircle className="h-2 w-2" />}
+                                </div>
+                                <div className={cn(
+                                    "mt-2 text-xs font-medium text-center max-w-[80px]",
+                                    isDone ? "text-green-600" : isActive ? "text-blue-600 font-bold" : "text-muted-foreground"
+                                )}>
+                                    {stage.workType}
+                                </div>
                             </div>
-
-                            <div className="step-label">
-                                {stage.workType || 'Untitled Stage'}
-                            </div>
-
-                            {/* Optional: Show deadline or status text */}
-                            {/* 
-                            <div className="step-status">
-                                {status === 'done' ? 'Completed' : status === 'active' ? 'In Progress' : ''}
-                            </div> 
-                            */}
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
+                        );
+                    })}
+                </div>
+            </CardContent>
+        </Card>
     );
 };
 

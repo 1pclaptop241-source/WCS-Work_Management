@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { authAPI } from '../../services/api';
-import './TermsModal.css';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogDescription
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { AlertCircle, ExternalLink } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const TermsModal = () => {
     const { user, logout } = useAuth();
@@ -30,6 +42,7 @@ const TermsModal = () => {
             const response = await authAPI.agreeTerms();
 
             // Updating local storage to match new state
+            // eslint-disable-next-line no-unused-vars
             const updatedUser = { ...user, ...response.data };
             localStorage.setItem('user', JSON.stringify(updatedUser));
 
@@ -52,59 +65,66 @@ const TermsModal = () => {
     };
 
     return (
-        <div className="terms-modal-overlay">
-            <div className="terms-modal">
-                <button
-                    className="close-button"
-                    onClick={handleClose}
-                    aria-label="Close"
-                >
-                    ×
-                </button>
+        <Dialog open={true} onOpenChange={handleClose}>
+            <DialogContent className="sm:max-w-[800px] h-[90vh] flex flex-col p-0 gap-0" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+                <DialogHeader className="p-6 pb-2">
+                    <DialogTitle className="text-2xl font-bold">Terms and Conditions</DialogTitle>
+                    <DialogDescription>
+                        Please read and accept our terms of service to continue using the platform.
+                    </DialogDescription>
+                </DialogHeader>
 
-                <h2>Terms and Conditions</h2>
-                <p>Please read and agree to the terms and conditions to continue.</p>
-
-                <div className="pdf-container">
+                <div className="flex-1 bg-muted/30 relative border-y">
                     <iframe
                         src={agreementFile}
                         title="Terms and Conditions"
-                        width="100%"
-                        height="400px"
+                        className="w-full h-full absolute inset-0"
                     />
                 </div>
 
-                <div className="pdf-fallback-link">
-                    <p>
-                        Can't see the Terms & conditions? <a href={agreementFile} target="_blank" rel="noopener noreferrer">Click here to view in a new tab</a>
-                    </p>
+                <div className="p-6 space-y-4 bg-background z-10">
+                    <div className="text-center text-sm text-muted-foreground bg-muted/50 p-2 rounded">
+                        Can't see the document? <a href={agreementFile} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Open in new tab <ExternalLink className="h-3 w-3" /></a>
+                    </div>
+
+                    {error && (
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="terms"
+                                checked={agreed}
+                                onCheckedChange={(checked) => {
+                                    setAgreed(checked);
+                                    if (checked) setError('');
+                                }}
+                            />
+                            <Label
+                                htmlFor="terms"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                                I have read and agree to the Terms and Conditions
+                            </Label>
+                        </div>
+
+                        <div className="flex gap-3 w-full sm:w-auto">
+                            <Button variant="outline" onClick={handleClose} disabled={loading} className="flex-1 sm:flex-none">
+                                Decline & Logout
+                            </Button>
+                            <Button onClick={handleAgree} disabled={loading || !agreed} className="flex-1 sm:flex-none">
+                                {loading ? 'Processing...' : 'Accept & Continue'}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
-
-                {error && <div className="alert-error">{error}</div>}
-
-                <div className="terms-actions">
-                    <label className="checkbox-label">
-                        <input
-                            type="checkbox"
-                            checked={agreed}
-                            onChange={(e) => {
-                                setAgreed(e.target.checked);
-                                setError('');
-                            }}
-                        />
-                        I have read and agree to the Terms and Conditions
-                    </label>
-
-                    <button
-                        className="btn btn-primary"
-                        onClick={handleAgree}
-                        disabled={loading || !agreed}
-                    >
-                        {loading ? 'Processing...' : 'Accept & Continue'}
-                    </button>
-                </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 };
 

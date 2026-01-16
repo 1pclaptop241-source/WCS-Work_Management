@@ -1,23 +1,42 @@
 import { useState, useEffect } from 'react';
-import { worksAPI, projectsAPI, API_BASE_URL } from '../../services/api';
+import { worksAPI, API_BASE_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatDate, formatDateTime } from '../../utils/formatDate';
-import './UploadWork.css';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { AlertCircle, CheckCircle2, FileText, Link as LinkIcon, Download, AlertTriangle, ExternalLink, Mic, Paperclip, Upload as UploadIcon, X } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 const UploadWork = ({ project, workBreakdown, onClose }) => {
   const { user } = useAuth();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [submissions, setSubmissions] = useState([]);
-  /* Removed finalRenderLink state */
-
-  /* Removed special Final Render handling */
+  const [uploadType, setUploadType] = useState('file');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [editorMessage, setEditorMessage] = useState('');
 
   useEffect(() => {
     loadSubmissions();
-  }, [workBreakdown]); // Removed finalRenderLink dependency
+  }, [workBreakdown]);
 
   const loadSubmissions = async () => {
     try {
@@ -28,10 +47,6 @@ const UploadWork = ({ project, workBreakdown, onClose }) => {
     }
   };
 
-  const [uploadType, setUploadType] = useState('file');
-  const [linkUrl, setLinkUrl] = useState('');
-  const [editorMessage, setEditorMessage] = useState('');
-
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
     setError('');
@@ -40,7 +55,6 @@ const UploadWork = ({ project, workBreakdown, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Standard Work Upload Logic applied to all types including Final Render
     if (uploadType === 'file' && !file) {
       setError('Please select a file to upload');
       return;
@@ -53,11 +67,9 @@ const UploadWork = ({ project, workBreakdown, onClose }) => {
     try {
       setLoading(true);
       setError('');
-      setLoading(true);
-      setError('');
       await worksAPI.upload(project._id, workBreakdown._id, uploadType === 'file' ? file : null, uploadType === 'link' ? linkUrl : null, editorMessage);
       setSuccess(true);
-      loadSubmissions(); // Reload to show new submission
+      loadSubmissions();
       setFile(null);
       setLinkUrl('');
       setEditorMessage('');
@@ -71,327 +83,247 @@ const UploadWork = ({ project, workBreakdown, onClose }) => {
     }
   };
 
+  const getFileUrl = (path) => {
+    if (!path) return '#';
+    if (path.match(/^https?:\/\//)) return path;
+    if (path.startsWith('/') || path.startsWith('uploads')) return `${API_BASE_URL}${path}`;
+    return `https://${path}`;
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>
-            Upload Work: {workBreakdown.workType}
-          </h2>
-          <button className="modal-close" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
-          {error && <div className="alert alert-error">{error}</div>}
-          {success && <div className="alert alert-success">Work uploaded successfully!</div>}
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
+        <DialogHeader className="p-6 pb-2">
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <UploadIcon className="h-5 w-5 text-primary" />
+            Upload Work
+          </DialogTitle>
+          <DialogDescription>
+            Submit your work for <strong>{workBreakdown.workType}</strong>.
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="work-details">
-            <p><strong>Project:</strong> {project.title}</p>
-            <p><strong>Deadline:</strong> {formatDate(workBreakdown.deadline)}</p>
-            <p><strong>Amount:</strong> {workBreakdown.amount} {project.currency}</p>
-          </div>
+        <ScrollArea className="flex-1 px-6 py-2">
+          <div className="space-y-6">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          {/* Client Script Section */}
-          {project.scriptFile && (
-            <div className="client-script-section" style={{
-              marginTop: '20px',
-              padding: '16px',
-              backgroundColor: '#e3f2fd',
-              borderRadius: '8px',
-              border: '2px solid #2E86AB'
-            }}>
-              <h3 style={{
-                margin: '0 0 12px 0',
-                fontSize: '16px',
-                color: '#2E86AB',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <span>📄</span> Client Script
-              </h3>
-              <div style={{
-                padding: '12px',
-                backgroundColor: 'white',
-                borderRadius: '6px',
-                border: '1px solid #90caf9'
-              }}>
-                <a
-                  href={project.scriptFile.match(/^https?:\/\//) ? project.scriptFile : (project.scriptFile.startsWith('/') || project.scriptFile.startsWith('uploads') ? `${API_BASE_URL}${project.scriptFile}` : `https://${project.scriptFile}`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '10px 14px',
-                    backgroundColor: '#f0f8ff',
-                    border: '1px solid #2E86AB',
-                    borderRadius: '6px',
-                    textDecoration: 'none',
-                    color: '#2E86AB',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease',
-                    cursor: 'pointer'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#2E86AB';
-                    e.currentTarget.style.color = 'white';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f0f8ff';
-                    e.currentTarget.style.color = '#2E86AB';
-                  }}
-                >
-                  <span style={{ fontSize: '18px' }}>📥</span>
-                  <span style={{ flex: 1 }}>Download Script File</span>
-                  <span style={{ fontSize: '12px', opacity: 0.8 }}>↗</span>
-                </a>
+            {success && (
+              <Alert className="border-green-500 bg-green-50 text-green-700">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertTitle>Success</AlertTitle>
+                <AlertDescription>Work uploaded successfully!</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 text-sm bg-muted/40 p-3 rounded-lg border">
+              <div>
+                <span className="text-muted-foreground">Project:</span>
+                <div className="font-medium">{project.title}</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Deadline:</span>
+                <div className="font-medium">{formatDate(workBreakdown.deadline)}</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Amount:</span>
+                <div className="font-medium">{workBreakdown.amount} {project.currency || 'INR'}</div>
               </div>
             </div>
-          )}
 
-          {/* Admin Shared Details & Links */}
-          {(workBreakdown.shareDetails || (workBreakdown.links && workBreakdown.links.length > 0)) && (
-            <div className="admin-shared-section" style={{
-              marginTop: '20px',
-              padding: '16px',
-              backgroundColor: '#e8f5f1',
-              borderRadius: '8px',
-              border: '2px solid #06A77D'
-            }}>
-              <h3 style={{
-                margin: '0 0 12px 0',
-                fontSize: '16px',
-                color: '#06A77D',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <span>📋</span> Admin Instructions & Resources
-              </h3>
+            {/* Client Script Section */}
+            {project.scriptFile && (
+              <Card className="border-blue-200 bg-blue-50/50">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    <span className="font-medium text-blue-900">Client Script</span>
+                  </div>
+                  <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-100" asChild>
+                    <a href={getFileUrl(project.scriptFile)} target="_blank" rel="noopener noreferrer">
+                      <Download className="mr-2 h-4 w-4" /> Download
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
-              {workBreakdown.shareDetails && (
-                <div style={{
-                  marginBottom: workBreakdown.links && workBreakdown.links.length > 0 ? '16px' : '0',
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  border: '1px solid #d0e8df'
-                }}>
-                  <div style={{
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    color: '#666',
-                    marginBottom: '8px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    Details:
+            {/* Admin Instructions */}
+            {(workBreakdown.shareDetails || (workBreakdown.links && workBreakdown.links.length > 0)) && (
+              <Card className="border-emerald-200 bg-emerald-50/30">
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center gap-2 text-emerald-700 font-semibold">
+                    <AlertTriangle className="h-4 w-4" />
+                    Instructions & Resources
                   </div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#333',
-                    lineHeight: '1.6',
-                    whiteSpace: 'pre-wrap'
-                  }}>
-                    {workBreakdown.shareDetails}
-                  </div>
-                </div>
-              )}
+                  
+                  {workBreakdown.shareDetails && (
+                    <div className="bg-white/80 p-3 rounded border border-emerald-100 text-sm whitespace-pre-wrap text-emerald-950">
+                      {workBreakdown.shareDetails}
+                    </div>
+                  )}
 
-              {workBreakdown.links && workBreakdown.links.length > 0 && (
-                <div style={{
-                  padding: '12px',
-                  backgroundColor: 'white',
-                  borderRadius: '6px',
-                  border: '1px solid #d0e8df'
-                }}>
-                  <div style={{
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    color: '#666',
-                    marginBottom: '10px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    Shared Links:
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {workBreakdown.links.map((link, idx) => (
-                      <a
-                        key={idx}
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '10px 14px',
-                          backgroundColor: '#f8fffe',
-                          border: '1px solid #06A77D',
-                          borderRadius: '6px',
-                          textDecoration: 'none',
-                          color: '#06A77D',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          transition: 'all 0.2s ease',
-                          cursor: 'pointer'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#06A77D';
-                          e.currentTarget.style.color = 'white';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f8fffe';
-                          e.currentTarget.style.color = '#06A77D';
-                        }}
+                  {workBreakdown.links && workBreakdown.links.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Shared Links:</div>
+                      <div className="grid gap-2">
+                        {workBreakdown.links.map((link, idx) => (
+                          <a
+                            key={idx}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 p-2 bg-white/60 border border-emerald-100 rounded text-sm text-emerald-700 hover:bg-emerald-100 transition-colors"
+                          >
+                            <LinkIcon className="h-3 w-3" />
+                            <span className="flex-1 truncate">{link.title || `Link ${idx + 1}`}</span>
+                            <ExternalLink className="h-3 w-3 opacity-50" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Submissions History */}
+            {submissions.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
+                  <span className="h-px bg-border flex-1"></span>
+                  Map History
+                  <span className="h-px bg-border flex-1"></span>
+                </h3>
+                {submissions.map((sub) => (
+                  <div key={sub._id} className="border rounded-lg p-3 space-y-3 bg-card">
+                    <div className="flex items-center justify-between">
+                      <a 
+                        href={sub.submissionType === 'link' ? sub.fileUrl : getFileUrl(sub.fileUrl)}
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
                       >
-                        <span style={{ fontSize: '16px' }}>🔗</span>
-                        <span style={{ flex: 1 }}>{link.title || `Link ${idx + 1}`}</span>
-                        <span style={{ fontSize: '12px', opacity: 0.8 }}>↗</span>
+                         {sub.submissionType === 'link' ? <LinkIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                         {sub.fileName}
                       </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+                      <div className="flex items-center gap-2">
+                         <Badge variant={sub.status === 'approved' ? 'success' : sub.status === 'rejected' ? 'destructive' : 'secondary'}>
+                           {sub.status}
+                         </Badge>
+                         <span className="text-xs text-muted-foreground">{formatDateTime(sub.submittedAt)}</span>
+                      </div>
+                    </div>
 
-          {/* Previous Submissions & Corrections */}
-          {submissions.length > 0 && (
-            <div className="previous-submissions">
-              <h3>History & Corrections</h3>
-              {submissions.map((sub) => (
-                <div key={sub._id} className="submission-item">
-                  <div className="submission-header">
-                    {sub.submissionType === 'link' ? (
-                      <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="submission-link">
-                        🔗 {sub.fileName}
-                      </a>
-                    ) : (
-                      <a href={sub.fileUrl.match(/^https?:\/\//) ? sub.fileUrl : (sub.fileUrl.startsWith('/') || sub.fileUrl.startsWith('uploads') ? `${API_BASE_URL}${sub.fileUrl}` : `https://${sub.fileUrl}`)} target="_blank" rel="noopener noreferrer" className="submission-link">
-                        📁 {sub.fileName}
-                      </a>
-                    )}
-                    <span className={`badge ${sub.status === 'approved' ? 'badge-success' : 'badge-warning'}`}>
-                      {sub.status}
-                    </span>
-                    <span className="date">{formatDateTime(sub.submittedAt)}</span>
-                  </div>
-
-                  {/* Corrections Display */}
-                  {sub.corrections && sub.corrections.length > 0 && (
-                    <div className="corrections-container">
-                      <h4>Corrections Requested ({sub.corrections.filter(c => !c.done).length} pending, {sub.corrections.filter(c => c.done).length} completed):</h4>
-                      <ul>
-                        {sub.corrections.map((corr, idx) => (
-                          <li key={idx} className={corr.done ? 'correction-done' : 'correction-pending'}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                              <span style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
-                                {formatDateTime(corr.addedAt)}
-                              </span>
-                              <span className="status-label" style={{ fontWeight: 'bold', color: corr.done ? '#28a745' : '#ffc107' }}>
-                                {corr.done ? '✓ Fixed' : '⚠ Needs Fix'}
-                              </span>
-                            </div>
-                            {corr.text && <div className="correction-text" style={{ display: 'block', marginTop: '5px', marginBottom: '10px', fontWeight: '500', fontSize: '14px', color: '#333', padding: '10px', background: '#f8f9fa', borderRadius: '6px', borderLeft: '3px solid #ffc107' }}>{corr.text}</div>}
-                            {corr.voiceFile && (
-                              <div style={{ marginTop: '8px', marginBottom: '8px' }}>
-                                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px', fontWeight: '500' }}>🎤 Voice Note:</div>
-                                <audio controls src={corr.voiceFile.match(/^https?:\/\//) ? corr.voiceFile : (corr.voiceFile.startsWith('/') || corr.voiceFile.startsWith('uploads') ? `${API_BASE_URL}${corr.voiceFile}` : `https://${corr.voiceFile}`)} style={{ display: 'block', width: '100%', maxWidth: '400px' }} />
+                    {/* Corrections */}
+                    {sub.corrections && sub.corrections.length > 0 && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm">
+                        <div className="font-semibold text-amber-800 mb-2">Requested Corrections</div>
+                        <div className="space-y-3">
+                          {sub.corrections.map((corr, idx) => (
+                            <div key={idx} className={`pl-3 border-l-2 ${corr.done ? 'border-green-500 opacity-60' : 'border-amber-500'}`}>
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-amber-900/60">{formatDateTime(corr.addedAt)}</span>
+                                {corr.done && <Badge variant="outline" className="text-green-600 border-green-200 h-5">Fixed</Badge>}
                               </div>
-                            )}
-                            {corr.mediaFiles && corr.mediaFiles.length > 0 && (
-                              <div style={{ marginTop: '8px' }}>
-                                <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px', fontWeight: '500' }}>📎 Attachments:</div>
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                  {corr.mediaFiles.map((m, idx) => (
-                                    <a key={idx} href={m.match(/^https?:\/\//) ? m : (m.startsWith('/') || m.startsWith('uploads') ? `${API_BASE_URL}${m}` : `https://${m}`)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '13px', color: '#06A77D', textDecoration: 'none', padding: '6px 12px', background: '#e8f5f1', borderRadius: '6px', border: '1px solid #06A77D', fontWeight: '500' }}>
-                                      📄 File {idx + 1}
+                              <p className="text-amber-950 mb-2">{corr.text}</p>
+                              
+                              {corr.voiceFile && (
+                                <div className="flex items-center gap-2 bg-white/50 p-2 rounded mb-2">
+                                  <Mic className="h-3 w-3 text-amber-700" />
+                                  <audio controls src={getFileUrl(corr.voiceFile)} className="h-6 w-full max-w-[200px]" />
+                                </div>
+                              )}
+                              
+                              {corr.mediaFiles && corr.mediaFiles.length > 0 && (
+                                <div className="flex gap-2 flex-wrap">
+                                  {corr.mediaFiles.map((m, midx) => (
+                                    <a key={midx} href={getFileUrl(m)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs bg-white/50 px-2 py-1 rounded text-amber-800 hover:bg-white hover:underline border border-amber-100">
+                                      <Paperclip className="h-3 w-3" /> File {midx + 1}
                                     </a>
                                   ))}
                                 </div>
-                              </div>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {sub.clientFeedback && (
-                    <div className="client-feedback">
-                      <strong>Additional Feedback:</strong> {sub.clientFeedback}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <hr className="divider" />
-
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <div className="tabs-container">
-                <button type="button" className={`tab-button ${uploadType === 'file' ? 'active' : ''}`} onClick={() => setUploadType('file')}>File Upload</button>
-                <button type="button" className={`tab-button ${uploadType === 'link' ? 'active' : ''}`} onClick={() => setUploadType('link')}>Link URL</button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {sub.clientFeedback && (
+                      <div className="bg-blue-50 border-l-4 border-blue-500 p-2 rounded text-sm text-blue-900">
+                        <strong>Client Feedback:</strong> {sub.clientFeedback}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
+            )}
+          </div>
+        </ScrollArea>
 
-              {uploadType === 'file' ? (
-                <>
-                  <label className="form-label">Upload File</label>
-                  <input
-                    type="file"
-                    className="form-input"
-                    onChange={handleFileChange}
-                    required
-                  />
-                  {file && (
-                    <p className="file-name">
-                      Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                    </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <label className="form-label">Link URL</label>
-                  <input
-                    type="url"
-                    className="form-input"
-                    value={linkUrl}
-                    onChange={(e) => setLinkUrl(e.target.value)}
-                    placeholder="https://example.com/work-submission"
-                    required
-                  />
-                </>
-              )}
-            </div>
+        <Separator />
 
-            <div className="form-group" style={{ marginTop: '15px' }}>
-              <label className="form-label">Changelog / Notes (Optional)</label>
-              <textarea
-                className="form-input"
-                style={{ minHeight: '80px', resize: 'vertical' }}
-                value={editorMessage}
+        <div className="p-6 pt-4 bg-background z-10">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Tabs value={uploadType} onValueChange={setUploadType} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="file">File Upload</TabsTrigger>
+                <TabsTrigger value="link">Link URL</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="file" className="space-y-3 mt-4">
+                <Label htmlFor="file-upload">Select File</Label>
+                <div className="flex items-center gap-3">
+                  <Input 
+                    id="file-upload" 
+                    type="file" 
+                    onChange={handleFileChange} 
+                    className="cursor-pointer"
+                  />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="link" className="space-y-3 mt-4">
+                <Label htmlFor="link-url">Work URL</Label>
+                <Input 
+                  id="link-url" 
+                  type="url" 
+                  placeholder="https://drive.google.com/..." 
+                  value={linkUrl} 
+                  onChange={(e) => setLinkUrl(e.target.value)} 
+                />
+              </TabsContent>
+            </Tabs>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes / Changelog (Optional)</Label>
+              <Textarea 
+                id="notes" 
+                placeholder="Describe your work or changes made..." 
+                value={editorMessage} 
                 onChange={(e) => setEditorMessage(e.target.value)}
-                placeholder="Describe what you changed or add any notes for the reviewer..."
+                className="resize-none h-20"
               />
             </div>
 
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
                 Cancel
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={loading || (uploadType === 'file' ? !file : !linkUrl)}>
-                {loading ? 'Uploading...' : 'Upload'}
-              </button>
-            </div>
+              </Button>
+              <Button type="submit" disabled={loading || (uploadType === 'file' ? !file : !linkUrl)} className="min-w-[100px]">
+                {loading ? 'Uploading...' : 'Upload Work'}
+              </Button>
+            </DialogFooter>
           </form>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
