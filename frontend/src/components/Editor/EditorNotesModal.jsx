@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import './EditorDashboard.css'; // Reusing dashboard styles for consistency
 
 const EditorNotesModal = ({ workBreakdown, onClose, onSave }) => {
     const [notes, setNotes] = useState(workBreakdown.editorNotes || '');
