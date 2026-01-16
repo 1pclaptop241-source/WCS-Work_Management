@@ -10,13 +10,20 @@ const api = axios.create({
   },
 });
 
-// Add token to requests
+// Add token and Organization ID to requests
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    const orgId = localStorage.getItem('currentOrgId');
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    if (orgId) {
+      config.headers['x-organization-id'] = orgId;
+    }
+
     return config;
   },
   (error) => {
@@ -228,6 +235,19 @@ export const notificationsAPI = {
   getAll: () => api.get('/notifications'),
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
   markAllAsRead: () => api.put('/notifications/read-all'),
+};
+
+// Availability API
+export const availabilityAPI = {
+  get: (start, end, userId) => api.get(`/availability?start=${start}&end=${end}&userId=${userId || ''}`),
+  set: (data) => api.post('/availability', data),
+};
+
+// Talent API
+export const talentAPI = {
+  getAll: (filters) => api.get(`/talent?skill=${filters?.skill || ''}&search=${filters?.search || ''}`),
+  getMyProfile: () => api.get('/talent/me'),
+  updateProfile: (data) => api.post('/talent', data),
 };
 
 export default api;

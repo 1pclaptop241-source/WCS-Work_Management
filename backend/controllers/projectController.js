@@ -8,6 +8,7 @@ const User = require('../models/User');
 const { createNotification } = require('../utils/notificationService');
 const logActivity = require('../utils/activityLogger');
 const { uploadToCloudinary } = require('../config/cloudinary');
+const sendEmail = require('../utils/sendEmail');
 
 // @desc    Get all projects (role-based filtering)
 // @route   GET /api/projects
@@ -313,6 +314,17 @@ exports.createProject = async (req, res) => {
         `Client ${req.user.name} created a new project: ${title}`,
         project._id
       );
+
+      // Send Email
+      try {
+        await sendEmail({
+          email: admin.email,
+          subject: `New Project: ${title}`,
+          message: `Client ${req.user.name} has created a new project: "${title}".\n\nLogin to view details: ${process.env.CLIENT_URL}/admin/project/${project._id}`,
+        });
+      } catch (err) {
+        console.error('Email send failed', err);
+      }
     }
 
     await logActivity(req, 'CREATE_PROJECT', `Project created: ${title}`, project._id, 'Project');
@@ -619,9 +631,18 @@ exports.approveProject = async (req, res) => {
           `Project "${project.title}" has been fully approved and is 100% complete.`,
           project._id
         );
+
+        // Send Email to Admin
+        try {
+          await sendEmail({
+            email: admin.email,
+            subject: `Project Completed: ${project.title}`,
+            message: `The project "${project.title}" has been fully approved by the client and is now complete.\n\nView details: ${process.env.CLIENT_URL}/admin/project/${project._id}`,
+          });
+        } catch (err) { console.error(err); }
       }
 
-      // Notify Editor: work approved (when both editor and admin approved the work)
+      // Notify Editor: work approved
       // We notify the main assigned editor if exists, and all editors from work breakdown
       const editorsToNotify = new Set();
       if (project.assignedEditor) {
@@ -643,6 +664,18 @@ exports.approveProject = async (req, res) => {
           `Project "${project.title}" has been fully approved by both Admin and Client.`,
           project._id
         );
+
+        // Send Email to Editor (Lookup user first)
+        try {
+          const editorUser = await User.findById(editorId);
+          if (editorUser) {
+            await sendEmail({
+              email: editorUser.email,
+              subject: `Work Approved: ${project.title}`,
+              message: `Great news! The project "${project.title}" has been fully approved.`,
+            });
+          }
+        } catch (err) { console.error(err); }
       }
     }
 

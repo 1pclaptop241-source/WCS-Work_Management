@@ -12,11 +12,13 @@ import AdminPaymentPage from './components/Admin/AdminPaymentPage';
 import AcceptProjectPage from './components/Admin/AcceptProjectPage';
 import AdminProjectPage from './components/Admin/AdminProjectPage';
 import ActivityLogPage from './components/Admin/ActivityLogPage';
+import TalentDirectory from './components/Admin/TalentDirectory';
 
 // Editor Components
 import EditorDashboard from './components/Editor/EditorDashboard';
 import UploadWorkPage from './components/Editor/UploadWorkPage';
 import EditorPaymentPage from './components/Editor/EditorPaymentPage';
+import SchedulePage from './components/common/SchedulePage';
 
 // Client Components
 import ClientDashboard from './components/Client/ClientDashboard';
@@ -54,6 +56,7 @@ const AppRoutes = () => {
                   <Route path="accept-project/:projectId" element={<AcceptProjectPage />} />
                   <Route path="project/:projectId" element={<AdminProjectPage />} />
                   <Route path="activity-logs" element={<ActivityLogPage />} />
+                  <Route path="talent-pool" element={<TalentDirectory />} />
                   <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                 </Routes>
               </Layout>
@@ -69,6 +72,7 @@ const AppRoutes = () => {
                 <Routes>
                   <Route path="dashboard" element={<EditorDashboard />} />
                   <Route path="payments" element={<EditorPaymentPage />} />
+                  <Route path="schedule" element={<SchedulePage />} />
                   <Route path="upload-work/:workBreakdownId" element={<UploadWorkPage />} />
                   <Route path="*" element={<Navigate to="/editor/dashboard" replace />} />
                 </Routes>

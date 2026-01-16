@@ -38,7 +38,13 @@ const Navbar = ({ onMenuClick }) => {
                 <h1 className="text-lg font-semibold md:text-xl text-primary">WiseCut Studios</h1>
             </div>
 
+            import WorkspaceSwitcher from './WorkspaceSwitcher';
+
+            // ... (imports remain)
+
+            // In the JSX return:
             <div className="flex items-center gap-4">
+                <WorkspaceSwitcher />
                 <Button variant="outline" size="sm" onClick={() => setShowSupport(true)}>
                     Support
                 </Button>

@@ -24,9 +24,26 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: ['admin', 'editor', 'client'],
-    required: true,
-    default: 'client',
+    default: 'client', // Deprecated: Use memberships for SaaS logic
   },
+  // SaaS Multi-tenancy
+  currentOrganization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+  },
+  memberships: [{
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'editor', 'client', 'viewer', 'manager'], // Expanded roles
+      default: 'client',
+    },
+    permissions: [{ type: String }], // Optional granular overrides
+    joinedAt: { type: Date, default: Date.now },
+  }],
   createdAt: {
     type: Date,
     default: Date.now,

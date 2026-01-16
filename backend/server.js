@@ -33,6 +33,8 @@ app.use('/api/reset', require('./routes/reset'));
 app.use('/api/work-breakdown', require('./routes/workBreakdown'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/activity-logs', require('./routes/activityLogs'));
+app.use('/api/availability', require('./routes/availability'));
+app.use('/api/talent', require('./routes/talent'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
