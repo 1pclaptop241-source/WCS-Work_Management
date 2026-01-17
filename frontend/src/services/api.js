@@ -50,6 +50,7 @@ export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   getMe: () => api.get('/auth/me'),
   agreeTerms: () => api.put('/auth/agree-terms'),
+  changePassword: (data) => api.put('/auth/change-password', data),
 };
 
 // Projects API
