@@ -158,7 +158,8 @@ exports.uploadWork = async (req, res) => {
       notifType,
       notifTitle,
       notifMsgClient,
-      project._id
+      project._id,
+      req.io
     );
 
     // 2. Notify Admins
@@ -169,7 +170,8 @@ exports.uploadWork = async (req, res) => {
         'work_uploaded', // Always use work_uploaded/updated for admin tracking
         'Work Uploaded',
         notifMsgAdmin,
-        project._id
+        project._id,
+        req.io
       );
     }
 
@@ -289,7 +291,8 @@ exports.addCorrections = async (req, res) => {
       'correction_requested',
       'Correction Requested',
       `Correction requested for work in project "${project.title}".`,
-      project._id
+      project._id,
+      req.io
     );
 
     // 2. If Client requested, Notify Admin
@@ -301,7 +304,8 @@ exports.addCorrections = async (req, res) => {
           'correction_requested',
           'Client Requested Correction',
           `Client requested correction for project "${project.title}".`,
-          project._id
+          project._id,
+          req.io
         );
       }
     }
@@ -363,7 +367,8 @@ exports.markCorrectionDone = async (req, res) => {
         'correction_done',
         'Correction Marked Done',
         `Editor has marked a correction as done for project "${work.project.title}".`,
-        work.project._id
+        work.project._id,
+        req.io
       );
 
       const admins = await User.find({ role: 'admin' });
@@ -373,7 +378,8 @@ exports.markCorrectionDone = async (req, res) => {
           'correction_done',
           'Correction Marked Done',
           `Editor marked a correction as done for project "${work.project.title}".`,
-          work.project._id
+          work.project._id,
+          req.io
         );
       }
     } else if (req.user.role === 'admin' || req.user.role === 'client') {
@@ -383,7 +389,8 @@ exports.markCorrectionDone = async (req, res) => {
         'correction_done',
         'Correction Acknowledged',
         `Your correction fix for project "${work.project.title}" has been marked as done by ${req.user.role}.`,
-        work.project._id
+        work.project._id,
+        req.io
       );
     }
 
@@ -506,7 +513,8 @@ exports.adminApprove = async (req, res) => {
                 'assignment_details_updated',
                 'New Resource Available',
                 `The previous step "${wb.workType}" has been approved by Admin. A link to its files has been added to your assignment.`,
-                work.project._id
+                work.project._id,
+                req.io
               );
             }
           }
@@ -579,7 +587,8 @@ exports.adminApprove = async (req, res) => {
         'work_approved',
         'Work Approved',
         `Your work for project "${work.project.title}" has been approved by both Admin and Client.`,
-        work.project._id
+        work.project._id,
+        req.io
       );
     } else {
       // Notify Editor of functional Admin approval?
@@ -709,7 +718,8 @@ exports.clientApprove = async (req, res) => {
         'work_approved',
         'Work Approved',
         `Your work for project "${work.project.title}" has been approved by both Admin and Client.`,
-        work.project._id
+        work.project._id,
+        req.io
       );
     }
 
@@ -799,7 +809,8 @@ exports.updateWorkStatus = async (req, res) => {
           'work_declined',
           'Work Declined',
           `Editor ${req.user.name} declined work for project.`,
-          workBreakdown.project // Ensure project ID is available, might need populate or fetching
+          workBreakdown.project,
+          req.io
         );
       }
     }

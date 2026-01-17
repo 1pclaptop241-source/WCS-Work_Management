@@ -106,7 +106,8 @@ exports.closeProject = async (req, res) => {
       'project_closed',
       'Project Closed',
       `Your project "${project.title}" has been closed by the admin.`,
-      project._id
+      project._id,
+      req.io
     );
 
     await logActivity(req, 'CLOSE_PROJECT', `Project closed: ${project.title}`, project._id, 'Project');
@@ -169,7 +170,8 @@ exports.bulkCloseProjects = async (req, res) => {
         'project_closed',
         'Project Closed',
         `Your project "${project.title}" has been closed by the admin.`,
-        project._id
+        project._id,
+        req.io
       );
     }
 
@@ -322,7 +324,8 @@ exports.createProject = async (req, res) => {
         'project_created',
         'New Project Created',
         `Client ${req.user.name} created a new project: ${title}`,
-        project._id
+        project._id,
+        req.io
       );
 
       // Send Email
@@ -639,7 +642,8 @@ exports.approveProject = async (req, res) => {
           'project_completed',
           'Project Completed',
           `Project "${project.title}" has been fully approved and is 100% complete.`,
-          project._id
+          project._id,
+          req.io
         );
 
         // Send Email to Admin
@@ -672,7 +676,8 @@ exports.approveProject = async (req, res) => {
           'work_approved',
           'Project Completed',
           `Project "${project.title}" has been fully approved by both Admin and Client.`,
-          project._id
+          project._id,
+          req.io
         );
 
         // Send Email to Editor (Lookup user first)

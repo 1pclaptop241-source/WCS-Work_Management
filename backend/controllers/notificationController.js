@@ -4,9 +4,12 @@ const User = require('../models/User');
 // @desc    Get all notifications for current user
 // @route   GET /api/notifications
 // @access  Private
+// @desc    Get all notifications for current user
+// @route   GET /api/notifications
+// @access  Private
 exports.getNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({ user: req.user._id })
+    const notifications = await Notification.find({ recipient: req.user._id })
       .populate('relatedProject', 'title')
       .sort({ createdAt: -1 })
       .limit(50);
@@ -20,6 +23,9 @@ exports.getNotifications = async (req, res) => {
 // @desc    Mark notification as read
 // @route   PUT /api/notifications/:id/read
 // @access  Private
+// @desc    Mark notification as read
+// @route   PUT /api/notifications/:id/read
+// @access  Private
 exports.markAsRead = async (req, res) => {
   try {
     const notification = await Notification.findById(req.params.id);
@@ -28,12 +34,11 @@ exports.markAsRead = async (req, res) => {
       return res.status(404).json({ message: 'Notification not found' });
     }
 
-    if (notification.user.toString() !== req.user._id.toString()) {
+    if (notification.recipient.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
     notification.read = true;
-    notification.readAt = new Date();
     await notification.save();
 
     res.json(notification);
@@ -45,11 +50,14 @@ exports.markAsRead = async (req, res) => {
 // @desc    Mark all notifications as read
 // @route   PUT /api/notifications/read-all
 // @access  Private
+// @desc    Mark all notifications as read
+// @route   PUT /api/notifications/read-all
+// @access  Private
 exports.markAllAsRead = async (req, res) => {
   try {
     await Notification.updateMany(
-      { user: req.user._id, read: false },
-      { read: true, readAt: new Date() }
+      { recipient: req.user._id, read: false },
+      { read: true }
     );
 
     res.json({ message: 'All notifications marked as read' });

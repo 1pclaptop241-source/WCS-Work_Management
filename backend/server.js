@@ -50,9 +50,43 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
+const http = require('http');
+const { Server } = require('socket.io');
+
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: '*', // Allow all origins for now (or strictly set frontend URL)
+    methods: ['GET', 'POST']
+  }
+});
+
+// Socket connection logic
+io.on('connection', (socket) => {
+  // console.log('New client connected:', socket.id);
+
+  // Join a room based on user ID for private notifications
+  socket.on('join', (userId) => {
+    if (userId) {
+      socket.join(userId);
+      // console.log(`User ${userId} joined room`);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    // console.log('Client disconnected');
+  });
+});
+
+// Attach io to req for use in controllers
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   // Server running...
 
   // Check deadlines every 5 minutes

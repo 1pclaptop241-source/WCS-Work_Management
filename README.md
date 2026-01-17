@@ -4,6 +4,8 @@ A comprehensive work management website for WiseCut Studios built with the MERN 
 
 ## Features
 
+> **📘 User Guide**: For detailed usage instructions, please refer to the [User Guide](docs/USER_GUIDE.md).
+
 ### Admin Dashboard
 - View all projects with client and editor information
 - Create new projects

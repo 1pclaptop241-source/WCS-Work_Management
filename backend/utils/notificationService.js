@@ -55,35 +55,43 @@ const sendPushNotification = async (userId, payload) => {
 };
 
 /**
- * Create a new notification (DB + Push)
+ * Create a new notification (DB + Push + Socket)
  * @param {string} userId - Recipient user ID
  * @param {string} type - Notification type from enum
  * @param {string} title - Notification title
  * @param {string} message - Notification body
  * @param {string|null} relatedProjectId - Related project ID (optional)
+ * @param {object|null} io - Socket.io instance (optional)
  */
-const createNotification = async (userId, type, title, message, relatedProjectId = null) => {
+const createNotification = async (userId, type, title, message, relatedProjectId = null, io = null) => {
     try {
         if (!userId) {
             console.error('createNotification: No userId provided');
             return;
         }
 
-        await Notification.create({
-            user: userId,
+        const notification = await Notification.create({
+            recipient: userId,
             type,
             title,
             message,
             relatedProject: relatedProjectId,
+            link: relatedProjectId ? `/projects/${relatedProjectId}` : '' // Default link logic
         });
 
-        // Send Push Notification
+        // 1. Socket.io Real-time Emit
+        if (io) {
+            io.to(userId.toString()).emit('notification', notification);
+        }
+
+        // 2. Web Push Notification
         await sendPushNotification(userId, {
             title,
             body: message,
-            url: relatedProjectId ? `/projects/${relatedProjectId}` : '/' // Deep link logic (simplified)
-            // Note: Frontend SW needs to handle 'url'
+            url: relatedProjectId ? `/projects/${relatedProjectId}` : '/'
         });
+
+        return notification;
 
     } catch (error) {
         console.error('Error creating notification:', error);

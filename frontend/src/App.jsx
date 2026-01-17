@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import React, { Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import { DialogProvider } from './context/DialogContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './components/common/Login';
@@ -123,9 +124,11 @@ function App() {
     <Router>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <AuthProvider>
-          <DialogProvider>
-            <AppRoutes />
-          </DialogProvider>
+          <SocketProvider>
+            <DialogProvider>
+              <AppRoutes />
+            </DialogProvider>
+          </SocketProvider>
         </AuthProvider>
       </ThemeProvider>
     </Router>

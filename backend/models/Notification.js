@@ -1,59 +1,40 @@
 const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema({
-  user: {
+  recipient: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: true
   },
   type: {
     type: String,
-    enum: [
-      'project_accepted',
-      'project_closed',
-      'payment_received',
-      'correction_added',
-      'work_approved',
-      'work_assigned',
-      'correction_requested',
-      'payment_sent',
-      'deadline_warning',
-      'deadline_crossed',
-      'project_created',
-      'work_uploaded',
-      'work_updated',
-      'work_declined',
-      'project_completed',
-      'client_payment_received'
-    ],
-    required: true,
+    enum: ['project_assigned', 'work_submitted', 'deadline_approaching', 'project_update', 'general', 'project_created', 'project_closed', 'work_uploaded', 'work_updated', 'correction_requested', 'correction_done', 'work_declined', 'assignment_details_updated', 'work_approved'],
+    required: true
   },
   title: {
     type: String,
-    required: true,
+    required: true
   },
   message: {
     type: String,
-    required: true,
+    required: true
   },
   relatedProject: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Project',
-    default: null,
+    ref: 'Project'
+  },
+  link: {
+    type: String, // URL to redirect to (e.g., /projects/:id)
+    default: ''
   },
   read: {
     type: Boolean,
-    default: false,
-  },
-  readAt: {
-    type: Date,
-    default: null,
+    default: false
   },
   createdAt: {
     type: Date,
-    default: Date.now,
-  },
+    default: Date.now
+  }
 });
 
 module.exports = mongoose.model('Notification', notificationSchema);
-
