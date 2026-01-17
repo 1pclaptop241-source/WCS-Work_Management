@@ -49,9 +49,9 @@ const ProjectPipeline = ({ projects }) => {
     };
 
     return (
-        <div className="flex h-full gap-4 overflow-x-auto pb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 h-full pb-4">
             {columns.map(col => (
-                <div key={col.status} className="flex h-full w-72 min-w-[18rem] flex-col rounded-lg bg-muted/50 border">
+                <div key={col.status} className="flex flex-col rounded-lg bg-muted/50 border overflow-hidden max-h-[80vh]">
                     <div className={`flex items-center justify-between p-4 border-t-4 bg-card rounded-t-lg ${col.barColor}`}>
                         <h3 className="font-semibold text-sm">{col.title}</h3>
                         <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-xs">
@@ -59,8 +59,8 @@ const ProjectPipeline = ({ projects }) => {
                         </Badge>
                     </div>
 
-                    <ScrollArea className="flex-1 px-2 py-2">
-                        <div className="flex flex-col gap-2 pb-2">
+                    <ScrollArea className="flex-1">
+                        <div className="flex flex-col gap-2 p-2">
                             {groupedProjects[col.status]?.map(project => {
                                 const deadlineInfo = getDeadlineInfo(project.deadline);
                                 return (
@@ -74,7 +74,6 @@ const ProjectPipeline = ({ projects }) => {
                                                 <h4 className="font-medium text-sm line-clamp-2 leading-tight" title={project.title}>
                                                     {project.title}
                                                 </h4>
-
                                             </div>
 
                                             <div className="flex flex-col gap-1 text-xs text-muted-foreground">

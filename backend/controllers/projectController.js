@@ -226,6 +226,16 @@ exports.createProject = async (req, res) => {
       amount
     } = req.body;
 
+    // Validate deadline (Must be at least 15 minutes in the future)
+    const deadlineDate = new Date(deadline);
+    const minDeadline = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+
+    if (deadlineDate < minDeadline) {
+      return res.status(400).json({
+        message: 'Deadline must be at least 15 minutes in the future'
+      });
+    }
+
     const newProjectPayload = {
       title,
       description,

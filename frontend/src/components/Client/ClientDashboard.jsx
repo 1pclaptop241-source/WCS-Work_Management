@@ -183,6 +183,22 @@ const ClientDashboard = () => {
         submitData.append('scriptFile', formData.scriptFile);
       }
 
+      if (!formData.deadline) {
+        showAlert('Please select a deadline', 'Error');
+        setIsSubmitting(false); // Ensure submitting state is reset
+        return;
+      }
+
+      // Validation: Deadline must be > 15 mins from now
+      const deadlineDate = new Date(formData.deadline);
+      const minDeadline = new Date(Date.now() + 15 * 60 * 1000);
+
+      if (deadlineDate < minDeadline) {
+        showAlert('Deadline must be at least 15 minutes in the future.', 'Error');
+        setIsSubmitting(false); // Ensure submitting state is reset
+        return;
+      }
+
       if (editingProject) {
         await projectsAPI.updateWithFile(editingProject._id, submitData);
         await showAlert('Project updated successfully', 'Success');
