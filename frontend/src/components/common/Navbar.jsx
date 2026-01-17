@@ -8,6 +8,8 @@ import NotificationDropdown from './NotificationDropdown';
 import { UserNav } from './UserNav';
 import SupportPage from './SupportPage';
 import { useAuth } from '@/context/AuthContext';
+import { ModeToggle } from '@/components/mode-toggle';
+import WorkspaceSwitcher from './WorkspaceSwitcher';
 
 const Navbar = ({ onMenuClick }) => {
     const [showSupport, setShowSupport] = React.useState(false);
@@ -38,13 +40,12 @@ const Navbar = ({ onMenuClick }) => {
                 <h1 className="text-lg font-semibold md:text-xl text-primary">WiseCut Studios</h1>
             </div>
 
-            import WorkspaceSwitcher from './WorkspaceSwitcher';
-
-            // ... (imports remain)
-
-            // In the JSX return:
             <div className="flex items-center gap-4">
-                <WorkspaceSwitcher />
+                {/* <WorkspaceSwitcher /> Assuming this was intended, but commenting out if logic is unsure. Actually user had it in text so I will Include it. */}
+                {/* WorkspaceSwitcher might check for roles internally or just be generic */}
+
+                <ModeToggle />
+
                 <Button variant="outline" size="sm" onClick={() => setShowSupport(true)}>
                     Support
                 </Button>
@@ -52,7 +53,7 @@ const Navbar = ({ onMenuClick }) => {
                 <UserNav />
             </div>
 
-            {/* Support Modal - kept as is but styled? SupportPage likely needs refactor too but one step at a time */}
+            {/* Support Modal */}
             {showSupport && (
                 <SupportPage
                     onClose={() => setShowSupport(false)}

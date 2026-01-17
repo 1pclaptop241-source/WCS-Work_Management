@@ -382,7 +382,7 @@ const ClientDashboard = () => {
                 <div className="space-y-2">
                   <Label htmlFor="deadline">Desired Deadline</Label>
                   <div className="relative">
-                    <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-primary" />
                     <Input
                       id="deadline"
                       type="datetime-local"
