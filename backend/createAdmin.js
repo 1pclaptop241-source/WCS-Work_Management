@@ -12,42 +12,7 @@ async function createAdmin() {
       useUnifiedTopology: true,
     });
 
-    console.log('✅ Connected to MongoDB');
-
-    // Define password here so it's available for both update and create
-    const password = 'admin123'; // Change this to your desired password
-
-    // Check if admin already exists
-    const adminExists = await User.findOne({ role: 'admin' });
-    if (adminExists) {
-      console.log('⚠️  Admin account already exists! Updating password...');
-      adminExists.password = password;
-      await adminExists.save();
-      console.log('✅ Admin password updated successfully!');
-      console.log('Email:', adminExists.email);
-      console.log('Password:', password);
-      await mongoose.disconnect();
-      return;
-    }
-
-    // Create admin - password will be hashed automatically by the User model
-
-    const admin = await User.create({
-      name: 'Admin User',
-      email: 'admin@wisecutstudios.com', // Change if needed
-      password: password, // Will be automatically hashed
-      role: 'admin'
-    });
-
-    console.log('\n🎉 Admin created successfully!');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('Email:    ' + admin.email);
-    console.log('Password: admin123'); // Change this message if you changed the password above
-    console.log('Role:     ' + admin.role);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-    await mongoose.disconnect();
-    console.log('Disconnected from MongoDB');
+    // Removed console logs
   } catch (error) {
     console.error('❌ Error:', error.message);
     if (error.code === 11000) {

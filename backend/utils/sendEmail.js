@@ -4,11 +4,6 @@ const sendEmail = async (options) => {
     // Use environment variables for SMTP config
     // For dev, we can use Ethereal or just log
     if (process.env.NODE_ENV === 'development' && !process.env.SMTP_HOST) {
-        console.log('--- EMAIL SIMULATION ---');
-        console.log(`To: ${options.email}`);
-        console.log(`Subject: ${options.subject}`);
-        console.log(`Message: ${options.message}`);
-        console.log('------------------------');
         return;
     }
 
@@ -31,8 +26,6 @@ const sendEmail = async (options) => {
     };
 
     const info = await transporter.sendMail(message);
-
-    console.log('Message sent: %s', info.messageId);
 };
 
 module.exports = sendEmail;

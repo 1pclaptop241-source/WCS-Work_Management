@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 
@@ -62,9 +63,8 @@ const ChangePasswordDialog = ({ open, onOpenChange }) => {
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
                     <div className="grid gap-2">
                         <Label htmlFor="current">Current Password</Label>
-                        <Input
+                        <PasswordInput
                             id="current"
-                            type="password"
                             value={formData.currentPassword}
                             onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
                             required
@@ -72,9 +72,8 @@ const ChangePasswordDialog = ({ open, onOpenChange }) => {
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="new">New Password</Label>
-                        <Input
+                        <PasswordInput
                             id="new"
-                            type="password"
                             value={formData.newPassword}
                             onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
                             required
@@ -82,9 +81,8 @@ const ChangePasswordDialog = ({ open, onOpenChange }) => {
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="confirm">Confirm New Password</Label>
-                        <Input
+                        <PasswordInput
                             id="confirm"
-                            type="password"
                             value={formData.confirmPassword}
                             onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                             required
