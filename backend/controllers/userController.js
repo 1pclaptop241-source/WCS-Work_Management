@@ -80,7 +80,8 @@ exports.updateUser = async (req, res) => {
     }
 
     // Protect Primary Admin
-    if (user.email === 'admin@wisecutstudios.com' && req.user.email !== 'admin@wisecutstudios.com') {
+    const primaryAdminEmail = process.env.FROM_EMAIL || 'admin@wisecutstudios.com'; // Fallback just in case
+    if (user.email === primaryAdminEmail && req.user.email !== primaryAdminEmail) {
       return res.status(403).json({ message: 'You are not authorized to edit the primary admin details.' });
     }
 
@@ -120,7 +121,7 @@ exports.deleteUser = async (req, res) => {
 
     // Prevent deleting the primary admin account
     // We only want to protect the main root admin, other admins can be deleted by another admin
-    if (user.email === 'admin@wisecutstudios.com') {
+    if (user.email === (process.env.FROM_EMAIL || 'admin@wisecutstudios.com')) {
       return res.status(403).json({ message: 'Cannot delete the primary admin account' });
     }
 
