@@ -16,6 +16,7 @@ const {
   uploadFinalRender,
   clientApproveProject,
   closeProject,
+  rejectProject,
 } = require('../controllers/projectController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -39,5 +40,6 @@ router.post('/:id/accept', protect, authorize('admin'), acceptProject);
 router.put('/:id/final-render', protect, authorize('editor', 'admin'), uploadFinalRender);
 router.put('/:id/client-approve', protect, authorize('client'), clientApproveProject);
 router.put('/:id/close', protect, authorize('admin'), closeProject);
+router.put('/:id/reject', protect, authorize('admin'), rejectProject);
 module.exports = router;
 

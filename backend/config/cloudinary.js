@@ -31,7 +31,23 @@ const uploadToCloudinary = (buffer, folder = 'wcs-work-management', resourceType
     });
 };
 
+/**
+ * Delete a file from Cloudinary
+ * @param {String} publicId - The public ID of the file
+ * @param {String} resourceType - 'image', 'video', or 'raw'
+ * @returns {Promise}
+ */
+const deleteFromCloudinary = (publicId, resourceType = 'image') => {
+    return new Promise((resolve, reject) => {
+        cloudinary.uploader.destroy(publicId, { resource_type: resourceType }, (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+        });
+    });
+};
+
 module.exports = {
     cloudinary,
-    uploadToCloudinary
+    uploadToCloudinary,
+    deleteFromCloudinary
 };

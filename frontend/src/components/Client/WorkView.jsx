@@ -34,6 +34,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -251,34 +253,6 @@ const WorkView = ({ project, onBack, onUpdate }) => {
         return null;
       })()}
 
-      {/* Progress Section */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-lg font-medium">Work Completion</CardTitle>
-            <span className="text-sm font-bold text-primary">
-              {(() => {
-                const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-                const donePct = breakdowns
-                  .filter(w => w.approvals?.admin && w.approvals?.client)
-                  .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-                const progress = totalPct > 0 ? (donePct / totalPct) * 100 : 0;
-                return Math.round(progress);
-              })()}%
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Progress value={(() => {
-            const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-            const donePct = breakdowns
-              .filter(w => w.approvals?.admin && w.approvals?.client)
-              .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-            return totalPct > 0 ? (donePct / totalPct) * 100 : 0;
-          })()} className="h-3" />
-        </CardContent>
-      </Card>
-
       {error && (
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>
@@ -286,275 +260,398 @@ const WorkView = ({ project, onBack, onUpdate }) => {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">Project Work Items</h3>
-          </div>
+      <Tabs defaultValue="board" className="w-full space-y-6">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="board">Task Board</TabsTrigger>
+          <TabsTrigger value="list">Task List</TabsTrigger>
+        </TabsList>
 
-          {loading ? (
-            <div className="flex justify-center p-8 text-muted-foreground">Loading work items...</div>
-          ) : breakdowns.length === 0 ? (
-            <Card><CardContent className="p-6 text-center text-muted-foreground">No work breakdown defined.</CardContent></Card>
-          ) : (
+        <TabsContent value="overview" className="space-y-6 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-6">
-              <AnimatePresence>
-                {breakdowns.map((bd, index) => {
-                  const work = getLatestSubmission(bd._id);
-                  const hasUpload = !!work;
+              {/* Progress Section */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-lg font-medium">Work Completion</CardTitle>
+                    <span className="text-sm font-bold text-primary">
+                      {(() => {
+                        const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
+                        const donePct = breakdowns
+                          .filter(w => w.approvals?.admin && w.approvals?.client)
+                          .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
+                        const progress = totalPct > 0 ? (donePct / totalPct) * 100 : 0;
+                        return Math.round(progress);
+                      })()}%
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Progress value={(() => {
+                    const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
+                    const donePct = breakdowns
+                      .filter(w => w.approvals?.admin && w.approvals?.client)
+                      .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
+                    return totalPct > 0 ? (donePct / totalPct) * 100 : 0;
+                  })()} className="h-3" />
+                </CardContent>
+              </Card>
+            </div>
+            <div className="space-y-6">
+              <ProjectDetails project={project} onUpdate={onUpdate} />
+            </div>
+          </div>
+        </TabsContent>
 
-                  const hasPendingCorrections = getAllCorrections(bd._id).some(c => !c.done);
-                  const adminApproved = bd.approvals?.admin || false;
-                  const clientApproved = bd.approvals?.client || false;
-                  const isApproved = adminApproved && clientApproved;
+        <TabsContent value="list" className="space-y-6 mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-primary flex items-center gap-2">
+                <FileText className="h-5 w-5" /> Work Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Work Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Latest Update</TableHead>
+                    <TableHead>Approved</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {breakdowns.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                        No work breakdown defined
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    breakdowns.map((bd) => {
+                      const work = getLatestSubmission(bd._id);
+                      const hasUpload = !!work;
+                      const hasPendingCorrections = getAllCorrections(bd._id).some(c => !c.done);
+                      const adminApproved = bd.approvals?.admin || false;
+                      const clientApproved = bd.approvals?.client || false;
+                      const isApproved = adminApproved && clientApproved;
 
-                  let statusBadge;
-                  if (!hasUpload) {
-                    statusBadge = <Badge variant="secondary">Pending Upload</Badge>;
-                  } else if (isApproved) {
-                    statusBadge = <Badge className="bg-green-600 hover:bg-green-700">Approved</Badge>;
-                  } else if (hasPendingCorrections) {
-                    statusBadge = <Badge variant="warning" className="bg-yellow-500 hover:bg-yellow-600 text-white">Needs Revision</Badge>;
-                  } else {
-                    statusBadge = <Badge className="bg-blue-600 hover:bg-blue-700">Pending Approval</Badge>;
-                  }
+                      let statusText, statusVariant;
+                      if (isApproved) {
+                        statusText = 'Completed';
+                        statusVariant = 'success';
+                      } else if (hasPendingCorrections) {
+                        statusText = 'Needs Revision';
+                        statusVariant = 'warning';
+                      } else if (hasUpload) {
+                        statusText = 'Under Review';
+                        statusVariant = 'default';
+                      } else {
+                        statusText = 'Pending';
+                        statusVariant = 'secondary';
+                      }
 
-                  return (
-                    <motion.div
-                      key={bd._id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      layout
-                    >
-                      <Card className={`overflow-hidden border-l-4 ${isApproved ? 'border-l-green-500' : hasPendingCorrections ? 'border-l-yellow-500' : 'border-l-blue-500'}`}>
-                        <div className={`h-1 w-full ${isApproved ? 'bg-green-500' : hasPendingCorrections ? 'bg-yellow-500' : 'bg-blue-500'}`} />
-                        <CardHeader className="pb-3 pt-5">
-                          <div className="flex justify-between items-start gap-4">
-                            <div>
-                              <CardTitle className="text-xl">{bd.workType}</CardTitle>
-                              <CardDescription className="mt-1">
-                                {hasUpload ? (
-                                  <>Latest Submission: <span className="font-medium text-foreground">{formatDate(work.submittedAt)}</span></>
-                                ) : 'Waiting for submission...'}
-                              </CardDescription>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {statusBadge}
-                              <WorkTypeMenu workBreakdown={bd} onViewDetails={handleViewWorkTypeDetails} />
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          {/* Instructions */}
-                          <div className="space-y-2">
-                            <Label className="text-muted-foreground font-semibold">Instructions for Editor:</Label>
-                            <div className="flex gap-2 items-start">
-                              <Textarea
-                                className="min-h-[80px] resize-y"
-                                placeholder="Add specific instructions for this work item... (visible to Editor and Admin)"
-                                value={instructionsInput[bd._id] !== undefined ? instructionsInput[bd._id] : (bd.clientInstructions || '')}
-                                onChange={(e) => setInstructionsInput(prev => ({ ...prev, [bd._id]: e.target.value }))}
-                              />
-                              <Button
-                                size="sm"
-                                onClick={() => handleSaveInstructions(bd._id)}
-                                disabled={isSavingInstructions === bd._id}
-                              >
-                                {isSavingInstructions === bd._id ? 'Saving...' : 'Save'}
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Approval Status Steps */}
-                          {hasUpload && (
-                            <div className="flex items-center gap-4 bg-muted/40 p-3 rounded-lg text-sm border">
-                              <div className={`flex items-center gap-2 ${adminApproved ? 'text-green-600 font-semibold' : 'text-muted-foreground'}`}>
-                                {adminApproved ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                                <span>Admin Review</span>
-                              </div>
-                              <div className="h-4 w-[1px] bg-border" />
-                              <div className={`flex items-center gap-2 ${clientApproved ? 'text-green-600 font-semibold' : 'text-muted-foreground'}`}>
-                                {clientApproved ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                                <span>Client Review</span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Actions */}
-                          {hasUpload ? (
-                            <div className="space-y-4">
-                              <div className="flex flex-wrap gap-3">
-                                <Button className="flex-1 gap-2" variant="outline" onClick={() => handleDownload(work)}>
-                                  <Download className="h-4 w-4" />
-                                  {work.submissionType === 'link' ? 'View Link' : 'Download File'}
-                                </Button>
-
-                                <Button
-                                  className={`flex-1 gap-2 ${isApproved ? 'bg-muted text-muted-foreground hover:bg-muted' : 'bg-green-600 hover:bg-green-700 text-white'}`}
-                                  disabled={isApproved}
-                                  onClick={() => {
-                                    if (isApproved) return;
-                                    setSelectedWork(work);
-                                    setCorrectionText('');
-                                    setVoiceFile(null);
-                                    setMediaFiles([]);
-                                    setShowCorrectionsModal(true);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" /> Request Changes
-                                </Button>
-                              </div>
-
-                              {!isApproved && !clientApproved && (
-                                <Button
-                                  className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                                  onClick={async () => {
-                                    const isConfirmed = await confirm({
-                                      title: `Approve ${bd.workType}?`,
-                                      message: `This will mark ${bd.workType} as complete. Are you ready to finalize?`,
-                                      confirmText: 'Approve & Finalize'
-                                    });
-
-                                    if (isConfirmed) {
-                                      try {
-                                        setApprovingKey(bd._id);
-                                        await workBreakdownAPI.approve(bd._id);
-                                        await loadData();
-                                        if (onUpdate) onUpdate();
-                                      } catch (e) {
-                                        setError(e.response?.data?.message || 'Failed to approve');
-                                      } finally {
-                                        setApprovingKey(null);
-                                      }
-                                    }
-                                  }}
-                                  disabled={approvingKey === bd._id || hasPendingCorrections}
-                                >
-                                  {approvingKey === bd._id ? 'Finalizing...' : <><Check className="h-4 w-4" /> Approve Work</>}
-                                </Button>
-                              )}
-
-                              {work.workFileUrl && work.isWorkFileVisibleToClient && (
-                                <div className="text-center">
-                                  <a
-                                    href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors underline"
-                                  >
-                                    {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '📦 Download Source File'}
-                                  </a>
-                                </div>
+                      return (
+                        <TableRow key={bd._id}>
+                          <TableCell className="font-medium">{bd.workType}</TableCell>
+                          <TableCell>
+                            <Badge variant={statusVariant} className={
+                              statusVariant === 'success' ? 'bg-green-600' :
+                                statusVariant === 'warning' ? 'bg-amber-500' :
+                                  statusVariant === 'default' ? 'bg-blue-600' : ''
+                            }>
+                              {statusText}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {hasUpload ? formatDate(work.submittedAt) : <span className="text-muted-foreground italic">Waiting...</span>}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 opacity-90">
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground w-10">Client</span>
+                              {clientApproved ? (
+                                <CheckCircle2 className="h-3 w-3 text-green-600" />
+                              ) : (
+                                <Circle className="h-3 w-3 text-muted-foreground/50" />
                               )}
                             </div>
-                          ) : (
-                            <div className="p-8 text-center bg-muted/30 border border-dashed rounded-lg text-muted-foreground">
-                              Editor is working on this task.
-                            </div>
-                          )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                          {/* Editor Note */}
-                          {hasUpload && work.editorMessage && (
-                            <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-lg p-4 flex gap-3">
-                              <span className="text-xl">📝</span>
-                              <div className="space-y-1">
-                                <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">Note from Editor:</p>
-                                <p className="text-sm text-foreground">{work.editorMessage}</p>
+        <TabsContent value="board" className="mt-4">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold">Project Work Items</h3>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center p-8 text-muted-foreground">Loading work items...</div>
+            ) : breakdowns.length === 0 ? (
+              <Card><CardContent className="p-6 text-center text-muted-foreground">No work breakdown defined.</CardContent></Card>
+            ) : (
+              <div className="space-y-6">
+                <AnimatePresence>
+                  {breakdowns.map((bd, index) => {
+                    const work = getLatestSubmission(bd._id);
+                    const hasUpload = !!work;
+
+                    const hasPendingCorrections = getAllCorrections(bd._id).some(c => !c.done);
+                    const adminApproved = bd.approvals?.admin || false;
+                    const clientApproved = bd.approvals?.client || false;
+                    const isApproved = adminApproved && clientApproved;
+
+                    let statusBadge;
+                    if (!hasUpload) {
+                      statusBadge = <Badge variant="secondary">Pending Upload</Badge>;
+                    } else if (isApproved) {
+                      statusBadge = <Badge className="bg-green-600 hover:bg-green-700">Approved</Badge>;
+                    } else if (hasPendingCorrections) {
+                      statusBadge = <Badge variant="warning" className="bg-yellow-500 hover:bg-yellow-600 text-white">Needs Revision</Badge>;
+                    } else {
+                      statusBadge = <Badge className="bg-blue-600 hover:bg-blue-700">Pending Approval</Badge>;
+                    }
+
+                    return (
+                      <motion.div
+                        key={bd._id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        layout
+                      >
+                        <Card className={`overflow-hidden border-l-4 ${isApproved ? 'border-l-green-500' : hasPendingCorrections ? 'border-l-yellow-500' : 'border-l-blue-500'}`}>
+                          <div className={`h-1 w-full ${isApproved ? 'bg-green-500' : hasPendingCorrections ? 'bg-yellow-500' : 'bg-blue-500'}`} />
+                          <CardHeader className="pb-3 pt-5">
+                            <div className="flex justify-between items-start gap-4">
+                              <div>
+                                <CardTitle className="text-xl">{bd.workType}</CardTitle>
+                                <CardDescription className="mt-1">
+                                  {hasUpload ? (
+                                    <>Latest Submission: <span className="font-medium text-foreground">{formatDate(work.submittedAt)}</span></>
+                                  ) : 'Waiting for submission...'}
+                                </CardDescription>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {statusBadge}
+                                <WorkTypeMenu workBreakdown={bd} onViewDetails={handleViewWorkTypeDetails} />
                               </div>
                             </div>
-                          )}
-
-                          {/* Corrections / Chat */}
-                          {(() => {
-                            const allCorrections = getAllCorrections(bd._id);
-                            if (allCorrections.length > 0) {
-                              return (
-                                <div className="pt-4 border-t">
-                                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Technical Corrections & Requests</h4>
-                                  <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
-                                    <FeedbackChat
-                                      corrections={allCorrections}
-                                      currentUser={user}
-                                      canMarkFixed={true}
-                                      markingId={markingFixId}
-                                      onMarkFixed={(correctionId) => {
-                                        const corr = allCorrections.find(c => c._id === correctionId);
-                                        if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            }
-                          })()}
-
-                          {/* Feedback / Discussion */}
-                          <div className="pt-4 border-t">
-                            <div
-                              className="flex items-center gap-2 mb-3 cursor-pointer text-muted-foreground hover:text-primary transition-colors"
-                              onClick={() => focusFeedback(bd._id)}
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                              <h4 className="text-sm font-semibold">Discussion</h4>
-                              {(!bd.feedback || bd.feedback.length === 0) && <span className="text-xs text-blue-500 font-normal">Add comment</span>}
+                          </CardHeader>
+                          <CardContent className="space-y-6">
+                            {/* Instructions */}
+                            <div className="space-y-2">
+                              <Label className="text-muted-foreground font-semibold">Instructions for Editor:</Label>
+                              <div className="flex gap-2 items-start">
+                                <Textarea
+                                  className="min-h-[80px] resize-y"
+                                  placeholder="Add specific instructions for this work item... (visible to Editor and Admin)"
+                                  value={instructionsInput[bd._id] !== undefined ? instructionsInput[bd._id] : (bd.clientInstructions || '')}
+                                  onChange={(e) => setInstructionsInput(prev => ({ ...prev, [bd._id]: e.target.value }))}
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSaveInstructions(bd._id)}
+                                  disabled={isSavingInstructions === bd._id}
+                                >
+                                  {isSavingInstructions === bd._id ? 'Saving...' : 'Save'}
+                                </Button>
+                              </div>
                             </div>
 
-                            {(bd.feedback && bd.feedback.length > 0) && (
-                              <ScrollArea className="h-[200px] w-full rounded-md border p-4 mb-3 bg-muted/20">
-                                {bd.feedback.map((f, i) => (
-                                  <div
-                                    key={i}
-                                    className={`mb-3 p-3 rounded-lg max-w-[85%] text-sm ${f.from?._id === user._id
-                                        ? 'ml-auto bg-primary text-primary-foreground'
-                                        : 'bg-muted text-foreground'
-                                      }`}
-                                  >
-                                    <div className="flex justify-between items-center gap-4 mb-1 text-xs opacity-70">
-                                      <span className="font-semibold">{f.from?.name || 'User'}{f.from?._id === user._id && ' (You)'}</span>
-                                      <span>{formatDateTime(f.timestamp)}</span>
-                                    </div>
-                                    <p className="whitespace-pre-wrap">{f.content}</p>
-                                  </div>
-                                ))}
-                              </ScrollArea>
+                            {/* Approval Status Steps */}
+                            {hasUpload && (
+                              <div className="flex items-center gap-4 bg-muted/40 p-3 rounded-lg text-sm border">
+                                <div className={`flex items-center gap-2 ${adminApproved ? 'text-green-600 font-semibold' : 'text-muted-foreground'}`}>
+                                  {adminApproved ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                                  <span>Admin Review</span>
+                                </div>
+                                <div className="h-4 w-[1px] bg-border" />
+                                <div className={`flex items-center gap-2 ${clientApproved ? 'text-green-600 font-semibold' : 'text-muted-foreground'}`}>
+                                  {clientApproved ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                                  <span>Client Review</span>
+                                </div>
+                              </div>
                             )}
 
-                            <div className="flex gap-2">
-                              <Input
-                                id={`feedback-input-${bd._id}`}
-                                placeholder="Write a comment..."
-                                value={feedbackText[bd._id] || ''}
-                                onChange={(e) => setFeedbackText(prev => ({ ...prev, [bd._id]: e.target.value }))}
-                                onKeyPress={(e) => e.key === 'Enter' && handleAddFeedback(bd._id)}
-                                className="rounded-full"
-                              />
-                              <Button
-                                size="icon"
-                                className="rounded-full shrink-0"
-                                onClick={() => handleAddFeedback(bd._id)}
-                                disabled={isSubmittingFeedback === bd._id || !feedbackText[bd._id]?.trim()}
+                            {/* Actions */}
+                            {hasUpload ? (
+                              <div className="space-y-4">
+                                <div className="flex flex-wrap gap-3">
+                                  <Button className="flex-1 gap-2" variant="outline" onClick={() => handleDownload(work)}>
+                                    <Download className="h-4 w-4" />
+                                    {work.submissionType === 'link' ? 'View Link' : 'Download File'}
+                                  </Button>
+
+                                  <Button
+                                    className={`flex-1 gap-2 ${isApproved ? 'bg-muted text-muted-foreground hover:bg-muted' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+                                    disabled={isApproved}
+                                    onClick={() => {
+                                      if (isApproved) return;
+                                      setSelectedWork(work);
+                                      setCorrectionText('');
+                                      setVoiceFile(null);
+                                      setMediaFiles([]);
+                                      setShowCorrectionsModal(true);
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4" /> Request Changes
+                                  </Button>
+                                </div>
+
+                                {!isApproved && !clientApproved && (
+                                  <Button
+                                    className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    onClick={async () => {
+                                      const isConfirmed = await confirm({
+                                        title: `Approve ${bd.workType}?`,
+                                        message: `This will mark ${bd.workType} as complete. Are you ready to finalize?`,
+                                        confirmText: 'Approve & Finalize'
+                                      });
+
+                                      if (isConfirmed) {
+                                        try {
+                                          setApprovingKey(bd._id);
+                                          await workBreakdownAPI.approve(bd._id);
+                                          await loadData();
+                                          if (onUpdate) onUpdate();
+                                        } catch (e) {
+                                          setError(e.response?.data?.message || 'Failed to approve');
+                                        } finally {
+                                          setApprovingKey(null);
+                                        }
+                                      }
+                                    }}
+                                    disabled={approvingKey === bd._id || hasPendingCorrections}
+                                  >
+                                    {approvingKey === bd._id ? 'Finalizing...' : <><Check className="h-4 w-4" /> Approve Work</>}
+                                  </Button>
+                                )}
+
+                                {work.workFileUrl && work.isWorkFileVisibleToClient && (
+                                  <div className="text-center">
+                                    <a
+                                      href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors underline"
+                                    >
+                                      {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '📦 Download Source File'}
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="p-8 text-center bg-muted/30 border border-dashed rounded-lg text-muted-foreground">
+                                Editor is working on this task.
+                              </div>
+                            )}
+
+                            {/* Editor Note */}
+                            {hasUpload && work.editorMessage && (
+                              <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-lg p-4 flex gap-3">
+                                <span className="text-xl">📝</span>
+                                <div className="space-y-1">
+                                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">Note from Editor:</p>
+                                  <p className="text-sm text-foreground">{work.editorMessage}</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Corrections / Chat */}
+                            {(() => {
+                              const allCorrections = getAllCorrections(bd._id);
+                              if (allCorrections.length > 0) {
+                                return (
+                                  <div className="pt-4 border-t">
+                                    <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Technical Corrections & Requests</h4>
+                                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
+                                      <FeedbackChat
+                                        corrections={allCorrections}
+                                        currentUser={user}
+                                        canMarkFixed={true}
+                                        markingId={markingFixId}
+                                        onMarkFixed={(correctionId) => {
+                                          const corr = allCorrections.find(c => c._id === correctionId);
+                                          if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            })()}
+
+                            {/* Feedback / Discussion */}
+                            <div className="pt-4 border-t">
+                              <div
+                                className="flex items-center gap-2 mb-3 cursor-pointer text-muted-foreground hover:text-primary transition-colors"
+                                onClick={() => focusFeedback(bd._id)}
                               >
-                                <Send className="h-4 w-4" />
-                              </Button>
+                                <MessageSquare className="h-4 w-4" />
+                                <h4 className="text-sm font-semibold">Discussion</h4>
+                                {(!bd.feedback || bd.feedback.length === 0) && <span className="text-xs text-blue-500 font-normal">Add comment</span>}
+                              </div>
+
+                              {(bd.feedback && bd.feedback.length > 0) && (
+                                <ScrollArea className="h-[200px] w-full rounded-md border p-4 mb-3 bg-muted/20">
+                                  {bd.feedback.map((f, i) => (
+                                    <div
+                                      key={i}
+                                      className={`mb-3 p-3 rounded-lg max-w-[85%] text-sm ${f.from?._id === user._id
+                                        ? 'ml-auto bg-primary text-primary-foreground'
+                                        : 'bg-muted text-foreground'
+                                        }`}
+                                    >
+                                      <div className="flex justify-between items-center gap-4 mb-1 text-xs opacity-70">
+                                        <span className="font-semibold">{f.from?.name || 'User'}{f.from?._id === user._id && ' (You)'}</span>
+                                        <span>{formatDateTime(f.timestamp)}</span>
+                                      </div>
+                                      <p className="whitespace-pre-wrap">{f.content}</p>
+                                    </div>
+                                  ))}
+                                </ScrollArea>
+                              )}
+
+                              <div className="flex gap-2">
+                                <Input
+                                  id={`feedback-input-${bd._id}`}
+                                  placeholder="Write a comment..."
+                                  value={feedbackText[bd._id] || ''}
+                                  onChange={(e) => setFeedbackText(prev => ({ ...prev, [bd._id]: e.target.value }))}
+                                  onKeyPress={(e) => e.key === 'Enter' && handleAddFeedback(bd._id)}
+                                  className="rounded-full"
+                                />
+                                <Button
+                                  size="icon"
+                                  className="rounded-full shrink-0"
+                                  onClick={() => handleAddFeedback(bd._id)}
+                                  disabled={isSubmittingFeedback === bd._id || !feedbackText[bd._id]?.trim()}
+                                >
+                                  <Send className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
-                          </div>
 
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
-
-        {/* Right Sidebar: Details & Info */}
-        <div className="space-y-6">
-          <ProjectDetails project={project} onUpdate={onUpdate} />
-        </div>
-      </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Corrections Modal */}
       <Dialog open={showCorrectionsModal} onOpenChange={setShowCorrectionsModal}>
