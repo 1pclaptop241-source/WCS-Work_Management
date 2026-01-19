@@ -7,7 +7,7 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { createNotification } = require('../utils/notificationService');
 const logActivity = require('../utils/activityLogger');
-const { uploadToCloudinary } = require('../config/cloudinary');
+const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
 const sendEmail = require('../utils/sendEmail');
 
 // @desc    Get all projects (role-based filtering)
@@ -49,6 +49,10 @@ exports.getProjects = async (req, res) => {
     // Filter by accepted status if provided
     if (req.query.accepted !== undefined) {
       query.accepted = req.query.accepted === 'true';
+      // If querying for unaccepted (pending), exclude rejected projects unless specifically asked for
+      if (!query.accepted && req.query.includeRejected !== 'true') {
+        query.status = { $ne: 'rejected' };
+      }
     }
 
     // Filter out hidden projects (hidden more than 2 days ago)
@@ -487,17 +491,19 @@ exports.updateProject = async (req, res) => {
 // @access  Private/Admin
 exports.deleteProject = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id);
+    const project = await Project.findById(req.params.id).populate('client');
 
     if (!project) {
       return res.status(404).json({ message: 'Project not found' });
     }
 
+    const { reason } = req.body;
+
     // Check authorization: Admin can delete any project, Client can only delete their own
     if (req.user.role === 'admin') {
       // Proceed (Admin can delete)
     } else if (req.user.role === 'client') {
-      if (project.client.toString() !== req.user._id.toString()) {
+      if (project.client._id.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Not authorized to delete this project' });
       }
 
@@ -510,16 +516,179 @@ exports.deleteProject = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to delete projects' });
     }
 
-    // Delete related records
+    // Helper to extract Cloudinary public ID
+    const getPublicIdFromUrl = (url) => {
+      if (!url) return null;
+      try {
+        // Regex to match typical Cloudinary patterns without relying on exact folder structure
+        // Matches everything after /upload/ (and optional version /v123/) up to the file extension
+        const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/);
+        return match ? match[1] : null;
+      } catch (e) {
+        console.error('Error extracting ID from URL:', url);
+        return null;
+      }
+    };
+
+    // 1. Gather all file public IDs to delete
+    const publicIdsToDelete = [];
+    const resourceTypes = []; // 'image', 'video', 'raw'
+
+    // Project Script File
+    if (project.scriptFile) {
+      const id = getPublicIdFromUrl(project.scriptFile);
+      if (id) {
+        publicIdsToDelete.push(id);
+        // Heuristic: Scripts are usually raw or auto (often raw if PDF). Try 'raw' or 'image' (auto)
+        // Ideally we store resource_type but extracting from URL is safer for minimal DB schema changes
+        // PDFs are often 'image' (page based) or 'raw'. Let's try to detect extension or just assume specific type
+        // Based on createProject: if pdf -> raw, else auto. 
+        // We'll try to delete as raw first then image if extension is specific.
+        const ext = project.scriptFile.split('.').pop().toLowerCase();
+        resourceTypes.push(ext === 'pdf' ? 'raw' : 'image');
+      }
+    }
+
+    // Work Submissions Files
+    const submissions = await WorkSubmission.find({ project: project._id });
+    for (const sub of submissions) {
+      // Main file (fileUrl)
+      if (sub.fileUrl) {
+        const id = getPublicIdFromUrl(sub.fileUrl);
+        if (id) {
+          publicIdsToDelete.push(id);
+          // Infer type. Videos -> video, Images -> image.
+          const ext = sub.fileUrl.split('.').pop().toLowerCase();
+          if (['mp4', 'mov', 'avi'].includes(ext)) {
+            resourceTypes.push('video');
+          } else if (['pdf', 'zip', 'rar'].includes(ext)) {
+            resourceTypes.push('raw');
+          } else {
+            resourceTypes.push('image');
+          }
+        }
+      }
+
+      // Work Source File (workFileUrl)
+      if (sub.workFileUrl) {
+        const id = getPublicIdFromUrl(sub.workFileUrl);
+        if (id) {
+          publicIdsToDelete.push(id);
+          const ext = sub.workFileUrl.split('.').pop().toLowerCase();
+          resourceTypes.push(['zip', 'rar', '7z'].includes(ext) ? 'raw' : 'auto'); // Usually zip
+        }
+      }
+
+      // Corrections files
+      if (sub.corrections && sub.corrections.length > 0) {
+        sub.corrections.forEach(c => {
+          if (c.voiceFile) {
+            const id = getPublicIdFromUrl(c.voiceFile);
+            if (id) {
+              publicIdsToDelete.push(id);
+              resourceTypes.push('video'); // Audio often treated as video/raw in Cloudinary or specific resource_type 'video' supports audio
+            }
+          }
+          if (c.mediaFiles && c.mediaFiles.length > 0) {
+            c.mediaFiles.forEach(mf => {
+              const id = getPublicIdFromUrl(mf);
+              if (id) {
+                publicIdsToDelete.push(id);
+                resourceTypes.push('image'); // default assumption
+              }
+            })
+          }
+        });
+      }
+    }
+
+    // 2. Delete from Cloudinary
+    // Process in parallel
+    const deletePromises = publicIdsToDelete.map((id, index) => {
+      // Fallback resource type if 'auto' isn't valid for destroy
+      let type = resourceTypes[index];
+      if (type === 'auto') type = 'image'; // destroy requires specific type usually
+      return deleteFromCloudinary(id, type).catch(err => console.error(`Failed to delete ${id}:`, err.message));
+    });
+
+    await Promise.all(deletePromises);
+
+
+    // 3. Delete related records
     await Payment.deleteMany({ project: project._id });
     await WorkBreakdown.deleteMany({ project: project._id });
     await WorkSubmission.deleteMany({ project: project._id });
     await Notification.deleteMany({ relatedProject: project._id });
 
+    // Notify Client via Email if Admin deleted it
+    if (req.user.role === 'admin' && project.client) {
+      try {
+        await sendEmail({
+          email: project.client.email,
+          subject: `Project Deleted: ${project.title}`,
+          message: `Your project "${project.title}" has been deleted by the admin.\n\nReason: ${reason || 'No reason provided.'}`,
+        });
+      } catch (err) {
+        console.error('Email send failed', err);
+      }
+    }
+
     await project.deleteOne();
-    await logActivity(req, 'USER_DELETED', `Project deleted: ${project.title}`, project._id, 'Project');
+    await logActivity(req, 'USER_DELETED', `Project deleted: ${project.title}. Reason: ${reason}`, project._id, 'Project');
 
     res.json({ message: 'Project removed' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Reject project
+// @route   PUT /api/projects/:id/reject
+// @access  Private/Admin
+exports.rejectProject = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const project = await Project.findById(req.params.id).populate('client');
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    project.status = 'rejected';
+    project.rejectionReason = reason; // Ensure schema supports this or just log it
+    // We might not have rejectionReason in schema, let's check standard simple fields.
+    // Usually safe to just rely on email/logs if schema is strict, but Mongoose usually allows flexible schema if not strict.
+    // Assuming strict schema, we rely on email + notification.
+
+    await project.save();
+
+    // Notify Client
+    await createNotification(
+      project.client._id,
+      'project_rejected',
+      'Project Rejected',
+      `Your project "${project.title}" has been rejected.`,
+      project._id,
+      req.io
+    );
+
+    try {
+      await sendEmail({
+        email: project.client.email,
+        subject: `Project Rejected: ${project.title}`,
+        message: `Your project "${project.title}" has been rejected by the admin.\n\nReason: ${reason || 'No reason provided.'}\n\nPlease contact support for more details.`,
+      });
+    } catch (err) {
+      console.error('Email send failed', err);
+    }
+
+    await logActivity(req, 'PROJECT_REJECTED', `Project rejected: ${project.title}. Reason: ${reason}`, project._id, 'Project');
+
+    res.json(project);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -869,17 +1038,36 @@ exports.acceptProject = async (req, res) => {
 
     for (const work of workBreakdown) {
       const amount = (parseFloat(totalAmount) * parseFloat(work.percentage)) / 100;
-      const workEntry = await WorkBreakdown.create({
-        project: project._id,
-        workType: work.workType,
-        assignedEditor: work.assignedEditor,
-        deadline: work.deadline,
-        percentage: work.percentage,
-        amount: amount,
-        status: 'pending',
-        shareDetails: work.shareDetails || '',
-        links: work.links || [],
-      });
+
+      let workEntry;
+      if (work._id) {
+        workEntry = await WorkBreakdown.findByIdAndUpdate(work._id, {
+          project: project._id,
+          workType: work.workType,
+          assignedEditor: work.assignedEditor,
+          deadline: work.deadline,
+          percentage: work.percentage,
+          amount: amount,
+          status: 'pending',
+          shareDetails: work.shareDetails || '',
+          links: work.links || [],
+        }, { new: true });
+      }
+
+      if (!workEntry) {
+        workEntry = await WorkBreakdown.create({
+          project: project._id,
+          workType: work.workType,
+          assignedEditor: work.assignedEditor,
+          deadline: work.deadline,
+          percentage: work.percentage,
+          amount: amount,
+          status: 'pending',
+          shareDetails: work.shareDetails || '',
+          links: work.links || [],
+        });
+      }
+
       workBreakdownEntries.push(workEntry);
 
       // 2. Create Editor Payout (What editor earns)
@@ -887,18 +1075,22 @@ exports.acceptProject = async (req, res) => {
       const editorWorkAmount = (parseFloat(totalAmount) * parseFloat(work.percentage)) / 100;
 
       if (work.assignedEditor) {
-        await Payment.create({
-          paymentType: 'editor_payout',
-          project: project._id,
-          editor: work.assignedEditor,
-          client: project.client,
-          workBreakdown: workEntry._id,
-          workType: work.workType,
-          originalAmount: editorWorkAmount,
-          finalAmount: editorWorkAmount,
-          deadline: work.deadline,
-          status: 'locked' // Locked until work is approved by client and admin
-        });
+        const existingPayment = await Payment.findOne({ workBreakdown: workEntry._id, paymentType: 'editor_payout' });
+
+        if (!existingPayment) {
+          await Payment.create({
+            paymentType: 'editor_payout',
+            project: project._id,
+            editor: work.assignedEditor,
+            client: project.client,
+            workBreakdown: workEntry._id,
+            workType: work.workType,
+            originalAmount: editorWorkAmount,
+            finalAmount: editorWorkAmount,
+            deadline: work.deadline,
+            status: 'locked' // Locked until work is approved by client and admin
+          });
+        }
       }
     }
 

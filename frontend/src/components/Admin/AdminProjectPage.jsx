@@ -4,9 +4,10 @@ import { projectsAPI, workBreakdownAPI, worksAPI, usersAPI, API_BASE_URL } from 
 import { formatDate, formatDateTime } from '../../utils/formatDate';
 import { useAuth } from '../../context/AuthContext';
 import { useDialog } from '../../context/DialogContext';
-import VoiceRecorder from '../common/VoiceRecorder'; // Legacy component, might need refactor or kept as is
+import VoiceRecorder from '../common/VoiceRecorder';
 import WorkTypeMenu from '../common/WorkTypeMenu';
 import WorkTypeDetailsModal from '../common/WorkTypeDetailsModal';
+import ProjectProgress from '../common/ProjectProgress';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Dialog,
     DialogContent,
@@ -56,6 +58,15 @@ const AdminProjectPage = () => {
     const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
     const [showCorrectionsModal, setShowCorrectionsModal] = useState(false);
     const [correctionText, setCorrectionText] = useState('');
+
+    // New state for Reject/Delete
+    const [isRejecting, setIsRejecting] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletionReason, setDeletionReason] = useState('');
     const [voiceFile, setVoiceFile] = useState(null);
     const [mediaFiles, setMediaFiles] = useState([]);
     const [selectedSubmission, setSelectedSubmission] = useState(null);
@@ -68,6 +79,94 @@ const AdminProjectPage = () => {
     const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(null);
     const [adminInstructionsInput, setAdminInstructionsInput] = useState({});
     const [isSavingAdminInstructions, setIsSavingAdminInstructions] = useState(null);
+    const [isClosingProject, setIsClosingProject] = useState(false);
+
+    const handleCloseProject = async () => {
+        const isConfirmed = await confirm({
+            title: 'Close Project',
+            message: 'Are you sure you want to close this project? This indicates all work is completed and paid for.',
+            confirmText: 'Close Project',
+            isDanger: false
+        });
+
+        if (isConfirmed) {
+            try {
+                setIsClosingProject(true);
+                await projectsAPI.closeProject(project._id);
+                setShowCorrectionsModal(false);
+                await loadProject();
+                showAlert('Project closed successfully', 'Success');
+            } catch (err) {
+                console.error('Failed to close project:', err);
+                showAlert(err.response?.data?.message || 'Failed to close project', 'Error');
+            } finally {
+                setIsClosingProject(false);
+            }
+        }
+    };
+
+    const handleRejectProject = async () => {
+        if (!rejectionReason.trim()) {
+            setError('Please provide a reason for rejection');
+            return;
+        }
+
+        try {
+            setIsRejecting(true);
+            await projectsAPI.reject(project._id, rejectionReason);
+            setShowRejectModal(false);
+            setRejectionReason('');
+            loadProject();
+            showAlert('Project rejected successfully', 'Success');
+        } catch (e) {
+            setError(e.response?.data?.message || 'Failed to reject project');
+        } finally {
+            setIsRejecting(false);
+        }
+    };
+
+    const handleAcceptProject = async () => {
+        if (workBreakdown.length === 0) {
+            // If strict validation is needed. Or maybe allow empty?
+            // showAlert('Please add work items before accepting.', 'Validation Error');
+        }
+
+        const isConfirmed = await confirm({
+            title: 'Accept Project?',
+            message: 'This will officialize the project and notify the client. Ensure all work items and amounts are correct.',
+            confirmText: 'Accept Project'
+        });
+
+        if (isConfirmed) {
+            try {
+                // Pass workBreakdown and current project amount
+                await projectsAPI.accept(project._id, workBreakdown, project.amount);
+                loadProject();
+                showAlert('Project accepted successfully', 'Success');
+            } catch (e) {
+                setError(e.response?.data?.message || 'Failed to accept project');
+            }
+        }
+    };
+
+    const handleDeleteProject = async () => {
+        // Additional safety check
+        if (project.accepted && user.role === 'client') {
+            setError('Cannot delete accepted project');
+            return;
+        }
+
+        try {
+            setIsDeleting(true);
+            await projectsAPI.delete(project._id, deletionReason);
+            setShowDeleteModal(false);
+            navigate('/admin/dashboard');
+        } catch (e) {
+            setError(e.response?.data?.message || 'Failed to delete project');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     useEffect(() => {
         loadProject();
@@ -258,6 +357,10 @@ const AdminProjectPage = () => {
         );
     }
 
+
+
+
+
     const progress = calculateProgress();
 
     return (
@@ -273,74 +376,108 @@ const AdminProjectPage = () => {
                         <Badge variant="outline" className="uppercase text-xs font-semibold">{project.status.replace('_', ' ')}</Badge>
                     </div>
                 </div>
+                {user.role === 'admin' && Math.round(progress) === 100 && !project.closed && (
+                    <Button
+                        variant="destructive"
+                        onClick={handleCloseProject}
+                        disabled={isClosingProject}
+                    >
+                        {isClosingProject ? 'Closing...' : 'Close Project'}
+                    </Button>
+                )}
+
+                {/* Review Phase Actions: Accept & Reject */}
+                {user.role === 'admin' && !project.accepted && project.status !== 'rejected' && (
+                    <div className="flex gap-2 ml-2">
+                        <Button
+                            variant="default"
+                            onClick={handleAcceptProject}
+                            className="bg-green-600 hover:bg-green-700"
+                        >
+                            Accept Project
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => setShowRejectModal(true)}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            Reject Project
+                        </Button>
+                    </div>
+                )}
+
+                {/* Manage Phase Action: Delete - PROMINENT */}
+                {user.role === 'admin' && (project.accepted || project.status === 'rejected') && (
+                    <Button
+                        variant="destructive"
+                        onClick={() => setShowDeleteModal(true)}
+                        className="ml-2"
+                        title="Delete Project"
+                    >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Delete Project
+                    </Button>
+                )}
             </div>
 
             {error && <div className="p-4 text-destructive bg-destructive/10 rounded-lg">{error}</div>}
 
-            <div className="grid gap-6 md:grid-cols-3">
-                {/* Left Column: Info & Progress */}
-                <div className="space-y-6 md:col-span-1">
-                    {/* Project Info */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Project Information</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 text-sm">
-                            <div className="grid gap-1">
-                                <span className="font-semibold text-muted-foreground">Client</span>
-                                <div>{project.client?.name}</div>
-                                <div className="text-xs text-muted-foreground">{project.client?.email}</div>
-                            </div>
-                            <Separator />
-                            <div className="grid gap-1">
-                                <span className="font-semibold text-muted-foreground">Description</span>
-                                <p className="whitespace-pre-wrap">{project.description}</p>
-                            </div>
-                            <Separator />
-                            <div className="flex justify-between">
-                                <span className="font-semibold text-muted-foreground">Amount</span>
-                                <span>{project.currency} {project.amount?.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="font-semibold text-muted-foreground">Deadline</span>
-                                <span>{formatDateTime(project.deadline)}</span>
-                            </div>
-                            {project.rawFootageLinks?.length > 0 && (
-                                <div className="grid gap-2 pt-2">
-                                    <span className="font-semibold text-muted-foreground">Raw Footage</span>
-                                    <ul className="list-disc list-inside space-y-1">
-                                        {project.rawFootageLinks.map((link, i) => (
-                                            <li key={i}>
-                                                <a href={link.url} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate inline-block max-w-[200px] align-bottom">
-                                                    {link.title || link.url}
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
+            <ProjectProgress progress={progress} />
+
+            <Tabs defaultValue="board" className="w-full space-y-6">
+                <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="board">Task Board</TabsTrigger>
+                    <TabsTrigger value="list">Task List</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="mt-4">
+                    <div className="space-y-6">
+                        {/* Project Info */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Project Information</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4 text-sm">
+                                <div className="grid gap-1">
+                                    <span className="font-semibold text-muted-foreground">Client</span>
+                                    <div>{project.client?.name}</div>
+                                    <div className="text-xs text-muted-foreground">{project.client?.email}</div>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                <Separator />
+                                <div className="grid gap-1">
+                                    <span className="font-semibold text-muted-foreground">Description</span>
+                                    <p className="whitespace-pre-wrap">{project.description}</p>
+                                </div>
+                                <Separator />
+                                <div className="flex justify-between">
+                                    <span className="font-semibold text-muted-foreground">Amount</span>
+                                    <span>{project.currency} {project.amount?.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-semibold text-muted-foreground">Deadline</span>
+                                    <span>{formatDateTime(project.deadline)}</span>
+                                </div>
+                                {project.rawFootageLinks?.length > 0 && (
+                                    <div className="grid gap-2 pt-2">
+                                        <span className="font-semibold text-muted-foreground">Raw Footage</span>
+                                        <ul className="list-disc list-inside space-y-1">
+                                            {project.rawFootageLinks.map((link, i) => (
+                                                <li key={i}>
+                                                    <a href={link.url} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate inline-block max-w-[200px] align-bottom">
+                                                        {link.title || link.url}
+                                                    </a>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
 
-                    {/* Progress */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Progress</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <div className="flex justify-between text-sm font-medium">
-                                <span>Completion</span>
-                                <span>{Math.round(progress)}%</span>
-                            </div>
-                            <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                                <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Right Column: Work Breakdown & Items */}
-                <div className="space-y-6 md:col-span-2">
+                <TabsContent value="list" className="mt-4">
                     {/* Work Status Table */}
                     <Card>
                         <CardHeader>
@@ -394,10 +531,14 @@ const AdminProjectPage = () => {
                             </Table>
                         </CardContent>
                     </Card>
+                </TabsContent>
 
+                <TabsContent value="board" className="mt-4">
                     {/* Detailed Work Items */}
                     <div className="space-y-6">
-                        <h3 className="text-lg font-semibold">Work Items Management</h3>
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold">Work Items Management</h3>
+                        </div>
                         {workBreakdown.map((bd) => {
                             const submissions = workSubmissions[bd._id] || [];
                             const work = submissions.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))[0];
@@ -546,8 +687,8 @@ const AdminProjectPage = () => {
                             );
                         })}
                     </div>
-                </div>
-            </div>
+                </TabsContent>
+            </Tabs>
 
             {/* Edit Modal */}
             <Dialog open={!!editingWork} onOpenChange={(open) => !open && setEditingWork(null)}>
@@ -640,6 +781,74 @@ const AdminProjectPage = () => {
                             <Button type="submit" variant="destructive">Send Corrections</Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Reject Modal */}
+            <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reject Project</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to reject this project? The client will be notified via email.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Rejection Reason</Label>
+                            <Textarea
+                                placeholder="Explain why the project is being rejected..."
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowRejectModal(false)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleRejectProject}
+                            disabled={isRejecting || !rejectionReason.trim()}
+                        >
+                            {isRejecting ? 'Rejecting...' : 'Reject Project'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Modal */}
+            <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">Delete Project</DialogTitle>
+                        <DialogDescription>
+                            Use this to delete the project. This action cannot be undone.
+                            The client will be notified via email.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md font-medium">
+                            Warning: This will permanently remove all project data, including submissions, payments, and files.
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Deletion Reason (Optional)</Label>
+                            <Textarea
+                                placeholder="Why is this project being deleted?"
+                                value={deletionReason}
+                                onChange={(e) => setDeletionReason(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteProject}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 

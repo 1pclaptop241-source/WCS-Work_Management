@@ -69,7 +69,7 @@ export const projectsAPI = {
       'Content-Type': 'multipart/form-data',
     },
   }),
-  delete: (id) => api.delete(`/projects/${id}`),
+
   assignEditor: (id, editorId, baseAmount) => api.put(`/projects/${id}/assign`, { editorId, baseAmount }),
   shareDetails: (id, projectDetails) => api.put(`/projects/${id}/share-details`, { projectDetails }),
   getRoadmap: (id) => api.get(`/projects/${id}/roadmap`),
@@ -80,6 +80,8 @@ export const projectsAPI = {
   uploadFinalRender: (id, link) => api.put(`/projects/${id}/final-render`, { finalRenderLink: link }),
   clientApprove: (id) => api.put(`/projects/${id}/client-approve`),
   closeProject: (id) => api.put(`/projects/${id}/close`),
+  reject: (id, reason) => api.put(`/projects/${id}/reject`, { reason }),
+  delete: (id, reason) => api.delete(`/projects/${id}`, { data: { reason } }),
   getUnaccepted: () => api.get('/projects?accepted=false'),
   getAccepted: () => api.get('/projects?accepted=true'),
 };

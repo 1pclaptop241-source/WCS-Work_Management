@@ -15,6 +15,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 const AcceptProjectPage = () => {
     const { projectId } = useParams();
@@ -27,7 +35,13 @@ const AcceptProjectPage = () => {
     const [workMode, setWorkMode] = useState('default');
     const [totalAmount, setTotalAmount] = useState('');
     const [workBreakdown, setWorkBreakdown] = useState([]);
+
     const [isAccepting, setIsAccepting] = useState(false);
+
+    // Reject State
+    const [isRejecting, setIsRejecting] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
 
     useEffect(() => {
         loadData();
@@ -162,16 +176,45 @@ const AcceptProjectPage = () => {
         }
     };
 
+    const handleRejectProject = async () => {
+        if (!rejectionReason.trim()) {
+            await showAlert('Please provide a reason for rejection', 'Validation Error');
+            return;
+        }
+
+        try {
+            setIsRejecting(true);
+            await projectsAPI.reject(projectId, rejectionReason);
+            setShowRejectModal(false);
+            await showAlert('Project rejected successfully', 'Success');
+            navigate('/admin/dashboard');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to reject project');
+            await showAlert(err.response?.data?.message || 'Failed to reject project', 'Error');
+        } finally {
+            setIsRejecting(false);
+        }
+    };
+
     if (loading) return <div className="flex h-[80vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>;
     if (!project) return <div className="container p-8"><div className="p-4 rounded bg-destructive/10 text-destructive">Project not found</div></div>;
 
     return (
         <div className="container mx-auto p-4 md:p-8 pt-6 max-w-7xl">
-            <div className="flex items-center gap-4 mb-6">
-                <Button variant="outline" size="icon" onClick={() => navigate('/admin/dashboard')}>
-                    <ArrowLeft className="h-4 w-4" />
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="icon" onClick={() => navigate('/admin/dashboard')}>
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <h1 className="text-2xl font-bold tracking-tight">Accept Project: {project.title}</h1>
+                </div>
+                <Button
+                    variant="destructive"
+                    onClick={() => setShowRejectModal(true)}
+                    className="bg-red-600 hover:bg-red-700"
+                >
+                    Reject Project
                 </Button>
-                <h1 className="text-2xl font-bold tracking-tight">Accept Project: {project.title}</h1>
             </div>
 
             {error && <div className="mb-6 p-4 rounded bg-destructive/10 text-destructive border border-destructive/20">{error}</div>}
@@ -384,6 +427,37 @@ const AcceptProjectPage = () => {
                     </CardFooter>
                 </Card>
             </form>
+
+            <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Reject Project</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to reject this project? The client will be notified via email.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Rejection Reason</Label>
+                            <Textarea
+                                placeholder="Explain why the project is being rejected..."
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowRejectModal(false)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleRejectProject}
+                            disabled={isRejecting || !rejectionReason.trim()}
+                        >
+                            {isRejecting ? 'Rejecting...' : 'Reject Project'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
