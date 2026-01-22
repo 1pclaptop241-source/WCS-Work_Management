@@ -165,7 +165,8 @@ exports.getClientPayments = async (req, res) => {
     // This addresses the user request to not show projects that are not closed in the payment page.
     const filteredPayments = payments.filter(p => {
       if (p.paymentType === 'client_charge' && !p.paid && !p.received) {
-        return p.project && p.project.closed;
+        // Show if project is closed OR completed (work finished)
+        return p.project && (p.project.closed || p.project.status === 'closed' || p.project.status === 'completed');
       }
       return true;
     });

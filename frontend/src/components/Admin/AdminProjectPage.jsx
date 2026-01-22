@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import RejectProjectModal from '@/components/common/RejectProjectModal';
+import ProjectInfoCard from '@/components/common/ProjectInfoCard';
+import WorkBreakdownStatusTable from '@/components/common/WorkBreakdownStatusTable';
 import { useParams, useNavigate } from 'react-router-dom';
 import { projectsAPI, workBreakdownAPI, worksAPI, usersAPI, API_BASE_URL } from '../../services/api';
 import { formatDate, formatDateTime } from '../../utils/formatDate';
@@ -12,13 +15,13 @@ import ProjectProgress from '../common/ProjectProgress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Dialog,
@@ -105,15 +108,12 @@ const AdminProjectPage = () => {
         }
     };
 
-    const handleRejectProject = async () => {
-        if (!rejectionReason.trim()) {
-            setError('Please provide a reason for rejection');
-            return;
-        }
+    const handleRejectProject = async (reason) => {
+        // Validation removed: Allow rejection without reason (backend handles empty reason)
 
         try {
             setIsRejecting(true);
-            await projectsAPI.reject(project._id, rejectionReason);
+            await projectsAPI.reject(project._id, reason);
             setShowRejectModal(false);
             setRejectionReason('');
             loadProject();
@@ -386,24 +386,26 @@ const AdminProjectPage = () => {
                     </Button>
                 )}
 
-                {/* Review Phase Actions: Accept & Reject */}
+                {/* Review Phase Actions: Accept */}
                 {user.role === 'admin' && !project.accepted && project.status !== 'rejected' && (
-                    <div className="flex gap-2 ml-2">
-                        <Button
-                            variant="default"
-                            onClick={handleAcceptProject}
-                            className="bg-green-600 hover:bg-green-700"
-                        >
-                            Accept Project
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={() => setShowRejectModal(true)}
-                            className="bg-red-600 hover:bg-red-700"
-                        >
-                            Reject Project
-                        </Button>
-                    </div>
+                    <Button
+                        variant="default"
+                        onClick={handleAcceptProject}
+                        className="bg-green-600 hover:bg-green-700 ml-2"
+                    >
+                        Accept Project
+                    </Button>
+                )}
+
+                {/* Reject Action: Available even for overdue/accepted projects */}
+                {user.role === 'admin' && project.status !== 'rejected' && !project.closed && (
+                    <Button
+                        variant="destructive"
+                        onClick={() => setShowRejectModal(true)}
+                        className="bg-red-600 hover:bg-red-700 ml-2"
+                    >
+                        Reject Project
+                    </Button>
                 )}
 
                 {/* Manage Phase Action: Delete - PROMINENT */}
@@ -434,103 +436,15 @@ const AdminProjectPage = () => {
                 <TabsContent value="overview" className="mt-4">
                     <div className="space-y-6">
                         {/* Project Info */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Project Information</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4 text-sm">
-                                <div className="grid gap-1">
-                                    <span className="font-semibold text-muted-foreground">Client</span>
-                                    <div>{project.client?.name}</div>
-                                    <div className="text-xs text-muted-foreground">{project.client?.email}</div>
-                                </div>
-                                <Separator />
-                                <div className="grid gap-1">
-                                    <span className="font-semibold text-muted-foreground">Description</span>
-                                    <p className="whitespace-pre-wrap">{project.description}</p>
-                                </div>
-                                <Separator />
-                                <div className="flex justify-between">
-                                    <span className="font-semibold text-muted-foreground">Amount</span>
-                                    <span>{project.currency} {project.amount?.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="font-semibold text-muted-foreground">Deadline</span>
-                                    <span>{formatDateTime(project.deadline)}</span>
-                                </div>
-                                {project.rawFootageLinks?.length > 0 && (
-                                    <div className="grid gap-2 pt-2">
-                                        <span className="font-semibold text-muted-foreground">Raw Footage</span>
-                                        <ul className="list-disc list-inside space-y-1">
-                                            {project.rawFootageLinks.map((link, i) => (
-                                                <li key={i}>
-                                                    <a href={link.url} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate inline-block max-w-[200px] align-bottom">
-                                                        {link.title || link.url}
-                                                    </a>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                        {/* Project Info */}
+                        <ProjectInfoCard project={project} />
                     </div>
                 </TabsContent>
 
                 <TabsContent value="list" className="mt-4">
                     {/* Work Status Table */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Work Breakdown Status</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Editor</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Deadline</TableHead>
-                                        <TableHead className="text-right">Aprvl</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {workBreakdown.map((work) => {
-                                        const submissions = workSubmissions[work._id] || [];
-                                        const hasSubmission = submissions.length > 0;
-                                        const adminApproved = work.approvals?.admin || false;
-                                        const clientApproved = work.approvals?.client || false;
-                                        const bothApproved = adminApproved && clientApproved;
-
-                                        let statusBadge;
-                                        if (bothApproved) statusBadge = <Badge className="bg-green-600 hover:bg-green-700">Completed</Badge>;
-                                        else if (adminApproved) statusBadge = <Badge className="bg-yellow-500 hover:bg-yellow-600">Client Review</Badge>;
-                                        else if (hasSubmission) statusBadge = <Badge className="bg-yellow-500 hover:bg-yellow-600">Under Review</Badge>;
-                                        else if (work.status === 'declined') statusBadge = <Badge variant="destructive">Declined</Badge>;
-                                        else statusBadge = <Badge variant="secondary">Pending</Badge>;
-
-                                        return (
-                                            <TableRow key={work._id}>
-                                                <TableCell className="font-medium">{work.workType}</TableCell>
-                                                <TableCell>{work.assignedEditor?.name || 'Unassigned'}</TableCell>
-                                                <TableCell>{statusBadge}</TableCell>
-                                                <TableCell className="text-xs whitespace-nowrap">{formatDateTime(work.deadline)}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-1">
-                                                        <span title="Admin" className={adminApproved ? "text-green-500" : "text-muted-foreground"}>A</span>
-                                                        <span title="Client" className={clientApproved ? "text-green-500" : "text-muted-foreground"}>C</span>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                    {workBreakdown.length === 0 && (
-                                        <TableRow><TableCell colSpan={5} className="text-center h-24 text-muted-foreground">No work breakdown defined.</TableCell></TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                    {/* Work Status Table */}
+                    <WorkBreakdownStatusTable workBreakdown={workBreakdown} workSubmissions={workSubmissions} />
                 </TabsContent>
 
                 <TabsContent value="board" className="mt-4">
@@ -785,36 +699,12 @@ const AdminProjectPage = () => {
             </Dialog>
 
             {/* Reject Modal */}
-            <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Reject Project</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to reject this project? The client will be notified via email.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Rejection Reason</Label>
-                            <Textarea
-                                placeholder="Explain why the project is being rejected..."
-                                value={rejectionReason}
-                                onChange={(e) => setRejectionReason(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowRejectModal(false)}>Cancel</Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleRejectProject}
-                            disabled={isRejecting || !rejectionReason.trim()}
-                        >
-                            {isRejecting ? 'Rejecting...' : 'Reject Project'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <RejectProjectModal
+                isOpen={showRejectModal}
+                onClose={() => setShowRejectModal(false)}
+                onConfirm={handleRejectProject}
+                isRejecting={isRejecting}
+            />
 
             {/* Delete Modal */}
             <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>

@@ -9,6 +9,8 @@ const { createNotification } = require('../utils/notificationService');
 const logActivity = require('../utils/activityLogger');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
 const sendEmail = require('../utils/sendEmail');
+const { getPublicIdFromUrl } = require('../utils/cloudinaryHelper');
+const projectService = require('../services/projectService');
 
 // @desc    Get all projects (role-based filtering)
 // @route   GET /api/projects
@@ -81,45 +83,7 @@ exports.getProjects = async (req, res) => {
   }
 };
 
-// @desc    Close a project
-// @route   PUT /api/projects/:id/close
-// @access  Private/Admin
-exports.closeProject = async (req, res) => {
-  try {
-    const project = await Project.findById(req.params.id);
 
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized to close projects' });
-    }
-
-    if (project.closed) {
-      return res.status(400).json({ message: 'Project is already closed' });
-    }
-
-    project.closed = true;
-    project.closedAt = new Date();
-    await project.save();
-
-    // Notify client
-    await createNotification(
-      project.client,
-      'project_closed',
-      'Project Closed',
-      `Your project "${project.title}" has been closed by the admin.`,
-      project._id,
-      req.io
-    );
-
-    await logActivity(req, 'CLOSE_PROJECT', `Project closed: ${project.title}`, project._id, 'Project');
-    res.json(project);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 
 // @desc    Bulk delete projects
 // @route   POST /api/projects/bulk-delete
@@ -516,19 +480,7 @@ exports.deleteProject = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to delete projects' });
     }
 
-    // Helper to extract Cloudinary public ID
-    const getPublicIdFromUrl = (url) => {
-      if (!url) return null;
-      try {
-        // Regex to match typical Cloudinary patterns without relying on exact folder structure
-        // Matches everything after /upload/ (and optional version /v123/) up to the file extension
-        const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/);
-        return match ? match[1] : null;
-      } catch (e) {
-        console.error('Error extracting ID from URL:', url);
-        return null;
-      }
-    };
+
 
     // 1. Gather all file public IDs to delete
     const publicIdsToDelete = [];
@@ -658,14 +610,6 @@ exports.rejectProject = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    project.status = 'rejected';
-    project.rejectionReason = reason; // Ensure schema supports this or just log it
-    // We might not have rejectionReason in schema, let's check standard simple fields.
-    // Usually safe to just rely on email/logs if schema is strict, but Mongoose usually allows flexible schema if not strict.
-    // Assuming strict schema, we rely on email + notification.
-
-    await project.save();
-
     // Notify Client
     await createNotification(
       project.client._id,
@@ -677,18 +621,128 @@ exports.rejectProject = async (req, res) => {
     );
 
     try {
+      const emailSubject = `Update: Project Status - ${project.title}`;
+      const messageText = `Dear Customer,\n\nWe regret to inform you that your project "${project.title}" has been rejected by the admin.\n\nReason: ${reason || 'No reason provided.'}\n\nPlease contact support for more details regarding this decision.\n\nBest Regards,\nThe Team`;
+
+      const messageHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <h2 style="color: #d32f2f;">Project Rejected</h2>
+          <p>Dear Customer,</p>
+          <p>We regret to inform you that your project <strong>"${project.title}"</strong> has been rejected by the admin.</p>
+          
+          <div style="background-color: #ffebee; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 5px solid #d32f2f;">
+            <h3 style="margin-top: 0; color: #b71c1c;">Rejection Reason</h3>
+            <p style="font-style: italic;">"${reason || 'No specific reason provided.'}"</p>
+          </div>
+
+          <p>If you believe this is a mistake or if you would like to discuss this further, please contact our support team.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="font-size: 0.9em; color: #777;">Best Regards,<br>The Team</p>
+        </div>
+      `;
+
       await sendEmail({
         email: project.client.email,
-        subject: `Project Rejected: ${project.title}`,
-        message: `Your project "${project.title}" has been rejected by the admin.\n\nReason: ${reason || 'No reason provided.'}\n\nPlease contact support for more details.`,
+        subject: emailSubject,
+        message: messageText,
+        html: messageHtml
       });
     } catch (err) {
       console.error('Email send failed', err);
     }
 
-    await logActivity(req, 'PROJECT_REJECTED', `Project rejected: ${project.title}. Reason: ${reason}`, project._id, 'Project');
+    // Perform complete deletion (same as deleteProject)
 
-    res.json(project);
+
+
+    // 1. Gather all file public IDs to delete
+    const publicIdsToDelete = [];
+    const resourceTypes = []; // 'image', 'video', 'raw'
+
+    // Project Script File
+    if (project.scriptFile) {
+      const id = getPublicIdFromUrl(project.scriptFile);
+      if (id) {
+        publicIdsToDelete.push(id);
+        const ext = project.scriptFile.split('.').pop().toLowerCase();
+        resourceTypes.push(ext === 'pdf' ? 'raw' : 'image');
+      }
+    }
+
+    // Work Submissions Files
+    const WorkSubmission = require('../models/WorkSubmission'); // Ensure model is available
+    const submissions = await WorkSubmission.find({ project: project._id });
+    for (const sub of submissions) {
+      // Main file (fileUrl)
+      if (sub.fileUrl) {
+        const id = getPublicIdFromUrl(sub.fileUrl);
+        if (id) {
+          publicIdsToDelete.push(id);
+          const ext = sub.fileUrl.split('.').pop().toLowerCase();
+          if (['mp4', 'mov', 'avi'].includes(ext)) {
+            resourceTypes.push('video');
+          } else if (['pdf', 'zip', 'rar'].includes(ext)) {
+            resourceTypes.push('raw');
+          } else {
+            resourceTypes.push('image');
+          }
+        }
+      }
+
+      // Work Source File (workFileUrl)
+      if (sub.workFileUrl) {
+        const id = getPublicIdFromUrl(sub.workFileUrl);
+        if (id) {
+          publicIdsToDelete.push(id);
+          const ext = sub.workFileUrl.split('.').pop().toLowerCase();
+          resourceTypes.push(['zip', 'rar', '7z'].includes(ext) ? 'raw' : 'auto');
+        }
+      }
+
+      // Corrections files
+      if (sub.corrections && sub.corrections.length > 0) {
+        sub.corrections.forEach(c => {
+          if (c.voiceFile) {
+            const id = getPublicIdFromUrl(c.voiceFile);
+            if (id) {
+              publicIdsToDelete.push(id);
+              resourceTypes.push('video');
+            }
+          }
+          if (c.mediaFiles && c.mediaFiles.length > 0) {
+            c.mediaFiles.forEach(mf => {
+              const id = getPublicIdFromUrl(mf);
+              if (id) {
+                publicIdsToDelete.push(id);
+                resourceTypes.push('image');
+              }
+            })
+          }
+        });
+      }
+    }
+
+    // 2. Delete from Cloudinary
+    const deletePromises = publicIdsToDelete.map((id, index) => {
+      let type = resourceTypes[index];
+      if (type === 'auto') type = 'image';
+      return deleteFromCloudinary(id, type).catch(err => console.error(`Failed to delete ${id}:`, err.message));
+    });
+
+    await Promise.all(deletePromises);
+
+    // 3. Delete related records
+    await Payment.deleteMany({ project: project._id });
+    await WorkBreakdown.deleteMany({ project: project._id });
+    await WorkSubmission.deleteMany({ project: project._id });
+    await Notification.deleteMany({ relatedProject: project._id });
+
+    // Finally delete the project
+    await project.deleteOne();
+
+    await logActivity(req, 'PROJECT_REJECTED', `Project rejected and deleted: ${project.title}. Reason: ${reason}`, project._id, 'Project');
+
+    res.json({ message: 'Project rejected and deleted successfully', projectId: project._id });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -824,6 +878,45 @@ exports.approveProject = async (req, res) => {
           });
         } catch (err) { console.error(err); }
       }
+
+      // Notify Client: Payment Required (Professional & Structured)
+      try {
+        const clientUser = await User.findById(project.client);
+        if (clientUser) {
+          const emailSubject = `Project Completed: ${project.title}`;
+          const totalAmount = `${project.clientAmount ? project.clientAmount : project.amount} ${project.currency || 'INR'}`;
+          const paymentLink = `${process.env.CLIENT_URL}/client/payments`;
+
+          const messageText = `Dear ${clientUser.name},\n\nWe are pleased to inform you that your project "${project.title}" has been successfully completed and approved.\n\nNext Steps:\nTo finalize this engagement and receive your final deliverables, we kindly request you to settle the outstanding payment.\n\nPayment Details:\n- Project: ${project.title}\n- Total Amount: ${totalAmount}\n\nPlease login to your dashboard to complete the payment: ${paymentLink}\n\nThank you for choosing our services.\n\nBest Regards,\nThe Team`;
+
+          const messageHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+              <h2 style="color: #333;">Project Completed</h2>
+              <p>Dear ${clientUser.name},</p>
+              <p>We are pleased to inform you that your project <strong>"${project.title}"</strong> has been successfully completed and approved.</p>
+              
+              <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #444;">Payment Required</h3>
+                <p style="margin-bottom: 5px;"><strong>Project:</strong> ${project.title}</p>
+                <p style="margin-bottom: 5px;"><strong>Total Amount:</strong> <span style="font-size: 1.2em; color: #2e7d32;">${totalAmount}</span></p>
+                <p style="margin-top: 15px;">To receive your final deliverables, please settle the outstanding payment.</p>
+                <a href="${paymentLink}" style="display: inline-block; background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 10px;">Pay Now</a>
+              </div>
+
+              <p>Thank you for choosing our services.</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+              <p style="font-size: 0.9em; color: #777;">Best Regards,<br>The Team</p>
+            </div>
+          `;
+
+          await sendEmail({
+            email: clientUser.email,
+            subject: emailSubject,
+            message: messageText,
+            html: messageHtml
+          });
+        }
+      } catch (err) { console.error('Client email failed', err); }
 
       // Notify Editor: work approved
       // We notify the main assigned editor if exists, and all editors from work breakdown
@@ -1253,6 +1346,45 @@ exports.clientApproveProject = async (req, res) => {
         );
       }
 
+      // Notify Client: Payment Required (Professional & Structured)
+      try {
+        const clientUser = await User.findById(project.client); // Ensure we have the user doc
+        if (clientUser) {
+          const emailSubject = `Project Completed: ${project.title}`;
+          const totalAmount = `${project.clientAmount ? project.clientAmount : project.amount} ${project.currency || 'INR'}`;
+          const paymentLink = `${process.env.CLIENT_URL}/client/payments`;
+
+          const messageText = `Dear ${clientUser.name},\n\nWe are pleased to inform you that your project "${project.title}" has been successfully completed and approved.\n\nNext Steps:\nTo finalize this engagement and receive your final deliverables, we kindly request you to settle the outstanding payment.\n\nPayment Details:\n- Project: ${project.title}\n- Total Amount: ${totalAmount}\n\nPlease login to your dashboard to complete the payment: ${paymentLink}\n\nThank you for choosing our services.\n\nBest Regards,\nThe Team`;
+
+          const messageHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+              <h2 style="color: #333;">Project Completed</h2>
+              <p>Dear ${clientUser.name},</p>
+              <p>We are pleased to inform you that your project <strong>"${project.title}"</strong> has been successfully completed and approved.</p>
+              
+              <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #444;">Payment Required</h3>
+                <p style="margin-bottom: 5px;"><strong>Project:</strong> ${project.title}</p>
+                <p style="margin-bottom: 5px;"><strong>Total Amount:</strong> <span style="font-size: 1.2em; color: #2e7d32;">${totalAmount}</span></p>
+                <p style="margin-top: 15px;">To receive your final deliverables, please settle the outstanding payment.</p>
+                <a href="${paymentLink}" style="display: inline-block; background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 10px;">Pay Now</a>
+              </div>
+
+              <p>Thank you for choosing our services.</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+              <p style="font-size: 0.9em; color: #777;">Best Regards,<br>The Team</p>
+            </div>
+          `;
+
+          await sendEmail({
+            email: clientUser.email,
+            subject: emailSubject,
+            message: messageText,
+            html: messageHtml
+          });
+        }
+      } catch (err) { console.error('Client email failed', err); }
+
       // Notify Editor
       if (project.assignedEditor) {
         await createNotification(
@@ -1297,109 +1429,10 @@ exports.clientApproveProject = async (req, res) => {
 // @access  Private/Admin
 exports.closeProject = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id)
-      .populate('client', 'name email');
-
-    if (!project) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-
-    // Ensure all work breakdown items are fully approved (both client+admin)
-    const workItems = await WorkBreakdown.find({ project: project._id });
-    const allApproved = workItems.length === 0 ? true : workItems.every(w => w.approved === true);
-
-    if (!allApproved) {
-      return res.status(400).json({ message: 'All work items must have both approvals before closing' });
-    }
-
-    // Implicitly approve project if all works are done and Admin is closing it
-    project.clientApproved = true;
-    project.adminApproved = true;
-
-    project.status = 'closed';
-    project.closed = true;
-    project.closedAt = new Date();
-    project.hiddenAt = new Date(); // Will be hidden after 2 days
-
-    // Schedule deletion after 7 days
-    const deleteDate = new Date();
-    deleteDate.setDate(deleteDate.getDate() + 7);
-    project.deletedAt = deleteDate;
-
-    await project.save();
-
-    // Create notifications
-    await createNotification(
-      project.client._id,
-      'project_closed',
-      'Project Closed',
-      `Project "${project.title}" has been closed successfully.`,
-      project._id
-    );
-
-    const workBreakdown = await WorkBreakdown.find({ project: project._id });
-    const editorIds = [...new Set(workBreakdown.map(w => w.assignedEditor.toString()))];
-
-    for (const editorId of editorIds) {
-      await createNotification(
-        editorId,
-        'project_closed',
-        'Project Closed',
-        `Project "${project.title}" has been closed successfully.`,
-        project._id
-      );
-    }
-
-    // Create or update client charge payment (visible to admin & client) using client-entered amount
-    const clientChargeAmount = (project.clientAmount && project.clientAmount > 0) ? project.clientAmount : project.amount;
-
-    if (clientChargeAmount > 0) {
-      // Find ALL existing client charges for this project
-      const existingCharges = await Payment.find({
-        project: project._id,
-        paymentType: 'client_charge',
-      });
-
-      // To avoid double-billing from granular charges created in older versions:
-      // We will keep/update the first one and delete the other unpaid ones.
-      if (existingCharges.length > 0) {
-        const primaryCharge = existingCharges[0];
-        primaryCharge.originalAmount = clientChargeAmount;
-        primaryCharge.finalAmount = clientChargeAmount;
-        primaryCharge.deadline = project.closedAt || new Date();
-        primaryCharge.workType = 'Project Charge'; // Ensure it's the total charge
-        primaryCharge.workBreakdown = null; // Unlink from specific breakdown if it was granular
-        await primaryCharge.save();
-
-        if (existingCharges.length > 1) {
-          // Delete other unpaid client charges for this project
-          await Payment.deleteMany({
-            _id: { $in: existingCharges.slice(1).map(c => c._id) },
-            paid: false,
-            received: false
-          });
-        }
-      } else {
-        await Payment.create({
-          paymentType: 'client_charge',
-          project: project._id,
-          client: project.client._id,
-          originalAmount: clientChargeAmount,
-          finalAmount: clientChargeAmount,
-          workType: 'Project Charge',
-          deadline: project.closedAt || new Date(),
-          status: 'pending',
-          currency: project.currency || 'INR'
-        });
-      }
-    }
-
-    const updatedProject = await Project.findById(project._id)
-      .populate('client', 'name email');
-
+    const updatedProject = await projectService.closeProject(req.params.id, req.user);
     res.json(updatedProject);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
 

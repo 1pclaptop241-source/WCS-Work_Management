@@ -352,16 +352,18 @@ const UploadWorkPage = () => {
                             <CardContent className="space-y-6">
                                 {submissions.map((sub) => (
                                     <div key={sub._id} className="border rounded-lg p-4 space-y-3 bg-muted/10">
-                                        <div className="flex flex-wrapjustify-between items-start gap-2">
+                                        <div className="flex flex-wrap justify-between items-start gap-2">
                                             <div className="flex items-center gap-2">
                                                 {sub.submissionType === 'link' ? (
                                                     <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline font-medium">
-                                                        <LinkIcon className="h-4 w-4" /> {sub.fileName}
+                                                        <LinkIcon className="h-4 w-4" /> {sub.fileName || 'Link'}
                                                     </a>
                                                 ) : (
-                                                    <a href={sub.fileUrl.match(/^https?:\/\//) ? sub.fileUrl : (sub.fileUrl.startsWith('/') || sub.fileUrl.startsWith('uploads') ? `${API_BASE_URL}${sub.fileUrl}` : `https://${sub.fileUrl}`)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline font-medium">
-                                                        <FileIcon className="h-4 w-4" /> {sub.fileName}
-                                                    </a>
+                                                    sub.fileUrl && (
+                                                        <a href={sub.fileUrl.match(/^https?:\/\//) ? sub.fileUrl : (sub.fileUrl.startsWith('/') || sub.fileUrl.startsWith('uploads') ? `${API_BASE_URL}${sub.fileUrl}` : `https://${sub.fileUrl}`)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline font-medium">
+                                                            <FileIcon className="h-4 w-4" /> {sub.fileName || 'File'}
+                                                        </a>
+                                                    )
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2">

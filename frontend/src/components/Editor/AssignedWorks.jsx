@@ -192,7 +192,7 @@ const AssignedWorks = ({ onUpdate }) => {
 
   useEffect(() => {
     loadData();
-  }, [onUpdate]);
+  }, []);
 
   // Check for approved works to trigger celebration
   useEffect(() => {
@@ -262,28 +262,7 @@ const AssignedWorks = ({ onUpdate }) => {
   };
 
   const handleDeclineWork = async (work) => {
-    // Calculate if decline is allowed
-    const canDecline = () => {
-      if (!work.createdAt || !work.deadline) return true; // Fallback
-
-      const created = new Date(work.createdAt).getTime();
-      const deadline = new Date(work.deadline).getTime();
-      const now = Date.now();
-      const totalDuration = deadline - created;
-      const timeRemaining = deadline - now;
-
-      if (timeRemaining <= 0) return false; // Overdue
-      if (totalDuration <= 0) return true; // Weird case
-
-      // Check if more than 80% time remains
-      const percentageRemaining = timeRemaining / totalDuration;
-      return percentageRemaining >= 0.8;
-    };
-
-    if (!canDecline()) {
-      showAlert("Cannot decline when less than 80% of time remains.", "Warning");
-      return;
-    }
+    // Constraint removed: Allow editors to decline work at any time if they are unable to complete it.
 
     const isConfirmed = await confirm({
       title: 'Decline Work',
@@ -305,6 +284,9 @@ const AssignedWorks = ({ onUpdate }) => {
   };
 
   const filteredWorks = works.filter(work => {
+    // Safety check: Ensure project exists (might be deleted)
+    if (!work || !work.project) return false;
+
     // Basic filter: Don't show work that is already paid/settled
     if (work.isPaid) return false;
 
@@ -333,230 +315,241 @@ const AssignedWorks = ({ onUpdate }) => {
 
   return (
     <div className="space-y-6">
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${filterStatus === 'pending' ? 'border-primary ring-1 ring-primary' : ''}`}
-          onClick={() => setFilterStatus('pending')}
-        >
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
-              <Clock className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{stats.pending}</div>
-              <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Pending</div>
-            </div>
-          </CardContent>
-        </Card>
+      {loading && (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Loading works...</span>
+        </div>
+      )}
 
-        <Card
-          className={`cursor-pointer transition-all hover:shadow-md ${filterStatus === 'completed' ? 'border-primary ring-1 ring-primary' : ''}`}
-          onClick={() => setFilterStatus('completed')}
-        >
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-              <CheckCircle className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{stats.completed}</div>
-              <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Completed</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {!loading && (
+        <>
+          {/* Stats Overview */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card
+              className={`cursor-pointer transition-all hover:shadow-md ${filterStatus === 'pending' ? 'border-primary ring-1 ring-primary' : ''}`}
+              onClick={() => setFilterStatus('pending')}
+            >
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                  <Clock className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{stats.pending}</div>
+                  <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Pending</div>
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Works Grid */}
-      {filteredWorks.length === 0 ? (
-        <Card className="p-10 text-center text-muted-foreground">
-          <CardContent className="flex flex-col items-center gap-4">
-            <Upload className="h-16 w-16 opacity-20" />
-            <h3 className="text-xl font-semibold text-foreground">No {filterStatus !== 'all' ? filterStatus.replace('_', ' ') : ''} works found</h3>
-            <p>{filterStatus === 'all' ? 'You don\'t have any assigned works yet.' : `You don't have any ${filterStatus.replace('_', ' ')} works.`}</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredWorks.map((work) => {
-            const deadlineInfo = getDeadlineStatus(work.deadline);
-            const isDeclined = work.status === 'declined';
+            <Card
+              className={`cursor-pointer transition-all hover:shadow-md ${filterStatus === 'completed' ? 'border-primary ring-1 ring-primary' : ''}`}
+              onClick={() => setFilterStatus('completed')}
+            >
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <CheckCircle className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{stats.completed}</div>
+                  <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Completed</div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-            return (
-              <Card
-                key={work._id}
-                className={`flex flex-col overflow-hidden transition-all hover:shadow-lg ${isDeclined ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1 hover:border-primary/50'}`}
-                onClick={() => !isDeclined && handleWorkSelect(work)}
-              >
-                <CardHeader className="p-5 pb-3 bg-muted/20 border-b relative">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-lg leading-tight line-clamp-1" title={work.project?.title}>{work.project?.title}</h3>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="default" className="bg-primary/90 hover:bg-primary text-[10px]">{work.workType}</Badge>
+          {/* Works Grid */}
+          {filteredWorks.length === 0 ? (
+            <Card className="p-10 text-center text-muted-foreground">
+              <CardContent className="flex flex-col items-center gap-4">
+                <Upload className="h-16 w-16 opacity-20" />
+                <h3 className="text-xl font-semibold text-foreground">No {filterStatus !== 'all' ? filterStatus.replace('_', ' ') : ''} works found</h3>
+                <p>{filterStatus === 'all' ? 'You don\'t have any assigned works yet.' : `You don't have any ${filterStatus.replace('_', ' ')} works.`}</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredWorks.map((work) => {
+                const deadlineInfo = getDeadlineStatus(work.deadline);
+                const isDeclined = work.status === 'declined';
 
-                        {/* Notes Button */}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); handleOpenNotes(work); }}
-                          title="My Notes"
-                        >
-                          {work.editorNotes ? <StickyNote className="h-4 w-4 text-amber-500 fill-amber-500" /> : <StickyNote className="h-4 w-4" />}
-                        </Button>
+                return (
+                  <Card
+                    key={work._id}
+                    className={`flex flex-col overflow-hidden transition-all hover:shadow-lg ${isDeclined ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:-translate-y-1 hover:border-primary/50'}`}
+                    onClick={() => !isDeclined && handleWorkSelect(work)}
+                  >
+                    <CardHeader className="p-5 pb-3 bg-muted/20 border-b relative">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="space-y-1">
+                          <h3 className="font-semibold text-lg leading-tight line-clamp-1" title={work.project?.title}>{work.project?.title}</h3>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="default" className="bg-primary/90 hover:bg-primary text-[10px]">{work.workType}</Badge>
 
-                        {/* Version Badge */}
-                        {work.submissionStats?.latestVersion > 0 && (
-                          <Badge variant="outline" className="text-[10px] h-5 px-1 bg-background">v{work.submissionStats.latestVersion}</Badge>
-                        )}
+                            {/* Notes Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              onClick={(e) => { e.stopPropagation(); handleOpenNotes(work); }}
+                              title="My Notes"
+                            >
+                              {work.editorNotes ? <StickyNote className="h-4 w-4 text-amber-500 fill-amber-500" /> : <StickyNote className="h-4 w-4" />}
+                            </Button>
 
-                        {/* History Button */}
-                        {work.submissionStats?.submissionCount > 0 && (
-                          <Button
-                            variant="ghost" size="icon" className="h-6 w-6 text-blue-500 hover:text-blue-600"
-                            onClick={(e) => { e.stopPropagation(); handleOpenHistory(work); }}
-                            title="View History"
-                          >
-                            <History className="h-4 w-4" />
-                          </Button>
+                            {/* Version Badge */}
+                            {work.submissionStats?.latestVersion > 0 && (
+                              <Badge variant="outline" className="text-[10px] h-5 px-1 bg-background">v{work.submissionStats.latestVersion}</Badge>
+                            )}
+
+                            {/* History Button */}
+                            {work.submissionStats?.submissionCount > 0 && (
+                              <Button
+                                variant="ghost" size="icon" className="h-6 w-6 text-blue-500 hover:text-blue-600"
+                                onClick={(e) => { e.stopPropagation(); handleOpenHistory(work); }}
+                                title="View History"
+                              >
+                                <History className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        {!isDeclined && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2"><MoreVertical className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewWorkTypeDetails(work); }}>
+                                <FileText className="mr-2 h-4 w-4" /> View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => { e.stopPropagation(); handleDeclineWork(work); }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Ban className="mr-2 h-4 w-4" /> Decline Work
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </div>
-                    </div>
+                    </CardHeader>
+
+                    <CardContent className="p-5 flex-1 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <PriorityStar priority={work.priority || 'medium'} onClick={() => !isDeclined && handlePriorityToggle(work)} />
+                          <span className="text-xs font-medium text-muted-foreground uppercase">{work.priority || 'medium'}</span>
+                        </div>
+                        {/* Status Badge */}
+                        {(() => {
+                          const stats = work.submissionStats;
+                          let label = work.status;
+                          let variant = "secondary";
+                          let icon = null;
+
+                          if (work.status === 'declined') { label = 'Declined'; variant = "destructive"; }
+                          else if (work.approved) { label = 'Approved'; variant = "default"; icon = <CheckCircle className="h-3 w-3 mr-1" />; } // Use default/success style
+                          else if (stats?.needsResubmission && stats?.pendingCorrections > 0) { label = 'Needs Revision'; variant = "warning"; icon = <AlertCircle className="h-3 w-3 mr-1" />; }
+                          else if (stats?.hasSubmission) { label = 'Under Review'; variant = "secondary"; icon = <Clock className="h-3 w-3 mr-1" />; }
+                          else if (work.status === 'in_progress') { label = 'In Progress'; variant = "outline"; className = "border-blue-500 text-blue-500"; icon = <Loader2 className="h-3 w-3 mr-1 animate-spin" />; }
+                          else if (work.status === 'pending') { label = 'Assigned'; variant = "secondary"; }
+
+                          return <Badge variant={variant} className={`flex items-center ${work.status === 'in_progress' ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' : ''} ${work.approved ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200' : ''}`}>
+                            {icon} {label}
+                          </Badge>;
+                        })()}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-muted/40 rounded-lg border flex flex-col items-center justify-center text-center gap-1">
+                          <span className="text-emerald-500"><Calculator className="h-5 w-5" /></span>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Payment</span>
+                          <span className="text-sm font-bold">{work.project?.currency || 'INR'} {work.amount?.toFixed(2)}</span>
+                        </div>
+                        <div className="p-3 bg-muted/40 rounded-lg border flex flex-col items-center justify-center text-center gap-1">
+                          <span className="text-destructive"><CalendarDays className="h-5 w-5" /></span>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Deadline</span>
+                          <span className="text-sm font-bold">{formatDateTime(work.deadline)}</span>
+                        </div>
+                      </div>
+
+                      {!work.approved && (
+                        <DeadlineCountdown
+                          deadline={work.deadline}
+                          createdAt={work.createdAt}
+                          deadlineInfo={deadlineInfo}
+                        />
+                      )}
+
+                    </CardContent>
+
                     {!isDeclined && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2"><MoreVertical className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewWorkTypeDetails(work); }}>
-                            <FileText className="mr-2 h-4 w-4" /> View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => { e.stopPropagation(); handleDeclineWork(work); }}
-                            className="text-destructive focus:text-destructive"
+                      <CardFooter className="p-4 bg-muted/20 border-t gap-3">
+                        {work.status !== 'in_progress' && work.status !== 'completed' && !work.approved && (
+                          <Button
+                            className="flex-1" // Use standard button
+                            disabled={processingId === work._id + '-status'}
+                            onClick={(e) => { e.stopPropagation(); handleStartWorking(work); }}
                           >
-                            <Ban className="mr-2 h-4 w-4" /> Decline Work
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            {processingId === work._id + '-status' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+                            Start
+                          </Button>
+                        )}
+                        <Button
+                          variant={work.status === 'in_progress' ? "default" : "secondary"}
+                          className="flex-1"
+                          onClick={(e) => { e.stopPropagation(); handleWorkSelect(work); }}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          {work.submissionStats?.hasSubmission ? 'View Work' : 'Upload'}
+                        </Button>
+                      </CardFooter>
                     )}
-                  </div>
-                </CardHeader>
+                  </Card>
+                );
+              })}
+            </div>
+          )
+          }
 
-                <CardContent className="p-5 flex-1 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <PriorityStar priority={work.priority || 'medium'} onClick={() => !isDeclined && handlePriorityToggle(work)} />
-                      <span className="text-xs font-medium text-muted-foreground uppercase">{work.priority || 'medium'}</span>
-                    </div>
-                    {/* Status Badge */}
-                    {(() => {
-                      const stats = work.submissionStats;
-                      let label = work.status;
-                      let variant = "secondary";
-                      let icon = null;
+          {
+            showWorkTypeDetails && selectedWorkTypeForDetails && (
+              <WorkTypeDetailsModal
+                workBreakdown={selectedWorkTypeForDetails}
+                onClose={() => {
+                  setShowWorkTypeDetails(false);
+                  setSelectedWorkTypeForDetails(null);
+                }}
+              />
+            )
+          }
 
-                      if (work.status === 'declined') { label = 'Declined'; variant = "destructive"; }
-                      else if (work.approved) { label = 'Approved'; variant = "default"; icon = <CheckCircle className="h-3 w-3 mr-1" />; } // Use default/success style
-                      else if (stats?.needsResubmission && stats?.pendingCorrections > 0) { label = 'Needs Revision'; variant = "warning"; icon = <AlertCircle className="h-3 w-3 mr-1" />; }
-                      else if (stats?.hasSubmission) { label = 'Under Review'; variant = "secondary"; icon = <Clock className="h-3 w-3 mr-1" />; }
-                      else if (work.status === 'in_progress') { label = 'In Progress'; variant = "outline"; className = "border-blue-500 text-blue-500"; icon = <Loader2 className="h-3 w-3 mr-1 animate-spin" />; }
-                      else if (work.status === 'pending') { label = 'Assigned'; variant = "secondary"; }
+          {
+            showNotesModal && selectedWorkForNotes && (
+              <EditorNotesModal
+                workBreakdown={selectedWorkForNotes}
+                onClose={() => {
+                  setShowNotesModal(false);
+                  setSelectedWorkForNotes(null);
+                }}
+                onSave={handleSaveNotes}
+              />
+            )
+          }
 
-                      return <Badge variant={variant} className={`flex items-center ${work.status === 'in_progress' ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' : ''} ${work.approved ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200' : ''}`}>
-                        {icon} {label}
-                      </Badge>;
-                    })()}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-muted/40 rounded-lg border flex flex-col items-center justify-center text-center gap-1">
-                      <span className="text-emerald-500"><Calculator className="h-5 w-5" /></span>
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Payment</span>
-                      <span className="text-sm font-bold">{work.project?.currency || 'INR'} {work.amount?.toFixed(2)}</span>
-                    </div>
-                    <div className="p-3 bg-muted/40 rounded-lg border flex flex-col items-center justify-center text-center gap-1">
-                      <span className="text-destructive"><CalendarDays className="h-5 w-5" /></span>
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Deadline</span>
-                      <span className="text-sm font-bold">{formatDateTime(work.deadline)}</span>
-                    </div>
-                  </div>
-
-                  {!work.approved && (
-                    <DeadlineCountdown
-                      deadline={work.deadline}
-                      createdAt={work.createdAt}
-                      deadlineInfo={deadlineInfo}
-                    />
-                  )}
-
-                </CardContent>
-
-                {!isDeclined && (
-                  <CardFooter className="p-4 bg-muted/20 border-t gap-3">
-                    {work.status !== 'in_progress' && work.status !== 'completed' && !work.approved && (
-                      <Button
-                        className="flex-1" // Use standard button
-                        disabled={processingId === work._id + '-status'}
-                        onClick={(e) => { e.stopPropagation(); handleStartWorking(work); }}
-                      >
-                        {processingId === work._id + '-status' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                        Start
-                      </Button>
-                    )}
-                    <Button
-                      variant={work.status === 'in_progress' ? "default" : "secondary"}
-                      className="flex-1"
-                      onClick={(e) => { e.stopPropagation(); handleWorkSelect(work); }}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {work.submissionStats?.hasSubmission ? 'View Work' : 'Upload'}
-                    </Button>
-                  </CardFooter>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-      )
-      }
-
-      {
-        showWorkTypeDetails && selectedWorkTypeForDetails && (
-          <WorkTypeDetailsModal
-            workBreakdown={selectedWorkTypeForDetails}
-            onClose={() => {
-              setShowWorkTypeDetails(false);
-              setSelectedWorkTypeForDetails(null);
-            }}
-          />
-        )
-      }
-
-      {
-        showNotesModal && selectedWorkForNotes && (
-          <EditorNotesModal
-            workBreakdown={selectedWorkForNotes}
-            onClose={() => {
-              setShowNotesModal(false);
-              setSelectedWorkForNotes(null);
-            }}
-            onSave={handleSaveNotes}
-          />
-        )
-      }
-
-      {
-        showHistoryModal && selectedWorkForHistory && (
-          <VersionHistoryModal
-            workBreakdown={selectedWorkForHistory}
-            onClose={() => {
-              setShowHistoryModal(false);
-              setSelectedWorkForHistory(null);
-            }}
-          />
-        )
-      }
+          {
+            showHistoryModal && selectedWorkForHistory && (
+              <VersionHistoryModal
+                workBreakdown={selectedWorkForHistory}
+                onClose={() => {
+                  setShowHistoryModal(false);
+                  setSelectedWorkForHistory(null);
+                }}
+              />
+            )
+          }
+        </>
+      )}
     </div >
   );
 };

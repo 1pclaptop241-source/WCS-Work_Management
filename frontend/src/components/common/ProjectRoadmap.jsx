@@ -32,8 +32,9 @@ const ProjectRoadmap = ({ projectId, currentWorkType, projectTitle }) => {
     if (error || !stages || stages.length === 0) return null;
 
     const getStepStatus = (stage) => {
+        if (!stage) return 'pending';
         if (stage.approved) return 'done';
-        const isCurrentContext = currentWorkType &&
+        const isCurrentContext = currentWorkType && stage.workType &&
             currentWorkType.toLowerCase().replace(/[^a-z]/g, '') === stage.workType.toLowerCase().replace(/[^a-z]/g, '');
         if (isCurrentContext) return 'active';
         if (stage.status === 'in_progress' || stage.status === 'under_review') return 'active';

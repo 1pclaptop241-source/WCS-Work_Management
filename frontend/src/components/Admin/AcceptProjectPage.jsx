@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import RejectProjectModal from '@/components/common/RejectProjectModal';
 import { useParams, useNavigate } from 'react-router-dom';
 import { projectsAPI, usersAPI, API_BASE_URL } from '../../services/api';
 import { formatDate, formatDateTime } from '../../utils/formatDate';
@@ -176,15 +177,12 @@ const AcceptProjectPage = () => {
         }
     };
 
-    const handleRejectProject = async () => {
-        if (!rejectionReason.trim()) {
-            await showAlert('Please provide a reason for rejection', 'Validation Error');
-            return;
-        }
+    const handleRejectProject = async (reason) => {
+        // Validation removed: Allow rejection without reason
 
         try {
             setIsRejecting(true);
-            await projectsAPI.reject(projectId, rejectionReason);
+            await projectsAPI.reject(projectId, reason);
             setShowRejectModal(false);
             await showAlert('Project rejected successfully', 'Success');
             navigate('/admin/dashboard');
@@ -428,36 +426,12 @@ const AcceptProjectPage = () => {
                 </Card>
             </form>
 
-            <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Reject Project</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to reject this project? The client will be notified via email.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Rejection Reason</Label>
-                            <Textarea
-                                placeholder="Explain why the project is being rejected..."
-                                value={rejectionReason}
-                                onChange={(e) => setRejectionReason(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowRejectModal(false)}>Cancel</Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleRejectProject}
-                            disabled={isRejecting || !rejectionReason.trim()}
-                        >
-                            {isRejecting ? 'Rejecting...' : 'Reject Project'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <RejectProjectModal
+                isOpen={showRejectModal}
+                onClose={() => setShowRejectModal(false)}
+                onConfirm={handleRejectProject}
+                isRejecting={isRejecting}
+            />
         </div>
     );
 };

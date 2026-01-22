@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useDialog } from '../../context/DialogContext';
 import { projectsAPI, resetAPI } from '../../services/api';
@@ -25,36 +25,29 @@ import { FileDown, Trash2 } from 'lucide-react';
 const EditorDashboard = () => {
   const { user } = useAuth();
   const { showAlert } = useDialog();
-  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletionReports, setDeletionReports] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    loadData();
     loadDeletionReports();
   }, []);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const projectsRes = await projectsAPI.getAll();
-      setProjects(projectsRes.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Removed loadData for projects as it is unused. 
+  // AssignedWorks fetches its own data.
+  // We can keep a minimal loading state for DeletionReports or just let them load.
 
-  const loadDeletionReports = async () => {
+  const loadDeletionReports = useCallback(async () => {
     try {
       const response = await resetAPI.getReports();
       setDeletionReports(response.data);
     } catch (err) {
       console.error('Failed to load deletion reports:', err);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
   const handleDownloadReport = async (reportId) => {
     try {
@@ -85,6 +78,9 @@ const EditorDashboard = () => {
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">Welcome back, {user.name}!</p>
         </div>
+        <Button onClick={() => { setRefreshKey(prev => prev + 1); loadDeletionReports(); }} variant="outline" size="sm" className="gap-2">
+          Refresh Data
+        </Button>
       </div>
 
       {error && (
@@ -133,7 +129,7 @@ const EditorDashboard = () => {
         </TabsList>
 
         <TabsContent value="works" className="space-y-4 mt-6">
-          <AssignedWorks projects={projects} onUpdate={loadData} />
+          <AssignedWorks key={refreshKey} />
         </TabsContent>
 
         <TabsContent value="payments" className="space-y-4 mt-6">
