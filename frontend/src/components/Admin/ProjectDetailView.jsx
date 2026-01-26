@@ -634,7 +634,19 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                                   <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Latest Submission</span>
                                   {hasUpload ? (
                                     <div className="flex flex-col">
-                                      <span className="font-medium text-sm truncate max-w-[200px]" title={work.fileName}>{work.fileName}</span>
+                                      {work.submissionType === 'link' ? (
+                                        <a
+                                          href={work.fileUrl.match(/^https?:\/\//) ? work.fileUrl : `https://${work.fileUrl}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="font-medium text-sm truncate max-w-[200px] text-blue-600 hover:underline block"
+                                          title={work.fileUrl}
+                                        >
+                                          {work.fileUrl}
+                                        </a>
+                                      ) : (
+                                        <span className="font-medium text-sm truncate max-w-[200px]" title={work.fileName}>{work.fileName}</span>
+                                      )}
                                       <span className="text-xs text-muted-foreground">({formatDate(work.submittedAt)})</span>
                                     </div>
                                   ) : (
