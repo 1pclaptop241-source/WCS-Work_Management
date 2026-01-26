@@ -260,6 +260,36 @@ const WorkView = ({ project, onBack, onUpdate }) => {
         </Alert>
       )}
 
+      <div className="space-y-4">
+        {/* Progress Section */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-lg font-medium">Work Completion</CardTitle>
+              <span className="text-sm font-bold text-primary">
+                {(() => {
+                  const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
+                  const donePct = breakdowns
+                    .filter(w => w.approvals?.admin && w.approvals?.client)
+                    .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
+                  const progress = totalPct > 0 ? (donePct / totalPct) * 100 : 0;
+                  return Math.round(progress);
+                })()}%
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Progress value={(() => {
+              const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
+              const donePct = breakdowns
+                .filter(w => w.approvals?.admin && w.approvals?.client)
+                .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
+              return totalPct > 0 ? (donePct / totalPct) * 100 : 0;
+            })()} className="h-3" />
+          </CardContent>
+        </Card>
+      </div>
+
       <Tabs defaultValue="board" className="w-full space-y-6">
         <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -269,35 +299,6 @@ const WorkView = ({ project, onBack, onUpdate }) => {
 
         <TabsContent value="overview" className="space-y-6 mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-6">
-              {/* Progress Section */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="text-lg font-medium">Work Completion</CardTitle>
-                    <span className="text-sm font-bold text-primary">
-                      {(() => {
-                        const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-                        const donePct = breakdowns
-                          .filter(w => w.approvals?.admin && w.approvals?.client)
-                          .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-                        const progress = totalPct > 0 ? (donePct / totalPct) * 100 : 0;
-                        return Math.round(progress);
-                      })()}%
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Progress value={(() => {
-                    const totalPct = breakdowns.reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-                    const donePct = breakdowns
-                      .filter(w => w.approvals?.admin && w.approvals?.client)
-                      .reduce((sum, w) => sum + (parseFloat(w.percentage) || 0), 0);
-                    return totalPct > 0 ? (donePct / totalPct) * 100 : 0;
-                  })()} className="h-3" />
-                </CardContent>
-              </Card>
-            </div>
             <div className="space-y-6">
               <ProjectDetails project={project} onUpdate={onUpdate} />
             </div>
