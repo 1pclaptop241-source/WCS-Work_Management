@@ -30,12 +30,16 @@ export const SocketProvider = ({ children }) => {
             });
 
             newSocket.on('notification', (notification) => {
-                // Show toast
-                toast({
-                    title: notification.title,
-                    description: notification.message,
-                    variant: "default",
-                });
+                try {
+                    // Show toast
+                    toast({
+                        title: notification.title || 'Notification',
+                        description: notification.message || '',
+                        variant: "default",
+                    });
+                } catch (err) {
+                    console.error('Notification toast error:', err);
+                }
 
                 // Play sound? (Optional)
             });

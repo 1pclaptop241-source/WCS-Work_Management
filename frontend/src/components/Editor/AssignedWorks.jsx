@@ -116,7 +116,7 @@ const DeadlineCountdown = ({ deadline, createdAt, deadlineInfo }) => {
           {Math.round(timeLeftPercentage)}%
         </span>
       </div>
-      <Progress value={isOverdue ? 100 : timeLeftPercentage} className="h-2" indicatorClassName={colorClass} />
+      <Progress value={isOverdue ? 100 : timeLeftPercentage} className={`h-2 [&>div]:${colorClass}`} />
     </div>
   );
 };
