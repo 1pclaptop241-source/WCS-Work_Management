@@ -10,6 +10,7 @@ import { ThemeProvider } from './components/theme-provider';
 import TermsModal from './components/common/TermsModal';
 import PageSkeleton from './components/common/PageSkeleton';
 import { Toaster } from "@/components/ui/toaster";
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Admin Components - Lazy Loaded
 const AdminDashboard = lazy(() => import('./components/Admin/AdminDashboard'));
@@ -123,16 +124,18 @@ const AppRoutes = () => {
 function App() {
   return (
     <Router>
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <AuthProvider>
-          <SocketProvider>
-            <DialogProvider>
-              <AppRoutes />
-              <Toaster />
-            </DialogProvider>
-          </SocketProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+          <AuthProvider>
+            <SocketProvider>
+              <DialogProvider>
+                <AppRoutes />
+                <Toaster />
+              </DialogProvider>
+            </SocketProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
     </Router>
   );
 }
