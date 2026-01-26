@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { projectsAPI, usersAPI, worksAPI } from '../../services/api';
+import { projectsAPI, usersAPI, worksAPI, resetAPI } from '../../services/api';
 import { formatDate } from '../../utils/formatDate';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -74,6 +74,12 @@ const AdminDashboard = () => {
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isAssigningEditor, setIsAssigningEditor] = useState(false);
   const [isSharingDetails, setIsSharingDetails] = useState(false);
+
+  // Reset Modal State
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetOption, setResetOption] = useState('data'); // 'data' or 'users'
+  const [resetConfirmation, setResetConfirmation] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -176,6 +182,33 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleSystemReset = async () => {
+    if (resetConfirmation !== 'DELETE') return;
+
+    try {
+      setIsResetting(true);
+      const deleteUsers = resetOption === 'users';
+      const response = await resetAPI.resetAll(deleteUsers);
+
+      setShowResetModal(false);
+      setResetConfirmation('');
+      setResetOption('data');
+      await loadData();
+
+      showAlert(
+        response.data.message || 'System reset successful. A report has been generated.',
+        'System Reset Complete'
+      );
+
+      // Optionally download the report if returned (handled in backend but good to know)
+    } catch (err) {
+      console.error('Reset failed:', err);
+      showAlert(err.response?.data?.message || 'Failed to reset system', 'Error');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -226,6 +259,9 @@ const AdminDashboard = () => {
           </Button>
           <Button variant="outline" onClick={() => navigate('/admin/activity-logs')}>
             <Activity className="mr-2 h-4 w-4" /> Activity
+          </Button>
+          <Button variant="destructive" onClick={() => setShowResetModal(true)}>
+            <AlertTriangle className="mr-2 h-4 w-4" /> Reset
           </Button>
         </div>
       </div>
@@ -468,6 +504,86 @@ const AdminDashboard = () => {
               <Button type="submit" disabled={isCreatingProject}>{isCreatingProject ? 'Creating...' : 'Create Project'}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* System Reset Dialog */}
+      <Dialog open={showResetModal} onOpenChange={setShowResetModal}>
+        <DialogContent className="sm:max-w-[500px] border-destructive">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              System Reset
+            </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. Please select an option below directly.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="space-y-3">
+              <div
+                className={`flex items-start space-x-3 p-4 border rounded-md cursor-pointer transition-colors ${resetOption === 'data' ? 'border-primary bg-primary/5' : 'hover:bg-muted'}`}
+                onClick={() => setResetOption('data')}
+              >
+                <div className="mt-1">
+                  <div className={`h-4 w-4 rounded-full border border-primary flex items-center justify-center ${resetOption === 'data' ? 'bg-primary' : ''}`}>
+                    {resetOption === 'data' && <div className="h-2 w-2 rounded-full bg-primary-foreground" />}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium leading-none">Delete All Projects & Payments</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Removes all project data, payments, and work files. User accounts will be preserved.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className={`flex items-start space-x-3 p-4 border rounded-md cursor-pointer transition-colors ${resetOption === 'users' ? 'border-destructive bg-destructive/5' : 'hover:bg-muted'}`}
+                onClick={() => setResetOption('users')}
+              >
+                <div className="mt-1">
+                  <div className={`h-4 w-4 rounded-full border border-primary flex items-center justify-center ${resetOption === 'users' ? 'bg-destructive border-destructive' : ''}`}>
+                    {resetOption === 'users' && <div className="h-2 w-2 rounded-full bg-destructive-foreground" />}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium leading-none text-destructive">Delete Everything (Deep Clean)</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Removes ALL data including Projects, Payments, and User Accounts (Clients & Editors).
+                    <br /><span className="font-bold text-destructive/80">Only Admin account stays safe.</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmation" className="text-destructive font-semibold">
+                Type "DELETE" to confirm
+              </Label>
+              <Input
+                id="confirmation"
+                value={resetConfirmation}
+                onChange={(e) => setResetConfirmation(e.target.value)}
+                placeholder="DELETE"
+                className="border-destructive/50 focus-visible:ring-destructive"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResetModal(false)} disabled={isResetting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleSystemReset}
+              disabled={resetConfirmation !== 'DELETE' || isResetting}
+            >
+              {isResetting ? 'Resetting...' : 'Confirm Reset'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

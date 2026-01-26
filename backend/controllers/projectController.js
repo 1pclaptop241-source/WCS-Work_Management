@@ -382,6 +382,35 @@ exports.updateProject = async (req, res) => {
     if (req.user.role === 'client') {
       project.hasClientEdits = true;
 
+      // Reset rejected status so Admin sees it again
+      if (project.status === 'rejected') {
+        project.status = 'pending';
+        project.accepted = false;
+
+        // Notify Admins about re-submission
+        const admins = await User.find({ role: 'admin' });
+        for (const admin of admins) {
+          await createNotification(
+            admin._id,
+            'project_created',
+            'Project Resubmitted',
+            `Client ${req.user.name} has updated and resubmitted the rejected project: ${req.body.title || project.title}`,
+            project._id,
+            req.io
+          );
+
+          try {
+            await sendEmail({
+              email: admin.email,
+              subject: `Project Resubmitted: ${req.body.title || project.title}`,
+              message: `Client ${req.user.name} has updated and resubmitted the previously rejected project: "${req.body.title || project.title}".\n\nLogin to view details: ${process.env.CLIENT_URL}/admin/accept-project/${project._id}`,
+            });
+          } catch (err) {
+            console.error('Email send failed', err);
+          }
+        }
+      }
+
       // Initialize editedFields if it doesn't exist
       if (!project.editedFields) {
         project.editedFields = {};

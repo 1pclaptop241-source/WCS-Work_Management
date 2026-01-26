@@ -398,14 +398,35 @@ const AcceptProjectPage = () => {
                                                 {project.currency} {work.amount.toFixed(2)}
                                             </TableCell>
                                             <TableCell>
-                                                <div className="space-y-2">
+                                                <div className="flex flex-col gap-2">
                                                     <Textarea
-                                                        placeholder="Instructions for editor..."
+                                                        placeholder="Instructions..."
                                                         value={work.shareDetails || ''}
                                                         onChange={(e) => handleWorkBreakdownChange(index, 'shareDetails', e.target.value)}
-                                                        className="h-16 text-xs resize-none"
+                                                        className="h-14 text-xs resize-none"
                                                     />
-                                                    {/* Simplified links for now */}
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            placeholder="Link Title"
+                                                            value={work.links?.[0]?.title || ''}
+                                                            onChange={(e) => {
+                                                                const title = e.target.value;
+                                                                const url = work.links?.[0]?.url || '';
+                                                                handleWorkBreakdownChange(index, 'links', [{ title, url }]);
+                                                            }}
+                                                            className="h-8 text-xs flex-1"
+                                                        />
+                                                        <Input
+                                                            placeholder="Link URL"
+                                                            value={work.links?.[0]?.url || ''}
+                                                            onChange={(e) => {
+                                                                const url = e.target.value;
+                                                                const title = work.links?.[0]?.title || '';
+                                                                handleWorkBreakdownChange(index, 'links', [{ title, url }]);
+                                                            }}
+                                                            className="h-8 text-xs flex-[2]"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </TableCell>
                                         </TableRow>

@@ -195,7 +195,14 @@ const ClientDashboard = () => {
 
       if (deadlineDate < minDeadline) {
         showAlert('Deadline must be at least 15 minutes in the future.', 'Error');
-        setIsSubmitting(false); // Ensure submitting state is reset
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validation: Assets are mandatory
+      if (formData.rawFootageLinks.length === 0) {
+        showAlert('Please add at least one Project Asset/Link.', 'Error');
+        setIsSubmitting(false);
         return;
       }
 
@@ -334,7 +341,7 @@ const ClientDashboard = () => {
           <ScrollArea className="flex-1 px-6 py-4">
             <form id="project-form" onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="title">Project Title</Label>
+                <Label htmlFor="title">Project Title *</Label>
                 <Input
                   id="title"
                   placeholder="e.g. Summer Vacation Vlog #1"
@@ -358,7 +365,7 @@ const ClientDashboard = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Budget Estimate</Label>
+                  <Label htmlFor="amount">Budget Estimate *</Label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -396,7 +403,7 @@ const ClientDashboard = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="deadline">Desired Deadline</Label>
+                  <Label htmlFor="deadline">Desired Deadline *</Label>
                   <div className="relative">
                     <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-primary" />
                     <Input
@@ -413,7 +420,7 @@ const ClientDashboard = () => {
 
               <div className="space-y-4 border rounded-md p-4 bg-muted/20">
                 <div className="space-y-1">
-                  <Label>Project Assets & Links</Label>
+                  <Label>Project Assets & Links *</Label>
                   <p className="text-xs text-muted-foreground">Add links to cloud folders (Drive, Dropbox) with your footage.</p>
                 </div>
 
