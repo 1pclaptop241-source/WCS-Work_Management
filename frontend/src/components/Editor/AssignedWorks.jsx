@@ -460,7 +460,7 @@ const AssignedWorks = ({ onUpdate }) => {
                       else if (work.approved) { label = 'Approved'; variant = "default"; icon = <CheckCircle className="h-3 w-3 mr-1" />; } // Use default/success style
                       else if (stats?.needsResubmission && stats?.pendingCorrections > 0) { label = 'Needs Revision'; variant = "warning"; icon = <AlertCircle className="h-3 w-3 mr-1" />; }
                       else if (stats?.hasSubmission) { label = 'Under Review'; variant = "secondary"; icon = <Clock className="h-3 w-3 mr-1" />; }
-                      else if (work.status === 'in_progress') { label = 'In Progress'; variant = "outline"; className = "border-blue-500 text-blue-500"; icon = <Loader2 className="h-3 w-3 mr-1 animate-spin" />; }
+                      else if (work.status === 'in_progress') { label = 'In Progress'; variant = "outline"; icon = <Loader2 className="h-3 w-3 mr-1 animate-spin" />; }
                       else if (work.status === 'pending') { label = 'Assigned'; variant = "secondary"; }
 
                       return <Badge variant={variant} className={`flex items-center ${work.status === 'in_progress' ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' : ''} ${work.approved ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-200' : ''}`}>
