@@ -299,7 +299,30 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
             </div>
           </DialogHeader>
 
-          <div className="pt-4">
+          <div className="pt-4 space-y-6">
+            {/* Progress Section */}
+            <Card>
+              <CardHeader className="bg-muted/30 pb-3">
+                <CardTitle className="text-lg text-primary flex items-center gap-2">
+                  <Clock className="h-5 w-5" /> Overall Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex justify-between mb-2 text-sm font-medium">
+                  <span>Completion</span>
+                  <span>{Math.round(progress)}%</span>
+                </div>
+                <div className="h-4 w-full bg-secondary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-600 transition-all duration-500 ease-out flex items-center justify-center text-[10px] text-white font-bold"
+                    style={{ width: `${progress}%` }}
+                  >
+                    {Math.round(progress) > 5 && `${Math.round(progress)}%`}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Tabs defaultValue="overview" className="w-full space-y-6">
               <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -419,28 +442,7 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                   </CardContent>
                 </Card>
 
-                {/* Progress Section */}
-                <Card>
-                  <CardHeader className="bg-muted/30 pb-3">
-                    <CardTitle className="text-lg text-primary flex items-center gap-2">
-                      <Clock className="h-5 w-5" /> Overall Progress
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between mb-2 text-sm font-medium">
-                      <span>Completion</span>
-                      <span>{Math.round(progress)}%</span>
-                    </div>
-                    <div className="h-4 w-full bg-secondary rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-green-600 transition-all duration-500 ease-out flex items-center justify-center text-[10px] text-white font-bold"
-                        style={{ width: `${progress}%` }}
-                      >
-                        {Math.round(progress) > 5 && `${Math.round(progress)}%`}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Progress Section removed from here */}
               </TabsContent>
 
               <TabsContent value="list" className="space-y-6 mt-4">
