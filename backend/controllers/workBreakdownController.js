@@ -96,7 +96,8 @@ exports.updateWorkBreakdown = async (req, res) => {
           'assignment_details_updated',
           'Client Instructions Updated',
           `The client has updated instructions for your assignment "${workBreakdown.workType}" in project "${workBreakdown.project.title}".`,
-          workBreakdown.project._id
+          workBreakdown.project._id,
+          `/editor/upload-work/${workBreakdown._id}`
         );
       }
     }
@@ -145,7 +146,8 @@ exports.updateWorkBreakdown = async (req, res) => {
           'assignment_details_updated',
           'Assignment Details Updated',
           `The admin has updated the details/links for your assignment "${workBreakdown.workType}" in project "${workBreakdown.project.title}".`,
-          workBreakdown.project._id
+          workBreakdown.project._id,
+          `/editor/upload-work/${workBreakdown._id}`
         );
       }
     }
@@ -494,7 +496,8 @@ exports.addWorkFeedback = async (req, res) => {
         'work_feedback',
         'Editor Feedback Received',
         `Editor ${req.user.name} replied to feedback for "${workBreakdown.workType}" in project "${workBreakdown.project.title}".`,
-        workBreakdown.project._id
+        workBreakdown.project._id,
+        `/client/projects/${workBreakdown.project._id}`
       );
     } else {
       // Notify editor
@@ -503,7 +506,8 @@ exports.addWorkFeedback = async (req, res) => {
         'work_feedback',
         'New Feedback Received',
         `${req.user.name} provided feedback for "${workBreakdown.workType}" in project "${workBreakdown.project.title}".`,
-        workBreakdown.project._id
+        workBreakdown.project._id,
+        `/editor/upload-work/${workBreakdown._id}`
       );
     }
 

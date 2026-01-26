@@ -63,7 +63,7 @@ const sendPushNotification = async (userId, payload) => {
  * @param {string|null} relatedProjectId - Related project ID (optional)
  * @param {object|null} io - Socket.io instance (optional)
  */
-const createNotification = async (userId, type, title, message, relatedProjectId = null, io = null) => {
+const createNotification = async (userId, type, title, message, relatedProjectId = null, link = null, io = null) => {
     try {
         if (!userId) {
             console.error('createNotification: No userId provided');
@@ -76,7 +76,7 @@ const createNotification = async (userId, type, title, message, relatedProjectId
             title,
             message,
             relatedProject: relatedProjectId,
-            link: relatedProjectId ? `/projects/${relatedProjectId}` : '' // Default link logic
+            link: link || (relatedProjectId ? `/projects/${relatedProjectId}` : '') // Use provided link or default logic
         });
 
         // 1. Socket.io Real-time Emit

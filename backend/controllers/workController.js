@@ -159,6 +159,7 @@ exports.uploadWork = async (req, res) => {
       notifTitle,
       notifMsgClient,
       project._id,
+      `/client/projects/${project._id}`,
       req.io
     );
 
@@ -171,6 +172,7 @@ exports.uploadWork = async (req, res) => {
         'Work Uploaded',
         notifMsgAdmin,
         project._id,
+        `/admin/project/${project._id}`,
         req.io
       );
     }
@@ -292,6 +294,7 @@ exports.addCorrections = async (req, res) => {
       'Correction Requested',
       `Correction requested for work in project "${project.title}".`,
       project._id,
+      work.workBreakdown ? `/editor/upload-work/${work.workBreakdown}` : null,
       req.io
     );
 
@@ -305,6 +308,7 @@ exports.addCorrections = async (req, res) => {
           'Client Requested Correction',
           `Client requested correction for project "${project.title}".`,
           project._id,
+          `/admin/project/${project._id}`,
           req.io
         );
       }
@@ -379,6 +383,7 @@ exports.markCorrectionDone = async (req, res) => {
           'Correction Marked Done',
           `Editor marked a correction as done for project "${work.project.title}".`,
           work.project._id,
+          `/admin/project/${work.project._id}`,
           req.io
         );
       }
@@ -514,6 +519,7 @@ exports.adminApprove = async (req, res) => {
                 'New Resource Available',
                 `The previous step "${wb.workType}" has been approved by Admin. A link to its files has been added to your assignment.`,
                 work.project._id,
+                `/editor/upload-work/${nextWork._id}`,
                 req.io
               );
             }
@@ -588,6 +594,7 @@ exports.adminApprove = async (req, res) => {
         'Work Approved',
         `Your work for project "${work.project.title}" has been approved by both Admin and Client.`,
         work.project._id,
+        work.workBreakdown ? `/editor/upload-work/${work.workBreakdown}` : null,
         req.io
       );
     } else {
@@ -719,6 +726,7 @@ exports.clientApprove = async (req, res) => {
         'Work Approved',
         `Your work for project "${work.project.title}" has been approved by both Admin and Client.`,
         work.project._id,
+        work.workBreakdown ? `/editor/upload-work/${work.workBreakdown}` : null,
         req.io
       );
     }

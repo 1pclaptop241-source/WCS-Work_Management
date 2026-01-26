@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { FileDown, Trash2 } from 'lucide-react';
+import ErrorBoundary from '../common/ErrorBoundary';
 
 const EditorDashboard = () => {
   const { user } = useAuth();
@@ -76,7 +77,7 @@ const EditorDashboard = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {user.name}!</p>
+          <p className="text-muted-foreground">Welcome back, {user?.name || 'Editor'}!</p>
         </div>
         <Button onClick={() => { setRefreshKey(prev => prev + 1); loadDeletionReports(); }} variant="outline" size="sm" className="gap-2">
           Refresh Data
@@ -90,8 +91,8 @@ const EditorDashboard = () => {
         </Alert>
       )}
 
-      {/* Deletion Reports Section */}
-      {deletionReports.length > 0 && (
+      {/* Deletion Reports Section - Admin Only */}
+      {user?.role === 'admin' && deletionReports.length > 0 && (
         <Card className="border-yellow-400 bg-yellow-50 dark:bg-yellow-900/10 dark:border-yellow-600">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="flex items-center gap-2">
@@ -129,11 +130,15 @@ const EditorDashboard = () => {
         </TabsList>
 
         <TabsContent value="works" className="space-y-4 mt-6">
-          <AssignedWorks key={refreshKey} />
+          <ErrorBoundary fallbackMessage="Failed to load assigned works.">
+            <AssignedWorks key={refreshKey} />
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="payments" className="space-y-4 mt-6">
-          <PaymentInfo />
+          <ErrorBoundary fallbackMessage="Failed to load payment information.">
+            <PaymentInfo />
+          </ErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>

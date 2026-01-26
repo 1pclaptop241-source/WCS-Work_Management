@@ -33,10 +33,15 @@ const ProjectRoadmap = ({ projectId, currentWorkType, projectTitle }) => {
 
     const getStepStatus = (stage) => {
         if (!stage) return 'pending';
+        // Safety check for stage properties
         if (stage.approved) return 'done';
-        const isCurrentContext = currentWorkType && stage.workType &&
-            currentWorkType.toLowerCase().replace(/[^a-z]/g, '') === stage.workType.toLowerCase().replace(/[^a-z]/g, '');
-        if (isCurrentContext) return 'active';
+
+        // Defensive check for strings
+        const currentTypeStr = (currentWorkType || '').toString().toLowerCase().replace(/[^a-z]/g, '');
+        const stageTypeStr = (stage.workType || '').toString().toLowerCase().replace(/[^a-z]/g, '');
+
+        if (currentTypeStr && stageTypeStr && currentTypeStr === stageTypeStr) return 'active';
+
         if (stage.status === 'in_progress' || stage.status === 'under_review') return 'active';
         return 'pending';
     };

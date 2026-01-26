@@ -139,6 +139,7 @@ exports.bulkCloseProjects = async (req, res) => {
         'Project Closed',
         `Your project "${project.title}" has been closed by the admin.`,
         project._id,
+        `/client/projects/${project._id}`,
         req.io
       );
     }
@@ -293,6 +294,7 @@ exports.createProject = async (req, res) => {
         'New Project Created',
         `Client ${req.user.name} created a new project: ${title}`,
         project._id,
+        `/admin/project/${project._id}`,
         req.io
       );
 
@@ -617,6 +619,7 @@ exports.rejectProject = async (req, res) => {
       'Project Rejected',
       `Your project "${project.title}" has been rejected.`,
       project._id,
+      `/client/projects/${project._id}`,
       req.io
     );
 

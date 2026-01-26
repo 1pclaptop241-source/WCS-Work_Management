@@ -398,7 +398,8 @@ const AdminProjectPage = () => {
                 )}
 
                 {/* Reject Action: Available even for overdue/accepted projects */}
-                {user.role === 'admin' && project.status !== 'rejected' && !project.closed && (
+                {/* Reject Action: Available only for unaccepted/reviewing projects */}
+                {user.role === 'admin' && project.status !== 'rejected' && !project.closed && !project.accepted && (
                     <Button
                         variant="destructive"
                         onClick={() => setShowRejectModal(true)}
