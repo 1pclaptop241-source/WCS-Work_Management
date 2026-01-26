@@ -7,7 +7,7 @@ import WorkTypeDetailsModal from '../common/WorkTypeDetailsModal';
 import EditorNotesModal from './EditorNotesModal';
 import VersionHistoryModal from '../common/VersionHistoryModal';
 import { useDialog } from '../../context/DialogContext';
-import confetti from 'canvas-confetti';
+
 import {
   Clock, CheckCircle, Upload, MoreVertical,
   Flag, Calculator, CalendarDays, Ban, Play, StickyNote, FileText,
