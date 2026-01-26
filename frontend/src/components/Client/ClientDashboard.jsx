@@ -5,7 +5,7 @@ import { useDialog } from '../../context/DialogContext';
 import { formatDateTime } from '../../utils/formatDate';
 import OngoingProjects from './OngoingProjects';
 import WorkView from './WorkView';
-import confetti from 'canvas-confetti';
+
 import CountUp from 'react-countup';
 import { Button } from "@/components/ui/button";
 import {
@@ -211,12 +211,7 @@ const ClientDashboard = () => {
         await showAlert('Project updated successfully', 'Success');
       } else {
         await projectsAPI.createWithFile(submitData);
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#06A77D', '#FFD700', '#007BFF']
-        });
+
         await showAlert('Project created successfully! Waiting for admin approval.', 'Success');
       }
 
