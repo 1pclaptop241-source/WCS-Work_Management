@@ -878,7 +878,7 @@ const ProjectDetailView = ({ project, onClose, onUpdate }) => {
                               {/* Technical Corrections Chat */}
                               {(() => {
                                 const allCorrections = getAllCorrectionsForBreakdown(bd._id);
-                                return allCorrections.length > 0 && (
+                                return (
                                   <div className="mt-6 pt-6 border-t border-dashed border-border/50">
                                     <h4 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
                                       <Flag className="h-4 w-4" /> Technical Corrections

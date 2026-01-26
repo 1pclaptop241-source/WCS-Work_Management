@@ -9,6 +9,7 @@ import Layout from './components/common/Layout';
 import { ThemeProvider } from './components/theme-provider';
 import TermsModal from './components/common/TermsModal';
 import PageSkeleton from './components/common/PageSkeleton';
+import { Toaster } from "@/components/ui/toaster";
 
 // Admin Components - Lazy Loaded
 const AdminDashboard = lazy(() => import('./components/Admin/AdminDashboard'));
@@ -127,6 +128,7 @@ function App() {
           <SocketProvider>
             <DialogProvider>
               <AppRoutes />
+              <Toaster />
             </DialogProvider>
           </SocketProvider>
         </AuthProvider>
