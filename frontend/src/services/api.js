@@ -89,7 +89,7 @@ export const projectsAPI = {
 // Works API
 export const worksAPI = {
   upload: (arg1, ...rest) => {
-    if (arg1 instanceof FormData) {
+    if (arg1 && typeof arg1.append === 'function') {
       return api.post('/works', arg1, {
         headers: {
           'Content-Type': 'multipart/form-data',
