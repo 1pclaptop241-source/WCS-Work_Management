@@ -568,24 +568,26 @@ const WorkView = ({ project, onBack, onUpdate }) => {
                             )}
 
                             {/* Corrections / Chat */}
-                            const allCorrections = getAllCorrections(bd._id);
-                            return (
-                            <div className="pt-4 border-t">
-                              <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Technical Corrections & Requests</h4>
-                              <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
-                                <FeedbackChat
-                                  corrections={allCorrections}
-                                  currentUser={user}
-                                  canMarkFixed={true}
-                                  markingId={markingFixId}
-                                  onMarkFixed={(correctionId) => {
-                                    const corr = allCorrections.find(c => c._id === correctionId);
-                                    if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
-                                  }}
-                                />
-                              </div>
-                            </div>
-                            );
+                            {(() => {
+                              const allCorrections = getAllCorrections(bd._id);
+                              return (
+                                <div className="pt-4 border-t">
+                                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Technical Corrections & Requests</h4>
+                                  <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
+                                    <FeedbackChat
+                                      corrections={allCorrections}
+                                      currentUser={user}
+                                      canMarkFixed={true}
+                                      markingId={markingFixId}
+                                      onMarkFixed={(correctionId) => {
+                                        const corr = allCorrections.find(c => c._id === correctionId);
+                                        if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             {/* Feedback / Discussion */}
                             <div className="pt-4 border-t">
