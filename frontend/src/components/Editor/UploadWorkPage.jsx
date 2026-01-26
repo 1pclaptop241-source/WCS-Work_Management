@@ -23,7 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     ArrowLeft, Upload, FileText, Link as LinkIcon, Download,
     MessageSquare, Send, Paperclip, Mic, FileIcon,
-    AlertCircle, CheckCircle2, Clock, Info
+    AlertCircle, CheckCircle2, Clock, Info, History
 } from 'lucide-react';
 
 const UploadWorkPage = () => {
@@ -352,7 +352,7 @@ const UploadWorkPage = () => {
                             <CardContent className="space-y-6">
                                 {submissions.map((sub) => (
                                     <div key={sub._id} className="border rounded-lg p-4 space-y-3 bg-muted/10">
-                                        <div className="flex flex-wrapjustify-between items-start gap-2">
+                                        <div className="flex flex-wrap justify-between items-start gap-2">
                                             <div className="flex items-center gap-2">
                                                 {sub.submissionType === 'link' ? (
                                                     <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline font-medium">
