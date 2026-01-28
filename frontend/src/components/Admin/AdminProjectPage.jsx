@@ -8,6 +8,7 @@ import VoiceRecorder from '../common/VoiceRecorder';
 import WorkTypeMenu from '../common/WorkTypeMenu';
 import WorkTypeDetailsModal from '../common/WorkTypeDetailsModal';
 import ProjectProgress from '../common/ProjectProgress';
+import FeedbackChat from '../common/FeedbackChat';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,7 @@ const AdminProjectPage = () => {
     const [adminInstructionsInput, setAdminInstructionsInput] = useState({});
     const [isSavingAdminInstructions, setIsSavingAdminInstructions] = useState(null);
     const [isClosingProject, setIsClosingProject] = useState(false);
+    const [markingFixId, setMarkingFixId] = useState(null);
 
     const handleCloseProject = async () => {
         const isConfirmed = await confirm({
@@ -259,6 +261,21 @@ const AdminProjectPage = () => {
             loadWorkBreakdown();
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update work breakdown');
+        }
+    };
+
+    const handleMarkCorrectionDone = async (workId, correctionId) => {
+        try {
+            setMarkingFixId(correctionId);
+            setError('');
+            await worksAPI.markCorrectionDone(workId, correctionId);
+            await loadWorkSubmissions();
+            await loadWorkBreakdown();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to mark correction as done');
+            showAlert(err.response?.data?.message || 'Failed to mark correction as done', 'Error');
+        } finally {
+            setMarkingFixId(null);
         }
     };
 
@@ -682,6 +699,29 @@ const AdminProjectPage = () => {
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* Corrections / Chat */}
+                                        {(() => {
+                                            const allCorrections = getAllCorrectionsForBreakdown(bd._id);
+                                            return (
+                                                <div className="pt-4 border-t">
+                                                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Technical Corrections & Requests</h4>
+                                                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
+                                                        <FeedbackChat
+                                                            corrections={allCorrections}
+                                                            currentUser={user}
+                                                            canMarkFixed={true}
+                                                            markingId={markingFixId}
+                                                            onMarkFixed={(correctionId) => {
+                                                                const corr = allCorrections.find(c => c._id === correctionId);
+                                                                if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
                                     </CardContent>
                                 </Card>
                             );
@@ -853,14 +893,16 @@ const AdminProjectPage = () => {
             </Dialog>
 
             {/* Work Type Details Modal (Wrapper if component supports passing open/close props directly or we render conditional) */}
-            {showWorkTypeDetails && selectedWorkTypeForDetails && (
-                <WorkTypeDetailsModal
-                    isOpen={showWorkTypeDetails}
-                    onClose={() => setShowWorkTypeDetails(false)}
-                    workBreakdown={selectedWorkTypeForDetails}
-                />
-            )}
-        </div>
+            {
+                showWorkTypeDetails && selectedWorkTypeForDetails && (
+                    <WorkTypeDetailsModal
+                        isOpen={showWorkTypeDetails}
+                        onClose={() => setShowWorkTypeDetails(false)}
+                        workBreakdown={selectedWorkTypeForDetails}
+                    />
+                )
+            }
+        </div >
     );
 };
 
