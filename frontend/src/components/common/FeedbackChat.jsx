@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Paperclip, Check, Play, Pencil, Save, Ban } from 'lucide-react';
+import { X, Paperclip, Check, Play, Pencil, Save, Ban, Send } from 'lucide-react';
 import { formatDateTime } from '../../utils/formatDate';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Textarea } from "@/components/ui/textarea";
