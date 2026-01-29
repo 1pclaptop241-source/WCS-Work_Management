@@ -208,6 +208,8 @@ exports.getWorkByProject = async (req, res) => {
     const works = await WorkSubmission.find({ project: req.params.projectId })
       .populate('editor', 'name email')
       .populate('project', 'title')
+      .populate('corrections.addedBy', 'name email')
+      .populate('corrections.doneBy', 'name email')
       .sort({ submittedAt: -1 });
 
     res.json(works);
@@ -318,6 +320,48 @@ exports.addCorrections = async (req, res) => {
       .populate('corrections.addedBy', 'name email');
 
     res.json(updatedWork);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Edit correction text
+// @route   PUT /api/works/:id/corrections/:correctionId
+// @access  Private/Client|Admin
+exports.editCorrection = async (req, res) => {
+  try {
+    const { text } = req.body;
+    const work = await WorkSubmission.findById(req.params.id).populate('project');
+
+    if (!work) {
+      return res.status(404).json({ message: 'Work submission not found' });
+    }
+
+    const correction = work.corrections.id(req.params.correctionId);
+    if (!correction) {
+      return res.status(404).json({ message: 'Correction not found' });
+    }
+
+    // Authorization: owner of correction or admin
+    // Typically only the person who added it can edit, or admin can edit anyone's? 
+    // Let's allow creator or admin.
+    if (correction.addedBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to edit this correction' });
+    }
+
+    correction.text = text;
+    // Optional: correction.editedAt = new Date(); // If we want to track edits
+
+    await work.save();
+
+    const updatedWork = await WorkSubmission.findById(work._id)
+      .populate('editor', 'name email')
+      .populate('project', 'title')
+      .populate('corrections.addedBy', 'name email')
+      .populate('corrections.doneBy', 'name email');
+
+    res.json(updatedWork);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -452,6 +496,8 @@ exports.getWorkByEditor = async (req, res) => {
     const works = await WorkSubmission.find({ editor: editorId })
       .populate('project', 'title deadline')
       .populate('editor', 'name email')
+      .populate('corrections.addedBy', 'name email')
+      .populate('corrections.doneBy', 'name email')
       .sort({ submittedAt: -1 });
 
     res.json(works);

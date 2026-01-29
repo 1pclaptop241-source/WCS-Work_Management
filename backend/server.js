@@ -19,6 +19,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Attach io to req for use in controllers (MUST BE BEFORE ROUTES)
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 
 // Serve report files
 app.use('/reports', express.static(path.join(__dirname, 'reports')));
@@ -73,16 +79,20 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Join a room for a specific work item (discussion)
+  socket.on('join_work_room', (workId) => {
+    if (workId) {
+      socket.join(`work_${workId}`);
+      // console.log(`Socket ${socket.id} joined work room: work_${workId}`);
+    }
+  });
+
   socket.on('disconnect', () => {
     // console.log('Client disconnected');
   });
 });
 
-// Attach io to req for use in controllers
-app.use((req, res, next) => {
-  req.io = io;
-  next();
-});
+
 
 const PORT = process.env.PORT || 5000;
 

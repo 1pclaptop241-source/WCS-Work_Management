@@ -1,14 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Paperclip, Check, Play } from 'lucide-react';
+import { X, Paperclip, Check, Play, Pencil, Save, Ban } from 'lucide-react';
 import { formatDateTime } from '../../utils/formatDate';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Textarea } from "@/components/ui/textarea";
 
-const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, markingId, onClose }) => {
+const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, markingId, onClose, onEditCorrection, onAddCorrection, workId }) => {
+    const [editingId, setEditingId] = useState(null);
+    const [editText, setEditText] = useState("");
+    const [newCorrectionText, setNewCorrectionText] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+
+    const handleStartEdit = (msg) => {
+        setEditingId(msg._id);
+        setEditText(msg.text || "");
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setEditText("");
+    };
+
+    const handleSaveEdit = async (workId, correctionId) => {
+        if (!editText.trim()) return;
+        try {
+            setIsSaving(true);
+            await onEditCorrection(workId, correctionId, editText);
+            setEditingId(null);
+        } catch (error) {
+            console.error("Failed to edit correction:", error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     if (!corrections || corrections.length === 0) {
         return (
@@ -38,7 +67,7 @@ const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, mar
                         const isMarking = markingId === msg._id;
 
                         return (
-                            <div key={index} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                            <div key={index} className={`flex gap-3 group ${isMe ? 'flex-row-reverse' : ''}`}>
                                 <Avatar className="h-8 w-8 border">
                                     <AvatarFallback className={isMe ? "bg-primary text-primary-foreground" : "bg-muted"}>
                                         {(msg.addedBy?.name || 'U').charAt(0).toUpperCase()}
@@ -53,13 +82,43 @@ const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, mar
 
                                     <div
                                         className={`p-3 rounded-lg text-sm shadow-sm ${isMe
-                                                ? 'bg-primary text-primary-foreground rounded-tr-none'
-                                                : 'bg-card border rounded-tl-none'
+                                            ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                            : 'bg-card border rounded-tl-none'
                                             }`}
                                     >
-                                        <p className="whitespace-pre-wrap leading-relaxed">
-                                            {msg.text || <span className="italic opacity-80">Shared files</span>}
-                                        </p>
+                                        {editingId === msg._id ? (
+                                            <div className="flex flex-col gap-2 min-w-[200px]">
+                                                <Textarea
+                                                    value={editText}
+                                                    onChange={(e) => setEditText(e.target.value)}
+                                                    className="min-h-[60px] text-black dark:text-white"
+                                                />
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        size="xs"
+                                                        variant="ghost"
+                                                        className="h-6 w-6 p-0 hover:bg-white/20"
+                                                        onClick={handleCancelEdit}
+                                                        disabled={isSaving}
+                                                    >
+                                                        <Ban className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                        size="xs"
+                                                        variant="ghost"
+                                                        className="h-6 w-6 p-0 hover:bg-white/20"
+                                                        onClick={() => handleSaveEdit(msg.workId, msg._id)} // msg should have workId attached
+                                                        disabled={isSaving}
+                                                    >
+                                                        <Save className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="whitespace-pre-wrap leading-relaxed">
+                                                {msg.text || <span className="italic opacity-80">Shared files</span>}
+                                            </p>
+                                        )}
 
                                         {/* Attachments */}
                                         {(msg.voiceFile || (msg.mediaFiles && msg.mediaFiles.length > 0)) && (
@@ -79,8 +138,8 @@ const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, mar
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border ${isMe
-                                                                        ? 'bg-primary-foreground/10 border-white/20 hover:bg-white/20'
-                                                                        : 'bg-muted hover:bg-muted/80'
+                                                                    ? 'bg-primary-foreground/10 border-white/20 hover:bg-white/20'
+                                                                    : 'bg-muted hover:bg-muted/80'
                                                                     }`}
                                                             >
                                                                 <Paperclip className="h-3 w-3" />
@@ -116,6 +175,18 @@ const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, mar
                                                 </Badge>
                                             )
                                         )}
+
+                                        {/* Edit Button (Only for author, if not done, and handler provided) */}
+                                        {isMe && !msg.done && onEditCorrection && editingId !== msg._id && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity self-center"
+                                                onClick={() => handleStartEdit(msg)}
+                                            >
+                                                Edit
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -123,6 +194,37 @@ const FeedbackChat = ({ corrections, currentUser, onMarkFixed, canMarkFixed, mar
                     })}
                 </div>
             </ScrollArea>
+
+            {onAddCorrection && (
+                <div className="p-3 border-t bg-background">
+                    <div className="flex gap-2 items-end">
+                        <Textarea
+                            value={newCorrectionText}
+                            onChange={(e) => setNewCorrectionText(e.target.value)}
+                            placeholder="Request a change or add feedback..."
+                            className="min-h-[40px] max-h-[120px]"
+                        />
+                        <Button
+                            size="icon"
+                            onClick={async () => {
+                                if (!newCorrectionText.trim()) return;
+                                try {
+                                    setIsSending(true);
+                                    await onAddCorrection(newCorrectionText, null, []);
+                                    setNewCorrectionText("");
+                                } catch (e) {
+                                    console.error(e);
+                                } finally {
+                                    setIsSending(false);
+                                }
+                            }}
+                            disabled={isSending || !newCorrectionText.trim()}
+                        >
+                            <Send className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
         </Card>
     );
 };

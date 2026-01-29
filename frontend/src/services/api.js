@@ -135,6 +135,7 @@ export const worksAPI = {
     });
   },
   markCorrectionDone: (id, correctionId) => api.put(`/works/${id}/corrections/${correctionId}/done`),
+  editCorrection: (id, correctionId, text) => api.put(`/works/${id}/corrections/${correctionId}`, { text }),
   adminApprove: (id) => api.put(`/works/${id}/admin-approve`),
   clientApprove: (id) => api.put(`/works/${id}/client-approve`),
   updateStatus: (id, status) => api.put(`/works/work-breakdown/${id}/status`, { status }),
@@ -231,6 +232,7 @@ export const workBreakdownAPI = {
   decline: (id) => api.put(`/work-breakdown/${id}/decline`),
   approve: (id) => api.put(`/work-breakdown/${id}/approve`),
   addFeedback: (id, content) => api.post(`/work-breakdown/${id}/feedback`, { content }),
+  addDiscussionMessage: (id, content) => api.post(`/work-breakdown/${id}/discussion`, { content }),
 };
 
 // Notifications API

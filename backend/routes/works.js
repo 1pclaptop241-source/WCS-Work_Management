@@ -12,6 +12,7 @@ const {
   updateWorkStatus,
   updateWorkDetails,
   toggleWorkFileVisibility,
+  editCorrection,
 } = require('../controllers/workController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -31,6 +32,7 @@ router.post('/:id/corrections', protect, authorize('client', 'admin'), upload.fi
   { name: 'mediaFiles', maxCount: 5 }
 ]), addCorrections);
 router.put('/:id/corrections/:correctionId/done', protect, markCorrectionDone);
+router.put('/:id/corrections/:correctionId', protect, authorize('client', 'admin'), editCorrection);
 router.put('/:id/admin-approve', protect, authorize('admin'), require('../controllers/workController').adminApprove);
 router.put('/:id/client-approve', protect, authorize('client'), require('../controllers/workController').clientApprove);
 router.put('/:id/toggle-visibility', protect, authorize('admin'), toggleWorkFileVisibility);

@@ -8,7 +8,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['project_assigned', 'work_submitted', 'deadline_approaching', 'project_update', 'general', 'project_created', 'project_closed', 'work_uploaded', 'work_updated', 'correction_requested', 'correction_done', 'work_declined', 'assignment_details_updated', 'work_approved'],
+    enum: ['project_assigned', 'work_submitted', 'deadline_approaching', 'project_update', 'general', 'project_created', 'project_closed', 'work_uploaded', 'work_updated', 'correction_requested', 'correction_done', 'work_declined', 'assignment_details_updated', 'work_approved', 'deadline_warning'],
     required: true
   },
   title: {

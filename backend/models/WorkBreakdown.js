@@ -108,6 +108,11 @@ const workBreakdownSchema = new mongoose.Schema({
     content: { type: String, required: true },
     timestamp: { type: Date, default: Date.now }
   }],
+  discussion: [{
+    from: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    content: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+  }],
 });
 
 workBreakdownSchema.pre('save', function (next) {

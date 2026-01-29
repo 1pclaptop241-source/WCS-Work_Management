@@ -8,11 +8,22 @@ import VoiceRecorder from '../common/VoiceRecorder';
 import WorkTypeMenu from '../common/WorkTypeMenu';
 import WorkTypeDetailsModal from '../common/WorkTypeDetailsModal';
 import FeedbackChat from '../common/FeedbackChat';
+import DiscussionChat from '../common/DiscussionChat';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download, Edit, Check, MessageSquare, FileText, Video, AlertCircle,
-  ArrowLeft, Paperclip, Mic, Send, Info, CheckCircle2, Circle
+  ArrowLeft, Paperclip, Mic, Send, Info, MoreVertical,
+  MessageCircle,
+  AlertTriangle, Clock, CheckCircle2, Circle
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Card,
   CardContent,
@@ -63,6 +74,12 @@ const WorkView = ({ project, onBack, onUpdate }) => {
   const [instructionsInput, setInstructionsInput] = useState({});
   const [isSavingInstructions, setIsSavingInstructions] = useState(null);
 
+  // Redesign state
+  const [expandedSection, setExpandedSection] = useState({ workId: null, section: null });
+
+  // Discussion state (placeholder)
+  const [discussionText, setDiscussionText] = useState('');
+
   useEffect(() => {
     loadData();
   }, [project]);
@@ -80,6 +97,14 @@ const WorkView = ({ project, onBack, onUpdate }) => {
       setError(err.response?.data?.message || 'Failed to load project data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleSection = (workId, sectionName) => {
+    if (expandedSection.workId === workId && expandedSection.section === sectionName) {
+      setExpandedSection({ workId: null, section: null });
+    } else {
+      setExpandedSection({ workId, section: sectionName });
     }
   };
 
@@ -151,6 +176,16 @@ const WorkView = ({ project, onBack, onUpdate }) => {
       showAlert(err.response?.data?.message || 'Failed to mark correction as done', 'Error');
     } finally {
       setMarkingFixId(null);
+    }
+  };
+
+  const handleEditCorrection = async (workId, correctionId, newText) => {
+    try {
+      await worksAPI.editCorrection(workId, correctionId, newText);
+      await loadData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to edit correction');
+      showAlert(err.response?.data?.message || 'Failed to edit correction', 'Error');
     }
   };
 
@@ -241,10 +276,10 @@ const WorkView = ({ project, onBack, onUpdate }) => {
 
         if (needsReview) {
           return (
-            <Alert className="bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/10 dark:text-blue-200 dark:border-blue-800">
-              <AlertCircle className="h-5 w-5 !text-blue-600 dark:!text-blue-400" />
-              <AlertTitle className="text-blue-800 dark:text-blue-300 font-semibold">Action Required</AlertTitle>
-              <AlertDescription className="text-blue-700 dark:text-blue-400">
+            <Alert className="bg-blue-50/50 border-blue-200 text-primary dark:bg-primary/10 dark:text-primary-foreground dark:border-primary/20">
+              <AlertCircle className="h-5 w-5 text-primary" />
+              <AlertTitle className="text-primary font-semibold">Action Required</AlertTitle>
+              <AlertDescription className="text-foreground/80">
                 You have items ready for review. Please check the "Pending Approval" items below.
               </AlertDescription>
             </Alert>
@@ -358,9 +393,9 @@ const WorkView = ({ project, onBack, onUpdate }) => {
                           <TableCell className="font-medium">{bd.workType}</TableCell>
                           <TableCell>
                             <Badge variant={statusVariant} className={
-                              statusVariant === 'success' ? 'bg-green-600' :
-                                statusVariant === 'warning' ? 'bg-amber-500' :
-                                  statusVariant === 'default' ? 'bg-blue-600' : ''
+                              statusVariant === 'success' ? 'bg-success hover:bg-success/90' :
+                                statusVariant === 'warning' ? 'bg-warning hover:bg-warning/90 text-warning-foreground' :
+                                  statusVariant === 'default' ? 'bg-primary hover:bg-primary/90' : ''
                             }>
                               {statusText}
                             </Badge>
@@ -372,7 +407,7 @@ const WorkView = ({ project, onBack, onUpdate }) => {
                             <div className="flex items-center gap-1.5 opacity-90">
                               <span className="text-[10px] uppercase font-bold text-muted-foreground w-10">Client</span>
                               {clientApproved ? (
-                                <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                <CheckCircle2 className="h-3 w-3 text-success" />
                               ) : (
                                 <Circle className="h-3 w-3 text-muted-foreground/50" />
                               )}
@@ -390,270 +425,133 @@ const WorkView = ({ project, onBack, onUpdate }) => {
 
         <TabsContent value="board" className="mt-4">
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-semibold">Project Work Items</h3>
-            </div>
-
-            {loading ? (
-              <div className="flex justify-center p-8 text-muted-foreground">Loading work items...</div>
-            ) : breakdowns.length === 0 ? (
-              <Card><CardContent className="p-6 text-center text-muted-foreground">No work breakdown defined.</CardContent></Card>
-            ) : (
-              <div className="space-y-6">
-                <AnimatePresence>
-                  {breakdowns.map((bd, index) => {
-                    const work = getLatestSubmission(bd._id);
-                    const hasUpload = !!work;
-
-                    const hasPendingCorrections = getAllCorrections(bd._id).some(c => !c.done);
-                    const adminApproved = bd.approvals?.admin || false;
-                    const clientApproved = bd.approvals?.client || false;
-                    const isApproved = adminApproved && clientApproved;
-
-                    let statusBadge;
-                    if (!hasUpload) {
-                      statusBadge = <Badge variant="secondary">Pending Upload</Badge>;
-                    } else if (isApproved) {
-                      statusBadge = <Badge className="bg-green-600 hover:bg-green-700">Approved</Badge>;
-                    } else if (hasPendingCorrections) {
-                      statusBadge = <Badge variant="warning" className="bg-yellow-500 hover:bg-yellow-600 text-white">Needs Revision</Badge>;
-                    } else {
-                      statusBadge = <Badge className="bg-blue-600 hover:bg-blue-700">Pending Approval</Badge>;
-                    }
-
-                    return (
-                      <motion.div
-                        key={bd._id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        layout
-                      >
-                        <Card className={`overflow-hidden border-l-4 ${isApproved ? 'border-l-green-500' : hasPendingCorrections ? 'border-l-yellow-500' : 'border-l-blue-500'}`}>
-                          <div className={`h-1 w-full ${isApproved ? 'bg-green-500' : hasPendingCorrections ? 'bg-yellow-500' : 'bg-blue-500'}`} />
-                          <CardHeader className="pb-3 pt-5">
-                            <div className="flex justify-between items-start gap-4">
-                              <div>
-                                <CardTitle className="text-xl">{bd.workType}</CardTitle>
-                                <CardDescription className="mt-1">
-                                  {hasUpload ? (
-                                    <>Latest Submission: <span className="font-medium text-foreground">{formatDate(work.submittedAt)}</span></>
-                                  ) : 'Waiting for submission...'}
-                                </CardDescription>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {statusBadge}
-                                <WorkTypeMenu workBreakdown={bd} onViewDetails={handleViewWorkTypeDetails} />
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-6">
-                            {/* Instructions */}
-                            <div className="space-y-2">
-                              <Label className="text-muted-foreground font-semibold">Instructions for Editor:</Label>
-                              <div className="flex gap-2 items-start">
-                                <Textarea
-                                  className="min-h-[80px] resize-y"
-                                  placeholder="Add specific instructions for this work item... (visible to Editor and Admin)"
-                                  value={instructionsInput[bd._id] !== undefined ? instructionsInput[bd._id] : (bd.clientInstructions || '')}
-                                  onChange={(e) => setInstructionsInput(prev => ({ ...prev, [bd._id]: e.target.value }))}
-                                />
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleSaveInstructions(bd._id)}
-                                  disabled={isSavingInstructions === bd._id}
-                                >
-                                  {isSavingInstructions === bd._id ? 'Saving...' : 'Save'}
-                                </Button>
-                              </div>
-                            </div>
-
-                            {/* Approval Status Steps */}
-                            {hasUpload && (
-                              <div className="flex items-center gap-4 bg-muted/40 p-3 rounded-lg text-sm border">
-                                <div className={`flex items-center gap-2 ${adminApproved ? 'text-green-600 font-semibold' : 'text-muted-foreground'}`}>
-                                  {adminApproved ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                                  <span>Admin Review</span>
-                                </div>
-                                <div className="h-4 w-[1px] bg-border" />
-                                <div className={`flex items-center gap-2 ${clientApproved ? 'text-green-600 font-semibold' : 'text-muted-foreground'}`}>
-                                  {clientApproved ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                                  <span>Client Review</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Actions */}
-                            {hasUpload ? (
-                              <div className="space-y-4">
-                                <div className="flex flex-wrap gap-3">
-                                  <Button className="flex-1 gap-2" variant="outline" onClick={() => handleDownload(work)}>
-                                    <Download className="h-4 w-4" />
-                                    {work.submissionType === 'link' ? 'View Link' : 'Download File'}
-                                  </Button>
-
-                                  <Button
-                                    className={`flex-1 gap-2 ${isApproved ? 'bg-muted text-muted-foreground hover:bg-muted' : 'bg-green-600 hover:bg-green-700 text-white'}`}
-                                    disabled={isApproved}
-                                    onClick={() => {
-                                      if (isApproved) return;
-                                      setSelectedWork(work);
-                                      setCorrectionText('');
-                                      setVoiceFile(null);
-                                      setMediaFiles([]);
-                                      setShowCorrectionsModal(true);
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4" /> Request Changes
-                                  </Button>
-                                </div>
-
-                                {!isApproved && !clientApproved && (
-                                  <Button
-                                    className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-                                    onClick={async () => {
-                                      const isConfirmed = await confirm({
-                                        title: `Approve ${bd.workType}?`,
-                                        message: `This will mark ${bd.workType} as complete. Are you ready to finalize?`,
-                                        confirmText: 'Approve & Finalize'
-                                      });
-
-                                      if (isConfirmed) {
-                                        try {
-                                          setApprovingKey(bd._id);
-                                          await workBreakdownAPI.approve(bd._id);
-                                          await loadData();
-                                          if (onUpdate) onUpdate();
-                                        } catch (e) {
-                                          setError(e.response?.data?.message || 'Failed to approve');
-                                        } finally {
-                                          setApprovingKey(null);
-                                        }
-                                      }
-                                    }}
-                                    disabled={approvingKey === bd._id || hasPendingCorrections}
-                                  >
-                                    {approvingKey === bd._id ? 'Finalizing...' : <><Check className="h-4 w-4" /> Approve Work</>}
-                                  </Button>
-                                )}
-
-                                {work.workFileUrl && work.isWorkFileVisibleToClient && (
-                                  <div className="text-center">
-                                    <a
-                                      href={work.workFileUrl.match(/^https?:\/\//) ? work.workFileUrl : (work.workFileUrl.startsWith('/') ? `${API_BASE_URL}${work.workFileUrl}` : `https://${work.workFileUrl}`)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors underline"
-                                    >
-                                      {work.workSubmissionType === 'link' || !work.workFileUrl.includes('cloudinary') ? '🔗 Open Source Link' : '📦 Download Source File'}
-                                    </a>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="p-8 text-center bg-muted/30 border border-dashed rounded-lg text-muted-foreground">
-                                Editor is working on this task.
-                              </div>
-                            )}
-
-                            {/* Editor Note */}
-                            {hasUpload && work.editorMessage && (
-                              <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-lg p-4 flex gap-3">
-                                <span className="text-xl">📝</span>
-                                <div className="space-y-1">
-                                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">Note from Editor:</p>
-                                  <p className="text-sm text-foreground">{work.editorMessage}</p>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Corrections / Chat */}
-                            {(() => {
-                              const allCorrections = getAllCorrections(bd._id);
-                              return (
-                                <div className="pt-4 border-t">
-                                  <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Technical Corrections & Requests</h4>
-                                  <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
-                                    <FeedbackChat
-                                      corrections={allCorrections}
-                                      currentUser={user}
-                                      canMarkFixed={true}
-                                      markingId={markingFixId}
-                                      onMarkFixed={(correctionId) => {
-                                        const corr = allCorrections.find(c => c._id === correctionId);
-                                        if (corr) handleMarkCorrectionDone(corr.workId, correctionId);
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })()}
-
-                            {/* Feedback / Discussion */}
-                            <div className="pt-4 border-t">
-                              <div
-                                className="flex items-center gap-2 mb-3 cursor-pointer text-muted-foreground hover:text-primary transition-colors"
-                                onClick={() => focusFeedback(bd._id)}
-                              >
-                                <MessageSquare className="h-4 w-4" />
-                                <h4 className="text-sm font-semibold">Discussion</h4>
-                                {(!bd.feedback || bd.feedback.length === 0) && <span className="text-xs text-blue-500 font-normal">Add comment</span>}
-                              </div>
-
-                              {(bd.feedback && bd.feedback.length > 0) && (
-                                <ScrollArea className="h-[200px] w-full rounded-md border p-4 mb-3 bg-muted/20">
-                                  {bd.feedback.map((f, i) => (
-                                    <div
-                                      key={i}
-                                      className={`mb-3 p-3 rounded-lg max-w-[85%] text-sm ${f.from?._id === user._id
-                                        ? 'ml-auto bg-primary text-primary-foreground'
-                                        : 'bg-muted text-foreground'
-                                        }`}
-                                    >
-                                      <div className="flex justify-between items-center gap-4 mb-1 text-xs opacity-70">
-                                        <span className="font-semibold">{f.from?.name || 'User'}{f.from?._id === user._id && ' (You)'}</span>
-                                        <span>{formatDateTime(f.timestamp)}</span>
-                                      </div>
-                                      <p className="whitespace-pre-wrap">{f.content}</p>
-                                    </div>
-                                  ))}
-                                </ScrollArea>
-                              )}
-
-                              <div className="flex gap-2">
-                                <Input
-                                  id={`feedback-input-${bd._id}`}
-                                  placeholder="Write a comment..."
-                                  value={feedbackText[bd._id] || ''}
-                                  onChange={(e) => setFeedbackText(prev => ({ ...prev, [bd._id]: e.target.value }))}
-                                  onKeyPress={(e) => e.key === 'Enter' && handleAddFeedback(bd._id)}
-                                  className="rounded-full"
-                                />
-                                <Button
-                                  size="icon"
-                                  className="rounded-full shrink-0"
-                                  onClick={() => handleAddFeedback(bd._id)}
-                                  disabled={isSubmittingFeedback === bd._id || !feedbackText[bd._id]?.trim()}
-                                >
-                                  <Send className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold">Project Work Items</h3>
               </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+
+              {loading ? (
+                <div className="flex justify-center p-8 text-muted-foreground">Loading work items...</div>
+              ) : breakdowns.length === 0 ? (
+                <Card><CardContent className="p-6 text-center text-muted-foreground">No work breakdown defined.</CardContent></Card>
+              ) : (
+                <div className="space-y-6">
+                  <AnimatePresence>
+                    {breakdowns.map((bd, index) => {
+                      const work = getLatestSubmission(bd._id);
+                      const hasUpload = !!work;
+
+                      const hasPendingCorrections = getAllCorrections(bd._id).some(c => !c.done);
+                      const adminApproved = bd.approvals?.admin || false;
+                      const clientApproved = bd.approvals?.client || false;
+                      const isApproved = adminApproved && clientApproved;
+                      const isExpanded = expandedSection.workId === bd._id;
+                      const activeSection = isExpanded ? expandedSection.section : null;
+
+                      let statusBadge;
+                      if (!hasUpload) {
+                        statusBadge = <Badge variant="secondary">Pending Upload</Badge>;
+                      } else if (isApproved) {
+                        statusBadge = <Badge className="bg-success hover:bg-success/90">Approved</Badge>;
+                      } else if (hasPendingCorrections) {
+                        statusBadge = <Badge variant="warning" className="bg-warning hover:bg-warning/90 text-warning-foreground">Needs Revision</Badge>;
+                      } else {
+                        statusBadge = <Badge className="bg-primary hover:bg-primary/90">Pending Approval</Badge>;
+                      }
+
+                      return (
+                        <motion.div
+                          layout
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          key={bd._id}
+                          className="mb-4"
+                        >
+                          <Card>
+                            <CardContent className="p-6">
+                              <div className="flex flex-col gap-4">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-semibold text-lg">{bd.workType}</h4>
+                                  <div className="flex items-center gap-2">
+                                    {statusBadge}
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => toggleSection(bd._id, 'corrections')}>
+                                          <AlertTriangle className="h-4 w-4 mr-2" /> Corrections
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => toggleSection(bd._id, 'discussion')}>
+                                          <MessageCircle className="h-4 w-4 mr-2" /> Discussion
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  <span className="font-medium text-foreground">Deadline:</span> {new Date(bd.deadline).toLocaleDateString()}
+                                </div>
+
+                                {/* Expandable Sections */}
+                                {isExpanded && (
+                                  <div className="mt-4 border-t pt-4 animate-accordion-down">
+                                    {/* SECTION: CORRECTIONS */}
+                                    {activeSection === 'corrections' && (
+                                      <div className="mb-4">
+                                        {(() => {
+                                          const allCorrections = getAllCorrections(bd._id);
+                                          return (
+                                            <FeedbackChat
+                                              corrections={allCorrections}
+                                              currentUser={user}
+                                              canMarkFixed={false}
+                                              onClose={() => setExpandedSection({ workId: null, section: null })}
+                                              workId={work?._id}
+                                              onAddCorrection={async (text, voice, media) => {
+                                                if (!work) return;
+                                                await worksAPI.addCorrections(work._id, text, voice, media);
+                                                await loadData();
+                                              }}
+                                            />
+                                          );
+                                        })()}
+                                      </div>
+                                    )}
+
+                                    {/* SECTION: DISCUSSION */}
+                                    {activeSection === 'discussion' && (
+                                      <div className="mb-4">
+                                        <DiscussionChat
+                                          workId={bd._id}
+                                          initialMessages={bd.discussion || []}
+                                          onClose={() => setExpandedSection({ workId: null, section: null })}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div >
+              )}
+            </div >
+          </div >
+        </TabsContent >
+      </Tabs >
 
       {/* Corrections Modal */}
-      <Dialog open={showCorrectionsModal} onOpenChange={setShowCorrectionsModal}>
+      < Dialog open={showCorrectionsModal} onOpenChange={setShowCorrectionsModal} >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Request Changes / Feedback</DialogTitle>
@@ -700,29 +598,31 @@ const WorkView = ({ project, onBack, onUpdate }) => {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Voice Recorder Modal */}
-      <Dialog open={showVoiceRecorder} onOpenChange={setShowVoiceRecorder}>
+      < Dialog open={showVoiceRecorder} onOpenChange={setShowVoiceRecorder} >
         <DialogContent className="sm:max-w-md">
           <VoiceRecorder
             onRecordingComplete={handleVoiceRecordingComplete}
             onCancel={() => setShowVoiceRecorder(false)}
           />
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       {/* Work Type Details Modal */}
-      {showWorkTypeDetails && selectedWorkTypeForDetails && (
-        <WorkTypeDetailsModal
-          workBreakdown={selectedWorkTypeForDetails}
-          onClose={() => {
-            setShowWorkTypeDetails(false);
-            setSelectedWorkTypeForDetails(null);
-          }}
-        />
-      )}
-    </div>
+      {
+        showWorkTypeDetails && selectedWorkTypeForDetails && (
+          <WorkTypeDetailsModal
+            workBreakdown={selectedWorkTypeForDetails}
+            onClose={() => {
+              setShowWorkTypeDetails(false);
+              setSelectedWorkTypeForDetails(null);
+            }}
+          />
+        )
+      }
+    </div >
   );
 };
 

@@ -27,6 +27,7 @@ exports.getWorkBreakdownByProject = async (req, res) => {
       .populate('assignedEditor', 'name email')
       .populate('approvedBy', 'name email')
       .populate('feedback.from', 'name role')
+      .populate('discussion.from', 'name role')
       .sort({ createdAt: 1 });
 
     const isWorker = workBreakdown.some(wb => wb.assignedEditor && wb.assignedEditor._id.toString() === req.user._id.toString());
@@ -57,6 +58,7 @@ exports.getWorkBreakdownByEditor = async (req, res) => {
       .populate('project', 'title client roadmap')
       .populate('assignedEditor', 'name email')
       .populate('feedback.from', 'name role')
+      .populate('discussion.from', 'name role')
       .sort({ deadline: 1 });
 
     res.json(workBreakdown);
@@ -185,7 +187,8 @@ exports.updateWorkBreakdown = async (req, res) => {
 
     const updated = await WorkBreakdown.findById(workBreakdown._id)
       .populate('assignedEditor', 'name email')
-      .populate('project', 'title');
+      .populate('project', 'title')
+      .populate('discussion.from', 'name role');
 
     res.json(updated);
   } catch (error) {
@@ -513,6 +516,61 @@ exports.addWorkFeedback = async (req, res) => {
       .populate('project', 'title');
 
     res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Add discussion message to work breakdown
+// @route   POST /api/work-breakdown/:id/discussion
+// @access  Private (Admin, Client, Assigned Editor)
+exports.addDiscussionMessage = async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content) {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+
+    const workBreakdown = await WorkBreakdown.findById(req.params.id)
+      .populate('project')
+      .populate('assignedEditor', 'name email');
+
+    if (!workBreakdown) {
+      return res.status(404).json({ message: 'Work breakdown not found' });
+    }
+
+    // Check permissions
+    const isClientOwner = workBreakdown.project.client.toString() === req.user._id.toString();
+    const isAssignedEditor = workBreakdown.assignedEditor && workBreakdown.assignedEditor._id.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+
+    if (!(isClientOwner || isAdmin || isAssignedEditor)) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const newMessage = {
+      from: req.user._id,
+      content,
+      timestamp: new Date()
+    };
+
+    workBreakdown.discussion.push(newMessage);
+    await workBreakdown.save();
+
+    const messageToSend = {
+      ...newMessage,
+      from: {
+        _id: req.user._id,
+        name: req.user.name,
+        role: req.user.role
+      }
+    };
+
+    if (req.io) {
+      req.io.to(`work_${workBreakdown._id}`).emit('receive_message', messageToSend);
+    }
+
+    res.json(messageToSend);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

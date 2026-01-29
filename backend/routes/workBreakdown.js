@@ -7,6 +7,7 @@ const {
   approveWorkType,
   declineWork,
   addWorkFeedback,
+  addDiscussionMessage
 } = require('../controllers/workBreakdownController');
 const { protect } = require('../middleware/auth');
 
@@ -16,6 +17,7 @@ router.put('/:id', protect, updateWorkBreakdown);
 router.put('/:id/decline', protect, declineWork);
 router.put('/:id/approve', protect, approveWorkType);
 router.post('/:id/feedback', protect, addWorkFeedback);
+router.post('/:id/discussion', protect, addDiscussionMessage);
 
 module.exports = router;
 
